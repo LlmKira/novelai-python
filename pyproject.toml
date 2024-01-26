@@ -1,0 +1,19 @@
+[project]
+name = "novelai-python"
+version = "0.1.0"
+description = "Novelai Python Binding With Pydantic"
+authors = [
+    {name = "sudoskys", email = "coldlando@hotmail.com"},
+]
+dependencies = []
+requires-python = ">=3.8"
+readme = "README.md"
+license = {text = "Apache 2.0"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[tool.pdm]
+distribution = true
