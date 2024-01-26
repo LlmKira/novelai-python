@@ -57,26 +57,26 @@ class RandomPromptGenerator(object):
             features.append(self.get_weighted_choice(animalFeatures, features))
         unique_features = {'mermaid', 'centaur', 'lamia'}
         has_unique_feature = any(feature in features for feature in unique_features)
-        if random.random() < 0.4:
+        if random.random() < 0.1:
             features.append(self.get_weighted_choice(sinkColor, features))
         if random.random() < 0.8:
             features.append(self.get_weighted_choice(eyeColors, features))
         if random.random() < 0.1:
             features.append(self.get_weighted_choice(eyeCharacteristics, features))
-        if random.random() < 0.2:
+        if random.random() < 0.7:
             features.append(self.get_weighted_choice(eyesExpression, features))
         if random.random() < 0.8:
             features.append(self.get_weighted_choice(hairLength, features))
         if random.random() < 0.5:
             features.append(self.get_weighted_choice(backHairStyle, features))
-        if random.random() < 0.7:
+        if random.random() < 0.5:
             features.append(self.get_weighted_choice(hairColors, features))
         if random.random() < 0.1:
             features.append(self.get_weighted_choice(hairColorExtra, features))
             features.append(self.get_weighted_choice(hairColors, features))
         if random.random() < 0.1:
             features.append(self.get_weighted_choice(hairFeatures, features))
-        if gender.startswith('f') and random.random() < 0.5:
+        if gender.startswith('f') and random.random() < 0.6:
             features.append(self.get_weighted_choice(breastsSize, features))
         num_body_features = 0
         if num_characters == 1:
@@ -87,9 +87,9 @@ class RandomPromptGenerator(object):
             num_body_features = self.get_weighted_choice([[0, 30], [1, 30]], features)
         for _ in range(num_body_features):
             features.append(self.get_weighted_choice(bodyFeatures, features))
-        if random.random() < 0.2:
+        if random.random() < 0.5:
             features.append(self.get_weighted_choice(headWears, features))
-            if random.random() < 0.2:
+            if random.random() < 0.4:
                 features.append(self.get_weighted_choice(hatOrnaments, features))
         clothing_type = self.get_weighted_choice(['uniform', 'swimsuit', 'bodysuit', 'normal clothes'], features)
         if nsfw_enabled and random.random() < 0.9:
@@ -101,7 +101,7 @@ class RandomPromptGenerator(object):
                 features.append(underwear_choice)
                 if random.random() < 0.5:
                     clothing_type = None
-            if random.random() < 0.1:
+            if random.random() < 0.4:
                 features.append(self.get_weighted_choice(nsfw["naked"], features))
                 clothing_type = None
         if clothing_type == 'uniform':
@@ -113,9 +113,9 @@ class RandomPromptGenerator(object):
         elif clothing_type == 'normal clothes':
             if gender.startswith('f') and random.random() < 0.5:
                 features.append(self.get_weighted_choice(socks, features))
-                if random.random() < 0.2:
+                if random.random() < 0.3:
                     features.append(self.get_weighted_choice(legwear, features))
-            if random.random() < 0.85:
+            if random.random() < 0.75:
                 color = self.get_weighted_choice(colors, features)
                 upper_clothing = self.get_weighted_choice(uppers, features)
                 features.append(f'{color} {upper_clothing}')
@@ -124,13 +124,13 @@ class RandomPromptGenerator(object):
                     color = self.get_weighted_choice(colors, features)
                     bottom_clothing = self.get_weighted_choice(bottoms, features)
                     features.append(f'{color} {bottom_clothing}')
-                if random.random() < 0.6:
+                if random.random() < 0.7:
                     color = self.get_weighted_choice(colors, features)
                     footwear = self.get_weighted_choice(footwears, features)
                     features.append(f'{color} {footwear}')
-        if random.random() < 0.6:
+        if random.random() < 0.7:
             features.append(self.get_weighted_choice(expression, features))
-        if random.random() < (1 if nsfw_enabled and num_characters == 1 else 0.4):
+        if random.random() < (1 if nsfw_enabled and num_characters == 1 else 0.5):
             possible_actions = action
             if nsfw_enabled:
                 possible_actions += nsfw["action"] + nsfw["analForeplay"] + nsfw["pussyForeplay"]
@@ -179,8 +179,10 @@ class RandomPromptGenerator(object):
             return ', '.join(tags)
         if random.random() < 0.3:
             tags.append(self.get_weighted_choice(artStyle, tags))
-        if random.random() < 0.7:
+        if random.random() < 0.55:
             tags.append("{" + self.get_weighted_choice(rankArtist, tags) + "}")
+            if random.random() < 0.3:
+                tags.append(self.get_weighted_choice(rankArtist, tags))
         c_count = 0
         d_count = 0
         u_count = 0
@@ -215,17 +217,20 @@ class RandomPromptGenerator(object):
             if g_count == 0 and d_count >= 2 and c_count == 0:
                 tags.append(nsfw["ya"])
             if g_count > 0:
-                features = self.character_features(nsfw['fu'], None, True, irs)
+                if random.random() < 0.6:
+                    features = self.character_features(nsfw['fu'], None, True, irs)
+                else:
+                    features = self.character_features(nsfw['yu'], None, True, irs)
                 if random.random() < 0.6:
                     tags.append(self.get_weighted_choice(nsfw["sexMod"], tags))
-                if random.random() < 0.4:
+                if random.random() < 0.6:
                     tags.append(self.get_weighted_choice(nsfw["sexActionMode"], tags))
-                if random.random() < 0.05:
+                if random.random() < 0.1:
                     tags.append(self.get_weighted_choice(nsfw["bdsm"], tags))
-                if random.random() < 0.05:
+                if random.random() < 0.1:
                     tags.append(self.get_weighted_choice(nsfw["sexAccessories"], tags))
                 tags.extend(features)
-        if random.random() < 0.8:
+        if random.random() < 0.1:
             bg_color = self.get_weighted_choice(backgroundColor, tags)
             tags.append(bg_color)
             if bg_color == 'scenery' and random.random() < 0.5:

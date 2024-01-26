@@ -553,11 +553,11 @@ animalFeatures = [
 sinkColor = [
     [
         'dark skin',
-        200
+        100
     ],
     [
         'very dark skin',
-        200
+        100
     ],
     [
         'pale skin',
@@ -601,11 +601,11 @@ sinkColor = [
     ],
     [
         'white skin',
-        5
+        100
     ],
     [
         'yellow skin',
-        5
+        100
     ]
 ]
 
