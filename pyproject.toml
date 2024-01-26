@@ -5,7 +5,16 @@ description = "Novelai Python Binding With Pydantic"
 authors = [
     {name = "sudoskys", email = "coldlando@hotmail.com"},
 ]
-dependencies = []
+dependencies = [
+    "elara>=0.5.5",
+    "loguru>=0.7.2",
+    "pydantic-settings>=2.1.0",
+    "pydantic>=2.5.3",
+    "httpx>=0.26.0",
+    "shortuuid>=1.0.11",
+    "Pillow>=10.2.0",
+    "curl-cffi>=0.5.10",
+]
 requires-python = ">=3.8"
 readme = "README.md"
 license = {text = "Apache 2.0"}
