@@ -4,16 +4,6 @@
 # @File    : _exceptions.py
 # @Software: PyCharm
 from typing import Any, Optional, Union
-from typing import TypeGuard
-
-
-def is_dict(obj: object) -> TypeGuard[dict[object, object]]:
-    """
-    Check if the object is a dict.
-    :param obj:  The object to check.
-    :return:   True if the object is a dict, False otherwise.
-    """
-    return isinstance(obj, dict)
 
 
 class NovelAiError(Exception):
