@@ -240,11 +240,11 @@ class GenerateImageInfer(BaseModel):
                     # 401 : unauthorized
                     # 402 : payment required
                     # 409 : conflict
-                    raise AuthError(message, request=request_data, status_code=status_code, response=message)
+                    raise AuthError(message, request=request_data, status_code=status_code, response=_msg)
                 if status_code in [409]:
                     # conflict error
-                    raise APIError(message, request=request_data, status_code=status_code, response=message)
-                raise APIError(message, request=request_data, status_code=status_code, response=message)
+                    raise APIError(message, request=request_data, status_code=status_code, response=_msg)
+                raise APIError(message, request=request_data, status_code=status_code, response=_msg)
             zip_file = ZipFile(BytesIO(response.content))
             unzip_content = []
             with zip_file as zf:
