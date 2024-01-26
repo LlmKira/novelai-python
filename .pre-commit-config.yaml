@@ -16,15 +16,8 @@ repos:
         args: [ --fix ]
       # Run the formatter.
       - id: ruff-format
-  # export python requirements
+  # pdm lock
   - repo: https://github.com/pdm-project/pdm
-    rev: 2.10.4 # a PDM release exposing the hook
-    hooks:
-      - id: pdm-export
-        # command arguments, e.g.:
-        args: [ '-o', 'requirements.txt', '--without-hashes' ]
-        files: ^pdm.lock$
-  - repo: https://github.com/pdm-project/pdm
-    rev: 2.10.4 # a PDM release exposing the hook
+    rev: 2.12.1 # a PDM release exposing the hook
     hooks:
       - id: pdm-lock-check
