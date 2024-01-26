@@ -49,6 +49,8 @@ loop.run_until_complete(main())
 
 ```
 
-## Docs
+## Acknowledgements 🙏
 
 [BackEnd](https://api.novelai.net/docs)
+[novelai-api](https://github.com/Aedial/novelai-api)
+
