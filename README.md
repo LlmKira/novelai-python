@@ -1,6 +1,6 @@
 # novelai-python
 
-[![PyPI version](https://badge.fury.io/py/novelai_python.svg)](https://badge.fury.io/py/novelai_gen)
+[![PyPI version](https://badge.fury.io/py/novelai_python.svg)](https://badge.fury.io/py/novelai_python)
 [![Downloads](https://pepy.tech/badge/novelai_python)](https://pepy.tech/project/novelai_python)
 
 The goal of this repository is to use Pydantic to build legitimate requests to access the Novelai API service.
