@@ -3,7 +3,7 @@
 # @Author  : sudoskys
 # @File    : _exceptions.py
 # @Software: PyCharm
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Dict
 
 
 class NovelAiError(Exception):
@@ -20,7 +20,7 @@ class APIError(NovelAiError):
     message: str
     request: Any
     code: Optional[str] = None
-    response: Union[dict[str, Any], str] = None
+    response: Union[Dict[str, Any], str] = None
 
     def __init__(self, message: str, request: Any, response: Any, status_code: str) -> None:
         super().__init__(message)
