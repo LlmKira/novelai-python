@@ -23,6 +23,10 @@ license = { text = "Apache 2.0" }
 Repository = "https://github.com/LlmKira/novelai-python/"
 Issues = "https://github.com/LlmKira/novelai-python/issues"
 
+[project.optional-dependencies]
+testing = [
+    "pytest>=7.4.4",
+]
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
