@@ -13,6 +13,7 @@ from tag import (
     socks,
     action, expression, footwears, bottoms, color as colors
 )
+from tag_artist import rankArtist
 from tag_nsfw import nsfw
 
 
@@ -178,6 +179,8 @@ class RandomPromptGenerator(object):
             return ', '.join(tags)
         if random.random() < 0.3:
             tags.append(self.get_weighted_choice(artStyle, tags))
+        if random.random() < 0.7:
+            tags.append("{" + self.get_weighted_choice(rankArtist, tags) + "}")
         c_count = 0
         d_count = 0
         u_count = 0
@@ -251,12 +254,15 @@ class RandomPromptGenerator(object):
             num_effects = random.randint(1, 3)
             for _ in range(num_effects):
                 tags.append(self.get_weighted_choice(effects, tags))
-        if random.random() < 0.2:
+        if random.random() < 0.1:
             tags.append(self.get_weighted_choice(years, tags))
         if random.random() < 0.1:
             tags.append(self.get_weighted_choice(cameraFocus, tags))
         uni_tag = {}
         for tag in tags:
+            # 判断是否为多个空格
+            if tag.isspace():
+                continue
             uni_tag[tag] = 1
         unique_tags = list(uni_tag.keys())
         tags = [tag if random.random() >= 0.02 else '{' + tag + '}' for tag in unique_tags]
@@ -266,3 +272,17 @@ class RandomPromptGenerator(object):
 if __name__ == '__main__':
     random_prompt_generator = RandomPromptGenerator(nsfw_enabled=True)
     print(random_prompt_generator.generate())
+    print(random_prompt_generator.get_weighted_choice([[1, 35], [2, 20], [3, 7]], []))
+    print(random_prompt_generator.get_weighted_choice([['m', 30], ['f', 50], ['o', 10]], []))
+    print(random_prompt_generator.get_weighted_choice([
+        [
+            "dsfs",
+            5
+        ],
+        [
+            "sdfsd",
+            5
+        ]
+    ],
+        []
+    ))
