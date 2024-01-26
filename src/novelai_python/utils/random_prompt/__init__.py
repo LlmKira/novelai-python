@@ -1,7 +1,7 @@
 import random
 from typing import List
 
-from tag import (
+from .tag import (
     cameraPerspective, cameraFocus, backgroundTheme, backgroundColor, cameraAngle, artStyle,
     animalFeatures,
     sinkColor, eyeCharacteristics, eyesExpression, hairLength, backHairStyle, hairFeatures, breastsSize,
@@ -13,8 +13,8 @@ from tag import (
     socks,
     action, expression, footwears, bottoms, color as colors
 )
-from tag_artist import rankArtist
-from tag_nsfw import nsfw
+from .tag_artist import rankArtist
+from .tag_nsfw import nsfw
 
 
 class RandomPromptGenerator(object):
