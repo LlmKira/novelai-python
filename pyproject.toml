@@ -1,9 +1,9 @@
 [project]
 name = "novelai-python"
-version = "0.1.0"
+version = "0.1.1"
 description = "Novelai Python Binding With Pydantic"
 authors = [
-    {name = "sudoskys", email = "coldlando@hotmail.com"},
+    { name = "sudoskys", email = "coldlando@hotmail.com" },
 ]
 dependencies = [
     "elara>=0.5.5",
@@ -17,7 +17,11 @@ dependencies = [
 ]
 requires-python = ">=3.8"
 readme = "README.md"
-license = {text = "Apache 2.0"}
+license = { text = "Apache 2.0" }
+
+[project.urls]
+Repository = "https://github.com/LlmKira/novelai-python/"
+Issues = "https://github.com/LlmKira/novelai-python/issues"
 
 [build-system]
 requires = ["pdm-backend"]

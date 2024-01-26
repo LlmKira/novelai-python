@@ -23,28 +23,35 @@ def sign_message(message, key):
     return signed_hash
 
 
-class NaiPic(BaseModel):
+class NovelAiMetadata(BaseModel):
     title: str = "AI generated image"
     description: str
     comment: Union[dict, str] = {}
 
-    def generate_exif(self):
-        self.comment["signed_hash"] = sign_message(json.dumps(self.description), "novalai-bot")
-        self.comment = json.dumps(self.comment)
+    @property
+    def metadata(self):
+        if isinstance(self.comment, dict):
+            _comment = json.dumps(self.comment)
         return {"Title": self.title, "Description": self.description, "Comment": self.comment}
 
-    def generate_to_img_io(self, img_io):
+    @staticmethod
+    def rehash(img_io):
+        cls = NaiPic.read_from_img(img_io)
+        cls.comment["signed_hash"] = sign_message(json.dumps(cls.description), "novalai-client")
+        cls.write_out(img_io=img_io)
+        return img_io
+
+    def write_out(self, img_io: BytesIO):
         with Image.open(img_io) as img:
             metadata = PngInfo()
-            _info = self.generate_exif()
-            for k, v in _info.items():
+            for k, v in self.metadata.items():
                 metadata.add_text(k, v)
             _new_img = BytesIO()
             img.save(_new_img, format="PNG", pnginfo=metadata, quality=95, optimize=False)
         return _new_img
 
     @classmethod
-    def read_from_img(cls, image_io):
+    def build_from_img(cls, image_io):
         with Image.open(image_io) as img:
             title = img.info.get("Title")
             if not title == 'AI generated image':
@@ -59,7 +66,7 @@ class NaiPic(BaseModel):
             return cls(title=title, description=prompt, comment=comment)
 
     @classmethod
-    def read_from_param(cls, prompt, neg_prompt, **kwargs):
+    def build_from_param(cls, prompt, neg_prompt, **kwargs):
         _comment = {"uc": neg_prompt}
         _comment.update(kwargs)
         return cls(title="AI generated image", description=prompt, comment=_comment)
