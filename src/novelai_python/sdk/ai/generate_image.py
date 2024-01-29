@@ -6,13 +6,13 @@
 import json
 import random
 from io import BytesIO
-from typing import Optional, Union
+from typing import Optional, Union, Literal
 from zipfile import ZipFile
 
 import httpx
 from curl_cffi.requests import AsyncSession
 from loguru import logger
-from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator
+from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator
 
 from ..._exceptions import APIError, AuthError
 from ..._response import ImageGenerateResp
@@ -30,6 +30,7 @@ class GenerateImageInfer(BaseModel):
         controlnet_strength: Optional[int] = 1
         dynamic_thresholding: Optional[bool] = False
         height: Optional[int] = 1216
+        image: Optional[str] = None
         legacy: Optional[bool] = False
         legacy_v3_extend: Optional[bool] = False
         n_samples: Optional[int] = 1
@@ -41,7 +42,7 @@ class GenerateImageInfer(BaseModel):
             "extra digit, fewer digits, cropped,                        worst quality, low quality, normal quality, "
             "jpeg artifacts, signature, watermark, username, blurry"
         )
-        noise_schedule: Optional[str] = "native"
+        noise_schedule: Optional[str, Literal['native', 'polyexponential', 'exponential']] = "native"
         params_version: Optional[int] = 1
         qualityToggle: Optional[bool] = True
         sampler: Optional[str] = "k_euler"
@@ -60,15 +61,25 @@ class GenerateImageInfer(BaseModel):
                 v = random.randint(0, 2 ** 32 - 1)
             return v
 
+        @model_validator(mode="after")
+        def validate_img2img(self):
+
+            image = True if self.image else False
+            add_origin = True if self.add_original_image else False
+            if image != add_origin:
+                raise ValueError('Invalid Model Params For img2img2 mode... image should match add_original_image!')
+            return self
+
         @field_validator('sampler')
         def sampler_validator(cls, v: str):
-            if v not in ["k_euler", "k_euler_ancestral", "k_dpmpp_2m", "k_dpmpp_sde", "ddim_v3"]:
+            if v not in ["k_euler", "k_euler_ancestral", 'k_dpmpp_2s_ancestral', "k_dpmpp_2m", "k_dpmpp_sde",
+                         "ddim_v3"]:
                 raise ValueError("Invalid sampler.")
             return v
 
         @field_validator('noise_schedule')
         def noise_schedule_validator(cls, v: str):
-            if v not in ["native", "exponential", "polyexponential"]:
+            if v not in ["native", "karras", "exponential", "polyexponential"]:
                 raise ValueError("Invalid noise_schedule.")
             return v
 
@@ -111,7 +122,7 @@ class GenerateImageInfer(BaseModel):
                 raise ValueError("Invalid n_samples, must be less than 8.")
             return v
 
-    action: Optional[str] = "generate"
+    action: Union[str, Literal["generate", "img2img"]] = "generate"
     input: str = "1girl, best quality, amazing quality, very aesthetic, absurdres"
     model: Optional[str] = "nai-diffusion-3"
     parameters: Params = Params()
@@ -162,6 +173,8 @@ class GenerateImageInfer(BaseModel):
     def build(cls,
               prompt: str,
               *,
+              model: str = "nai-diffusion-3",
+              action: Literal['generate', 'img2img'] = 'generate',
               negative_prompt: Optional[str] = None,
               override_negative_prompt: bool = False,
               seed: int = -1,
@@ -175,6 +188,8 @@ class GenerateImageInfer(BaseModel):
         正负面, step, cfg, 采样方式, seed
         :param override_negative_prompt:
         :param prompt:
+        :param model:
+        :param action: Mode for img generate
         :param negative_prompt:
         :param seed:
         :param steps:
@@ -209,13 +224,15 @@ class GenerateImageInfer(BaseModel):
         param = {k: v for k, v in param.items() if v is not None}
         return cls(
             input=prompt,
+            model=model,
+            action=action,
             parameters=cls.Params(**param)
         )
 
     async def generate(self, session: Union[AsyncSession, JwtCredential]) -> ImageGenerateResp:
         if isinstance(session, JwtCredential):
             session = session.session
-        request_data = self.model_dump()
+        request_data = self.model_dump(exclude_none=True)
         logger.debug(f"Request Data: {request_data}")
         try:
             assert hasattr(session, "post"), "session must have post method."
