@@ -28,5 +28,5 @@ def try_jsonfy(obj: Union[str, dict, list, tuple]):
     """
     try:
         return json.loads(obj)
-    except json.JSONDecoder:
+    except Exception:
         return f"Decode Error {type(obj)}"
