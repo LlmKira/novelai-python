@@ -5,6 +5,7 @@
 # @Software: PyCharm
 from typing import Any, Optional, Union, Dict
 
+
 class NovelAiError(Exception):
     """
     NovelAiError is the base exception for all novelai_python errors.
@@ -21,7 +22,7 @@ class APIError(NovelAiError):
     code: Optional[str] = None
     response: Union[Dict[str, Any], str] = None
 
-    def __init__(self, message: str, request: dict, response: Union[dict,str], status_code: str) -> None:
+    def __init__(self, message: str, request: dict, response: Union[dict, str], status_code: str) -> None:
         self.request = request
         self.message = message
         self.code = status_code
