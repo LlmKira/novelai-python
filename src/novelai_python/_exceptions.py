@@ -23,6 +23,10 @@ class APIError(NovelAiError):
     response: Union[Dict[str, Any], str] = None
 
     def __init__(self, message: str, request: dict, response: Union[dict, str], status_code: str) -> None:
+        if not isinstance(response, dict):
+            response = {"error": f"data type error, should be dict, but got {type(response)}"}
+        if not isinstance(request, dict):
+            request = {"error": f"data type error, should be dict, but got {type(request)}"}
         self.request = request
         self.message = message
         self.code = status_code
@@ -34,5 +38,5 @@ class AuthError(APIError):
     AuthError is raised when the API returns an error.
     """
 
-    def __init__(self, message: str, request: Any, response: Any, status_code: str) -> None:
+    def __init__(self, message: str, request: dict, response: Union[dict, str], status_code: str) -> None:
         super().__init__(message, request, response, status_code)
