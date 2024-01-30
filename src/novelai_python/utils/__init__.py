@@ -7,6 +7,8 @@ import io
 import json
 from typing import Union
 
+from loguru import logger
+
 from .hash import NovelAiMetadata
 
 
@@ -28,5 +30,6 @@ def try_jsonfy(obj: Union[str, dict, list, tuple]):
     """
     try:
         return json.loads(obj)
-    except json.JSONDecoder:
+    except Exception:
+        logger.error(f"Decode Error {obj}")
         return f"Decode Error {type(obj)}"

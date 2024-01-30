@@ -49,6 +49,22 @@ loop.run_until_complete(main())
 
 ```
 
+#### Random Prompt
+
+```python
+from novelai_python.utils.random_prompt import RandomPromptGenerator
+
+s = RandomPromptGenerator(nsfw_enabled=False).generate()
+print(s)
+```
+
+#### Run A Server
+
+```shell
+pip install novelai_python
+python3 -m novelai_python.server -h '0.0.0.0' -p 7888
+```
+
 ## Acknowledgements 🙏
 
 [BackEnd](https://api.novelai.net/docs)

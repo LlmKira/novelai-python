@@ -4,7 +4,8 @@
 # @File    : __init__.py.py
 # @Software: PyCharm
 from .JwtToken import JwtCredential
-
+from pydantic import SecretStr
 __all__ = [
-    "JwtCredential"
+    "JwtCredential",
+    "SecretStr"
 ]
