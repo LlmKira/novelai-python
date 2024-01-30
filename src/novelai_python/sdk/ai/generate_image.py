@@ -30,7 +30,7 @@ class GenerateImageInfer(BaseModel):
         controlnet_strength: Optional[int] = 1
         dynamic_thresholding: Optional[bool] = False
         height: Optional[int] = 1216
-        image: Optional[str] = None
+        image: Optional[str] = None  # img2img,base64
         legacy: Optional[bool] = False
         legacy_v3_extend: Optional[bool] = False
         n_samples: Optional[int] = 1

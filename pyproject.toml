@@ -14,6 +14,8 @@ dependencies = [
     "shortuuid>=1.0.11",
     "Pillow>=10.2.0",
     "curl-cffi>=0.5.10",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0.post1",
 ]
 requires-python = ">=3.8"
 readme = "README.md"
