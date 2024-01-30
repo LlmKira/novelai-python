@@ -42,7 +42,7 @@ class GenerateImageInfer(BaseModel):
             "extra digit, fewer digits, cropped,                        worst quality, low quality, normal quality, "
             "jpeg artifacts, signature, watermark, username, blurry"
         )
-        noise_schedule: Optional[str, Literal['native', 'polyexponential', 'exponential']] = "native"
+        noise_schedule: Optional[Union[str, Literal['native', 'polyexponential', 'exponential']]] = "native"
         params_version: Optional[int] = 1
         qualityToggle: Optional[bool] = True
         sampler: Optional[str] = "k_euler"
