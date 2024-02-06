@@ -12,13 +12,16 @@ from loguru import logger
 from .hash import NovelAiMetadata
 
 
-def png_info_reset(img: Union[str, io.BytesIO]):
+def png_info_reset(img: Union[str, io.BytesIO],
+                   *,
+                   remove_stealth: bool = False):
     """
     reset png info hash value
+    :param remove_stealth: LCB
     :param img: BytesIO 对象
     :return: 
     """
-    _fixed = NovelAiMetadata.rehash(img_io=img)
+    _fixed = NovelAiMetadata.rehash(img_io=img, remove_stealth=remove_stealth)
     return _fixed
 
 

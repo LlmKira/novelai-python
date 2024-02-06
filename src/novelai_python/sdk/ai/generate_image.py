@@ -12,6 +12,7 @@ from zipfile import ZipFile
 import httpx
 from curl_cffi.requests import AsyncSession
 from loguru import logger
+from novelai_python.utils import NovelAiMetadata
 from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator
 
 from ..._exceptions import APIError, AuthError
@@ -229,7 +230,15 @@ class GenerateImageInfer(BaseModel):
             parameters=cls.Params(**param)
         )
 
-    async def generate(self, session: Union[AsyncSession, JwtCredential]) -> ImageGenerateResp:
+    async def generate(self, session: Union[AsyncSession, JwtCredential],
+                       *,
+                       remove_sign: bool = False) -> ImageGenerateResp:
+        """
+        生成图片
+        :param session:  session
+        :param remove_sign:  移除追踪信息
+        :return:
+        """
         if isinstance(session, JwtCredential):
             session = session.session
         request_data = self.model_dump(exclude_none=True)
@@ -274,7 +283,12 @@ class GenerateImageInfer(BaseModel):
                         response=try_jsonfy(response.content)
                     )
                 for filename in file_list:
-                    unzip_content.append((filename, zip_file.read(filename)))
+                    data = zip_file.read(filename)
+                    if remove_sign:
+                        data = NovelAiMetadata.rehash(BytesIO(data), remove_stealth=True)
+                        if not isinstance(data, bytes):
+                            data = data.getvalue()
+                    unzip_content.append((filename, data))
             return ImageGenerateResp(
                 meta=ImageGenerateResp.RequestParams(
                     endpoint=self.base_url,
