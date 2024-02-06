@@ -232,7 +232,7 @@ class GenerateImageInfer(BaseModel):
 
     async def generate(self, session: Union[AsyncSession, JwtCredential],
                        *,
-                       remove_sign: bool = True) -> ImageGenerateResp:
+                       remove_sign: bool = False) -> ImageGenerateResp:
         """
         生成图片
         :param session:  session
