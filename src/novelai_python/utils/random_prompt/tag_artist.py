@@ -376,5 +376,23 @@ rankArtist = [
     [
         "mamimi_(mamamimi)",
         100
-    ]
+    ],
 ]
+
+if __name__ == "__main__":
+    var = vars().copy()
+
+    # 获取tags列表
+    tags = []
+    for key, value in var.items():
+        if not key.startswith('_') and key != 'var':
+            tags.extend(value)
+    print(tags)
+
+    # 展开二级列表
+    tags = [tag[0] for tag in tags]
+    print(tags)
+    import json
+
+    with open('../../../../playground/cos/tag_artist.json', 'w') as f:
+        json.dump(tags, f)
