@@ -61,7 +61,7 @@ class RandomPromptGenerator(object):
         has_unique_feature = any(feature in features for feature in unique_features)
         if random.random() < 0.1 and enable_skin_color:
             features.append(self.get_weighted_choice(sinkColor, features))
-        if random.random() < 0.3:
+        if random.random() < 0.8:
             features.append(self.get_weighted_choice(eyeColors, features))
         if random.random() < 0.1:
             features.append(self.get_weighted_choice(eyeCharacteristics, features))
@@ -136,9 +136,9 @@ class RandomPromptGenerator(object):
             # 单角色 + nsfw 为 1
             possible_actions = action
             if nsfw_enabled:
-                if random.random() < 0.3:
+                if random.random() < 0.5:
                     features.append(self.get_weighted_choice(nsfw["action"], features))
-                if random.random() < 0.25:
+                if random.random() < 0.5:
                     features.append(self.get_weighted_choice(nsfw["pussyForeplay"], features))
                 possible_actions += nsfw["action"] + nsfw["analForeplay"] + nsfw["pussyForeplay"]
                 if random.random() < 0.5:
@@ -216,11 +216,11 @@ class RandomPromptGenerator(object):
             return ', '.join(tags)
         if random.random() < 0.3:
             tags.append(self.get_weighted_choice(artStyle, tags))
-        if random.random() < 0.5:
+        if random.random() < 0.6:
             tags.append("{" + self.get_weighted_choice(rankArtist, tags) + "}")
             if random.random() < 0.5:
                 tags.append("[" + self.get_weighted_choice(rankArtist, tags) + "]")
-                if random.random() < 0.5:
+                if random.random() < 0.4:
                     tags.append("{{" + self.get_weighted_choice(rankArtist, tags) + "}}")
         c_count = 0
         d_count = 0
@@ -263,10 +263,10 @@ class RandomPromptGenerator(object):
                     if random.random() < 0.6:
                         tags.append(self.get_weighted_choice(nsfw["penis"], tags))
                 else:
-                    if random.random() < 0.3:
+                    if random.random() < 0.4:
                         tags.append(self.get_weighted_choice(nsfw["penis"], tags))
             if d_count > 0 and g_count > 0:
-                if random.random() < 0.5:
+                if random.random() < 0.7:
                     tags.append(self.get_weighted_choice(nsfw["analSex"], tags))
             if g_count > 0:
                 features = []
