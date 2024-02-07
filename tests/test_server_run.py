@@ -3,9 +3,11 @@
 # @Author  : sudoskys
 # @File    : test_server_run.py
 # @Software: PyCharm
+
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 
-from src.novelai_python.sdk.ai.generate_image import GenerateImageInfer
 from src.novelai_python.server import app, get_session
 
 client = TestClient(app)
@@ -17,12 +19,28 @@ def test_health_check():
     assert response.json() == {"status": "ok"}
 
 
-def test_generate_image_with_valid_token():
-    valid_token = "valid_token"
-    get_session(valid_token)  # to simulate a valid session
-    response = client.post(
-        "/ai/generate_image",
-        headers={"Authorization": valid_token},
-        json=GenerateImageInfer(input="1girl").model_dump()
-    )
-    assert response.status_code == 500
+@patch('src.novelai_python.server.Subscription')
+def test_subscription_without_api_key(mock_subscription):
+    mock_subscription.return_value.request.return_value.model_dump.return_value = {"status": "subscribed"}
+    response = client.get("/user/subscription")
+    assert response.status_code == 403
+
+
+@patch('src.novelai_python.server.GenerateImageInfer')
+def test_generate_image_without_api_key(mock_generate_image):
+    mock_generate_image.return_value.generate.return_value = {"status": "image generated"}
+    response = client.post("/ai/generate_image")
+    assert response.status_code == 403
+
+
+def test_get_session_new_token():
+    token = "new_token"
+    session = get_session(token)
+    assert session.jwt_token.get_secret_value() == token
+
+
+def test_get_session_existing_token():
+    token = "existing_token"
+    get_session(token)
+    session = get_session(token)
+    assert session.jwt_token.get_secret_value() == token

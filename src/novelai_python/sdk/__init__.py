@@ -5,4 +5,4 @@
 # @Software: PyCharm
 
 from .ai.generate_image import GenerateImageInfer, ImageGenerateResp  # noqa 401
-
+from .user.subscription import Subscription, SubscriptionResp  # noqa 401
