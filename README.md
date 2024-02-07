@@ -9,6 +9,7 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 
 - [x] /ai/generate-image
 - [x] /user/subscription
+- [x] /user/login
 - [ ] /ai/generate-image/suggest-tags
 - [ ] /ai/annotate-image
 - [ ] /ai/classify
@@ -19,6 +20,8 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 
 ### Usage 🖥️
 
+More examples can be found in the [playground](/playground) directory.
+
 ```python
 import asyncio
 import os
@@ -26,7 +29,7 @@ import os
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
-from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
+from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential, LoginCredential
 
 load_dotenv()
 
@@ -34,7 +37,13 @@ enhance = "year 2023,dynamic angle,  best quality, amazing quality, very aesthet
 
 
 async def main():
-    globe_s = JwtCredential(jwt_token=SecretStr(os.getenv("NOVELAI_JWT")))
+    globe_s = JwtCredential(
+        jwt_token=SecretStr(os.getenv("NOVELAI_JWT"))
+    )
+    globe_s2 = LoginCredential(
+        username=os.getenv("NOVELAI_USERNAME"),
+        password=SecretStr(os.getenv("NOVELAI_PASSWORD"))
+    )
     _res = await GenerateImageInfer.build(
         prompt=f"1girl,{enhance}").generate(
         session=globe_s)
@@ -69,5 +78,9 @@ python3 -m novelai_python.server -h '0.0.0.0' -p 7888
 ## Acknowledgements 🙏
 
 [BackEnd](https://api.novelai.net/docs)
+
 [novelai-api](https://github.com/Aedial/novelai-api)
+
+[NovelAI-API](https://github.com/HanaokaYuzu/NovelAI-API)
+
 

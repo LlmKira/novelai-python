@@ -15,6 +15,7 @@ from starlette.responses import JSONResponse, StreamingResponse
 
 from .credential import JwtCredential, SecretStr
 from .sdk.ai.generate_image import GenerateImageInfer
+from .sdk.user.login import Login
 from .sdk.user.subscription import Subscription
 
 app = FastAPI()
@@ -37,14 +38,30 @@ async def health():
     return {"status": "ok"}
 
 
+@app.post("/user/login")
+async def login(
+        req: Login
+):
+    """
+    用户登录
+    :param req: Login
+    :return:
+    """
+    try:
+        _result = await req.request()
+        return _result.model_dump()
+    except Exception as e:
+        logger.exception(e)
+        return JSONResponse(status_code=500, content=e.__dict__)
+
+
 @app.get("/user/subscription")
 async def subscription(
         current_token: str = Depends(get_current_token)
 ):
     """
-    订阅
+    订阅信息
     :param current_token: Authorization
-    :param req: Subscription
     :return:
     """
     try:
@@ -67,7 +84,7 @@ async def generate_image(
     :return:
     """
     try:
-        _result = await req.generate(session=get_session(current_token))
+        _result = await req.generate(session=get_session(current_token), remove_sign=True)
         zip_file_bytes = io.BytesIO()
         with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
             for file in _result.files:

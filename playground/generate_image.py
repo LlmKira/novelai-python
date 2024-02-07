@@ -9,7 +9,7 @@ import os
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
-from novelai_python import APIError
+from novelai_python import APIError, Login
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
 
 load_dotenv()
@@ -21,10 +21,15 @@ jwt = os.getenv("NOVELAI_JWT") or token
 
 async def main():
     globe_s = JwtCredential(jwt_token=SecretStr(jwt))
+    _res = await Login.build(user_name=os.getenv("NOVELAI_USER"), password=os.getenv("NOVELAI_PASS")
+                             ).request()
     try:
-        _res = await GenerateImageInfer.build(
-            prompt=f"1girl, winter, jacket, sfw, angel, flower,{enhance}").generate(
-            session=globe_s)
+        gen = GenerateImageInfer.build(
+            prompt=f"1girl, winter, jacket, sfw, angel, flower,{enhance}")
+        print(f"charge: {gen.calculate_cost(is_opus=True)}")
+        _res = await gen.generate(
+            session=globe_s, remove_sign=True
+        )
     except APIError as e:
         print(e.response)
         return

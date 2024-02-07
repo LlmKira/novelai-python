@@ -4,18 +4,19 @@
 # @File    : JwtToken.py
 # @Software: PyCharm
 from curl_cffi.requests import AsyncSession
-from pydantic import BaseModel, SecretStr, Field
+from pydantic import SecretStr, Field
+
+from ._base import CredentialBase
 
 
-class JwtCredential(BaseModel):
+class JwtCredential(CredentialBase):
     """
     JwtCredential is the base class for all credential.
     """
     jwt_token: SecretStr = Field(None, description="jwt token")
     _session: AsyncSession = None
 
-    @property
-    def session(self, timeout: int = 180):
+    async def get_session(self, timeout: int = 180):
         if not self._session:
             self._session = AsyncSession(timeout=timeout, headers={
                 "Authorization": f"Bearer {self.jwt_token.get_secret_value()}",
