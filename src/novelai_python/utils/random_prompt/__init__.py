@@ -199,8 +199,13 @@ class RandomPromptGenerator(object):
                       enable_moods: bool = True,
                       enable_character: bool = True,
                       enable_identity: bool = False,
+                      must_appear=None,
                       ):
+        if must_appear is None:
+            must_appear = []
         tags = []
+        # 必须出现的标签
+        tags.extend(must_appear)
         if self.nsfw_enabled:
             tags.append('nsfw')
             if random.random() < 0.1:
@@ -208,7 +213,7 @@ class RandomPromptGenerator(object):
                 tags.append('lewd')
         irs = self.get_weighted_choice([[1, 70], [2, 20], [3, 7], [0, 5]], tags)
         if self.nsfw_enabled:
-            irs = self.get_weighted_choice([[1, 35], [2, 20], [3, 7]], tags)
+            irs = self.get_weighted_choice([[1, 40], [2, 20], [3, 7]], tags)
         if irs == 0:
             tags.append('no humans')
             if random.random() < 0.3:

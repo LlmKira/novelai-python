@@ -64,7 +64,7 @@ loop.run_until_complete(main())
 ```python
 from novelai_python.utils.random_prompt import RandomPromptGenerator
 
-s = RandomPromptGenerator(nsfw_enabled=False).generate()
+s = RandomPromptGenerator(nsfw_enabled=False).random_prompt()
 print(s)
 ```
 

@@ -14,5 +14,5 @@ print("====")
 print(gen.get_weighted_choice([['m', 30], ['f', 50], ['o', 10]], ['m']))
 print("====")
 for i in range(200):
-    s = RandomPromptGenerator(nsfw_enabled=True).generate()
+    s = RandomPromptGenerator(nsfw_enabled=True).random_prompt()
     print(s)
