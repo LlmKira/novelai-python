@@ -17,7 +17,7 @@ load_dotenv()
 
 enhance = "year 2023,dynamic angle, best quality, amazing quality, very aesthetic, absurdres"
 token = None
-jwt = os.getenv("NOVELAI_JW") or token
+jwt = os.getenv("NOVELAI_JWT") or token
 
 
 async def main():
