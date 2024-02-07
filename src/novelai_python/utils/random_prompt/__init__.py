@@ -167,7 +167,7 @@ class RandomPromptGenerator(object):
     def generate(self,
                  *,
                  enable_moods: bool = True,
-                 enable_character: bool = True,
+                 enable_character: bool = False,
                  enable_identity: bool = True,
                  ):
         """
