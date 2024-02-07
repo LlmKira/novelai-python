@@ -15,6 +15,7 @@ from starlette.responses import JSONResponse, StreamingResponse
 
 from .credential import JwtCredential, SecretStr
 from .sdk.ai.generate_image import GenerateImageInfer
+from .sdk.user.login import Login
 from .sdk.user.subscription import Subscription
 
 app = FastAPI()
@@ -35,6 +36,23 @@ def get_current_token(auth_key: str = Security(token_key)):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.post("/user/login")
+async def login(
+        req: Login
+):
+    """
+    用户登录
+    :param req: Login
+    :return:
+    """
+    try:
+        _result = await req.request()
+        return _result.model_dump()
+    except Exception as e:
+        logger.exception(e)
+        return JSONResponse(status_code=500, content=e.__dict__)
 
 
 @app.get("/user/subscription")
