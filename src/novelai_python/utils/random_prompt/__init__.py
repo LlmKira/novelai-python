@@ -71,12 +71,12 @@ class RandomPromptGenerator(object):
             features.append(self.get_weighted_choice(hairLength, features))
         if random.random() < 0.2:
             features.append(self.get_weighted_choice(backHairStyle, features))
-        if random.random() < 0.2:
+        if random.random() < 0.1:
             features.append(self.get_weighted_choice(hairColors, features))
         if random.random() < 0.1:
             features.append(self.get_weighted_choice(hairColorExtra, features))
             features.append(self.get_weighted_choice(hairColors, features))
-        if random.random() < 0.1:
+        if random.random() < 0.12:
             features.append(self.get_weighted_choice(hairFeatures, features))
         if gender.startswith('f') and random.random() < 0.8:
             features.append(self.get_weighted_choice(breastsSize, features))
@@ -260,17 +260,17 @@ class RandomPromptGenerator(object):
                 tags.append(nsfw["ya"])
             if d_count > 0:
                 if c_count > 0:
-                    if random.random() < 0.6:
+                    if random.random() < 0.3:
                         tags.append(self.get_weighted_choice(nsfw["penis"], tags))
                 else:
-                    if random.random() < 0.4:
+                    if random.random() < 0.3:
                         tags.append(self.get_weighted_choice(nsfw["penis"], tags))
             if d_count > 0 and g_count > 0:
                 if random.random() < 0.7:
                     tags.append(self.get_weighted_choice(nsfw["analSex"], tags))
             if g_count > 0:
                 features = []
-                if random.random() < 0.3:
+                if random.random() < 0.2:
                     features = self.character_features(nsfw['fu'], None, True, irs)
                 if random.random() < 0.6:
                     tags.append(self.get_weighted_choice(nsfw["sex"], tags))

@@ -7,7 +7,6 @@ import random
 
 from novelai_python.utils.random_prompt import RandomPromptGenerator
 
-
 print(random.random())
 s = RandomPromptGenerator(nsfw_enabled=True).generate()
 print(s)
