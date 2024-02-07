@@ -42,9 +42,8 @@ async def subscription(
         current_token: str = Depends(get_current_token)
 ):
     """
-    订阅
+    订阅信息
     :param current_token: Authorization
-    :param req: Subscription
     :return:
     """
     try:
@@ -67,7 +66,7 @@ async def generate_image(
     :return:
     """
     try:
-        _result = await req.generate(session=get_session(current_token))
+        _result = await req.generate(session=get_session(current_token), remove_sign=True)
         zip_file_bytes = io.BytesIO()
         with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
             for file in _result.files:

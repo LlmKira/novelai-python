@@ -32,6 +32,15 @@ class APIError(NovelAiError):
         self.code = status_code
         self.response = response
 
+    @property
+    def __dict__(self):
+        return {
+            "message": self.message,
+            "request": self.request,
+            "response": self.response,
+            "code": self.code
+        }
+
 
 class AuthError(APIError):
     """

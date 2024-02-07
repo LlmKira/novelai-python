@@ -17,7 +17,7 @@ load_dotenv()
 
 enhance = "year 2023,dynamic angle, best quality, amazing quality, very aesthetic, absurdres"
 token = None
-jwt = os.getenv("NOVELAI_JWT") or token
+jwt = os.getenv("NOVELAI_JW") or token
 
 
 async def main():
@@ -28,7 +28,7 @@ async def main():
         )
     except APIError as e:
         logger.exception(e)
-        print(e.response)
+        print(e.__dict__)
         return
 
     _res: SubscriptionResp

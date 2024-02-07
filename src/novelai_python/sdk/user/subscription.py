@@ -48,7 +48,7 @@ class Subscription(BaseModel):
             response = await session.get(
                 self.base_url,
             )
-            if "application/json" not in response.headers.get('Content-Type'):
+            if "application/json" not in response.headers.get('Content-Type') or response.status_code != 200:
                 logger.error(f"Unexpected content type: {response.headers.get('Content-Type')}")
                 try:
                     _msg = response.json()
