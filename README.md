@@ -19,6 +19,8 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 
 ### Usage 🖥️
 
+More examples can be found in the [playground](/playground) directory.
+
 ```python
 import asyncio
 import os
