@@ -1334,7 +1334,7 @@ headWears = [
     ],
     [
         'jester cap',
-        5
+        1
     ],
     [
         'frilled hat',
@@ -7425,15 +7425,16 @@ hairColors = [
 ]
 
 hairColorExtra = [
-    ['multicolored hair',
-     5],
+    [
+        'multicolored hair',
+        5],
     [
         'colored inner hair',
         5
     ],
     [
         'gradient hair',
-        5
+        10
     ],
     [
         'rainbow hair',
@@ -7521,3 +7522,21 @@ color = [
         1
     ]
 ]
+
+if __name__ == "__main__":
+    var = vars().copy()
+
+    # 获取tags列表
+    tags = []
+    for key, value in var.items():
+        if not key.startswith('_') and key != 'var':
+            tags.extend(value)
+    print(tags)
+
+    # 展开二级列表
+    tags = [tag[0] for tag in tags]
+    print(tags)
+    import json
+
+    with open('../../../../playground/cos/tags.json', 'w') as f:
+        json.dump(tags, f)
