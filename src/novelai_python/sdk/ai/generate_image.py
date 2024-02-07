@@ -4,21 +4,22 @@
 # @File    : generate_image.py
 # @Software: PyCharm
 import json
+import math
 import random
 from io import BytesIO
 from typing import Optional, Union, Literal
 from zipfile import ZipFile
 
 import httpx
-from curl_cffi.requests import AsyncSession
+from curl_cffi.requests import AsyncSession, RequestsError
 from loguru import logger
-from novelai_python.utils import NovelAiMetadata
-from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator, Field
+from typing_extensions import override
 
 from ..._exceptions import APIError, AuthError
 from ..._response import ImageGenerateResp
-from ...credential import JwtCredential
-from ...utils import try_jsonfy
+from ...utils import try_jsonfy, NovelAiMetadata
+from ...credential import CredentialBase
 
 
 class GenerateImageInfer(BaseModel):
@@ -26,45 +27,54 @@ class GenerateImageInfer(BaseModel):
     _charge: bool = PrivateAttr(False)
 
     class Params(BaseModel):
+        # Inpaint
         add_original_image: Optional[bool] = False
-        cfg_rescale: Optional[int] = 0
-        controlnet_strength: Optional[int] = 1
+        mask: Optional[str] = None
+
+        cfg_rescale: Optional[float] = Field(0, ge=0, le=1, multiple_of=0.02)
+        controlnet_strength: Optional[float] = Field(1.0, ge=0.1, le=2, multiple_of=0.1)
         dynamic_thresholding: Optional[bool] = False
-        height: Optional[int] = 1216
+        height: Optional[int] = Field(1216, ge=64, le=49152)
+        # Img2Img
         image: Optional[str] = None  # img2img,base64
+        strength: Optional[float] = Field(default=0.3, ge=0.01, le=0.99, multiple_of=0.01)
+        noise: Optional[float] = Field(default=0, ge=0, le=0.99, multiple_of=0.01)
+        controlnet_condition: Optional[str] = None
+        controlnet_model: Optional[str] = None
+
+        n_samples: Optional[int] = Field(1, ge=1, le=8)
+        negative_prompt: Optional[str] = ''
+        noise_schedule: Optional[Union[str, Literal['native', 'polyexponential', 'exponential']]] = "native"
+
+        # Misc
+        params_version: Optional[int] = 1
         legacy: Optional[bool] = False
         legacy_v3_extend: Optional[bool] = False
-        n_samples: Optional[int] = 1
-        negative_prompt: Optional[str] = (
-            "nsfw, lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, "
-            "watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, "
-            "username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, "
-            "glowing eyes, nsfw, lowres, bad anatomy, bad hands, text, error,                        missing fingers, "
-            "extra digit, fewer digits, cropped,                        worst quality, low quality, normal quality, "
-            "jpeg artifacts, signature, watermark, username, blurry"
-        )
-        noise_schedule: Optional[Union[str, Literal['native', 'polyexponential', 'exponential']]] = "native"
-        params_version: Optional[int] = 1
+
         qualityToggle: Optional[bool] = True
         sampler: Optional[str] = "k_euler"
-        scale: Optional[int] = 5
-        seed: Optional[int] = -1
+        scale: Optional[float] = Field(6.0, ge=0, le=10, multiple_of=0.1)
+        # Seed
+        seed: Optional[int] = Field(
+            default_factory=lambda: random.randint(0, 4294967295 - 7),
+            gt=0,
+            le=4294967295 - 7,
+        )
+        extra_noise_seed: Optional[int] = Field(
+            default_factory=lambda: random.randint(0, 4294967295 - 7),
+            gt=0,
+            le=4294967295 - 7,
+        )
+
         sm: Optional[bool] = False
         sm_dyn: Optional[bool] = False
-        steps: Optional[int] = 28
-        ucPreset: Optional[int] = 0
-        uncond_scale: Optional[int] = 1
-        width: Optional[int] = 832
-
-        @field_validator('seed')
-        def seed_validator(cls, v: int):
-            if v == -1:
-                v = random.randint(0, 2 ** 32 - 1)
-            return v
+        steps: Optional[int] = Field(28, ge=1, le=50)
+        ucPreset: Optional[Literal[0, 1, 2, 3]] = 0
+        uncond_scale: Optional[float] = Field(1.0, ge=0, le=1.5, multiple_of=0.05)
+        width: Optional[int] = Field(832, ge=64, le=49152)
 
         @model_validator(mode="after")
         def validate_img2img(self):
-
             image = True if self.image else False
             add_origin = True if self.add_original_image else False
             if image != add_origin:
@@ -112,34 +122,45 @@ class GenerateImageInfer(BaseModel):
                 raise ValueError("Invalid height, must be multiple of 64.")
             return v
 
-        @field_validator('n_samples')
-        def n_samples_validator(cls, v: int):
-            """
-            小于 8
-            :param v:
-            :return:
-            """
-            if v > 8:
-                raise ValueError("Invalid n_samples, must be less than 8.")
-            return v
-
-    action: Union[str, Literal["generate", "img2img"]] = "generate"
+    action: Union[str, Literal["generate", "img2img", "infill"]] = "generate"
     input: str = "1girl, best quality, amazing quality, very aesthetic, absurdres"
     model: Optional[str] = "nai-diffusion-3"
     parameters: Params = Params()
     model_config = ConfigDict(extra="ignore")
 
+    @override
+    def model_post_init(self, *args) -> None:
+        """
+        Post-initialization hook.
+        :return:
+        """
+        if self.parameters.ucPreset == 0:
+            # 0: 重型
+            self.parameters.negative_prompt += str(
+                ", lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, "
+                "watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, "
+                "username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, "
+                "glowing eyes, nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, "
+                "extra digit, fewer digits, cropped, worst quality, low quality, normal quality, "
+                "jpeg artifacts, signature, watermark, username, blurry"
+            )
+        elif self.parameters.ucPreset == 1:
+            # 1: 轻型
+            self.parameters.negative_prompt += (", lowres, jpeg artifacts, worst quality"
+                                                ", watermark, blurry, very displeasing")
+        elif self.parameters.ucPreset == 2:
+            # 2: 人物
+            self.parameters.negative_prompt += (", lowres, {bad}, error, fewer, extra, missing, worst quality, "
+                                                "jpeg artifacts, bad quality, watermark, unfinished, displeasing, "
+                                                "chromatic aberration, signature, extra digits, artistic error, "
+                                                "username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched "
+                                                "pupils, heart-shaped pupils, glowing eyes")
+        if self.parameters.qualityToggle:
+            self.input += ", best quality, amazing quality, very aesthetic, absurdres"
+
     @property
     def base_url(self):
         return f"{self.endpoint.strip('/')}/ai/generate-image"
-
-    @property
-    def charge(self):
-        return self._charge
-
-    @charge.setter
-    def charge(self, value):
-        self._charge = value
 
     @property
     def endpoint(self):
@@ -161,14 +182,46 @@ class GenerateImageInfer(BaseModel):
             (1024, 1024),
         ]
 
-    def validate_charge(self):
-        if self.parameters.steps > 28 and not self.charge:
-            raise ValueError("steps must be less than 28 for free users.")
-        if (self.parameters.width, self.parameters.height) not in self.valid_wh() and not self.charge:
-            raise ValueError("Invalid size, must be one of 832x1216, 1216x832, 1024x1024 for free users.")
-        if self.parameters.n_samples != 1 and not self.charge:
-            raise ValueError("n_samples must be 1 for free users.")
-        return self
+    def calculate_cost(self, is_opus: bool = False):
+        """
+        Calculate the Anlas cost of current parameters.
+
+        Parameters
+        ----------
+        is_opus: `bool`, optional
+            If the subscription tier is Opus. Opus accounts have access to free generations.
+        """
+
+        steps: int = self.parameters.steps
+        n_samples: int = self.parameters.n_samples
+        uncond_scale: float = self.parameters.uncond_scale
+        strength: float = self.action == "img2img" and self.parameters.strength or 1.0
+        smea_factor = self.parameters.sm_dyn and 1.4 or self.parameters.sm and 1.2 or 1.0
+        resolution = max(self.parameters.width * self.parameters.height, 65536)
+
+        # For normal resolutions, squre is adjusted to the same price as portrait/landscape
+        if math.prod(
+                (832, 1216)
+        ) < resolution <= math.prod((1024, 1024)):
+            resolution = math.prod((832, 1216))
+        per_sample = (
+                math.ceil(
+                    2951823174884865e-21 * resolution
+                    + 5.753298233447344e-7 * resolution * steps
+                )
+                * smea_factor
+        )
+        per_sample = max(math.ceil(per_sample * strength), 2)
+
+        if uncond_scale != 1.0:
+            per_sample = math.ceil(per_sample * 1.3)
+
+        opus_discount = (
+                is_opus
+                and steps <= 28
+                and (resolution <= math.prod((1024, 1024)))
+        )
+        return per_sample * (n_samples - int(opus_discount))
 
     @classmethod
     def build(cls,
@@ -176,42 +229,34 @@ class GenerateImageInfer(BaseModel):
               *,
               model: str = "nai-diffusion-3",
               action: Literal['generate', 'img2img'] = 'generate',
-              negative_prompt: Optional[str] = None,
-              override_negative_prompt: bool = False,
-              seed: int = -1,
+              negative_prompt: str = "",
+              seed: int = None,
               steps: int = 28,
               cfg_rescale: int = 0,
               sampler: str = "k_euler",
               width: int = 832,
               height: int = 1216,
+              qualityToggle: bool = True,
+              ucPreset: int = 0,
               ):
         """
         正负面, step, cfg, 采样方式, seed
-        :param override_negative_prompt:
-        :param prompt:
-        :param model:
-        :param action: Mode for img generate
-        :param negative_prompt:
-        :param seed:
-        :param steps:
-        :param cfg_rescale:
-        :param sampler:
-        :param width:
-        :param height:
+        :param ucPreset:  0: 重型, 1: 轻型, 2: 人物
+        :param qualityToggle:  是否开启质量
+        :param prompt: 输入
+        :param model: 模型
+        :param action: Mode for img generate [generate, img2img, infill]
+        :param negative_prompt: 负面
+        :param seed: 随机种子
+        :param steps: 步数
+        :param cfg_rescale: 0-1
+        :param sampler: 采样方式
+        :param width: 宽
+        :param height: 高
         :return: self
         """
         assert isinstance(prompt, str)
-        _negative_prompt = ("nsfw, lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, "
-                            "bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, "
-                            "extra digits, artistic error, username, scan, [abstract], bad anatomy, bad hands, "
-                            "@_@, mismatched pupils, heart-shaped pupils, glowing eyes, nsfw, lowres, bad anatomy, "
-                            "bad hands, text, error,missing fingers, extra digit, fewer digits, cropped,"
-                            "worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, "
-                            "username, blurry")
-        if override_negative_prompt:
-            _negative_prompt = negative_prompt
-        else:
-            _negative_prompt = f"{_negative_prompt}, {negative_prompt}"
+        _negative_prompt = negative_prompt
         param = {
             "negative_prompt": _negative_prompt,
             "seed": seed,
@@ -220,6 +265,8 @@ class GenerateImageInfer(BaseModel):
             "sampler": sampler,
             "width": width,
             "height": height,
+            "qualityToggle": qualityToggle,
+            "ucPreset": ucPreset,
         }
         # 清理空值
         param = {k: v for k, v in param.items() if v is not None}
@@ -230,7 +277,7 @@ class GenerateImageInfer(BaseModel):
             parameters=cls.Params(**param)
         )
 
-    async def generate(self, session: Union[AsyncSession, JwtCredential],
+    async def generate(self, session: Union[AsyncSession, "CredentialBase"],
                        *,
                        remove_sign: bool = False) -> ImageGenerateResp:
         """
@@ -239,8 +286,8 @@ class GenerateImageInfer(BaseModel):
         :param remove_sign:  移除追踪信息
         :return:
         """
-        if isinstance(session, JwtCredential):
-            session = session.session
+        if isinstance(session, CredentialBase):
+            session = await session.get_session()
         request_data = self.model_dump(exclude_none=True)
         logger.debug(f"Request Data: {request_data}")
         try:
@@ -296,6 +343,9 @@ class GenerateImageInfer(BaseModel):
                 ),
                 files=unzip_content
             )
+        except RequestsError as exc:
+            logger.exception(exc)
+            raise RuntimeError(f"An AsyncSession error occurred: {exc}")
         except httpx.HTTPError as exc:
             raise RuntimeError(f"An HTTP error occurred: {exc}")
         except APIError as e:

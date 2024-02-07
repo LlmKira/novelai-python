@@ -5,13 +5,13 @@
 # @Software: PyCharm
 
 from ._exceptions import (
-    APIError,
     AuthError,
-    NovelAiError,
-)  # noqa: F401, F403
-from .credential import JwtCredential  # noqa: F401, F403
-from .sdk.ai import GenerateImageInfer, ImageGenerateResp  # noqa: F401, F403
-from .sdk.user import Subscription, SubscriptionResp  # noqa: F401, F403
+    NovelAiError, APIError,
+)
+from .credential import JwtCredential, LoginCredential
+from .sdk import GenerateImageInfer, ImageGenerateResp
+from .sdk import Login, LoginResp
+from .sdk import Subscription, SubscriptionResp
 
 __all__ = [
     "GenerateImageInfer",
@@ -20,7 +20,11 @@ __all__ = [
     "Subscription",
     "SubscriptionResp",
 
+    "Login",
+    "LoginResp",
+
     "JwtCredential",
+    "LoginCredential",
 
     "APIError",
     "AuthError",

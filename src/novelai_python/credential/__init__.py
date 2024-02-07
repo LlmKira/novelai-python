@@ -3,9 +3,15 @@
 # @Author  : sudoskys
 # @File    : __init__.py.py
 # @Software: PyCharm
-from .JwtToken import JwtCredential
 from pydantic import SecretStr
+
+from .JwtToken import JwtCredential
+from .UserAuth import LoginCredential
+from ._base import CredentialBase
+
 __all__ = [
     "JwtCredential",
+    "LoginCredential",
+    "CredentialBase",
     "SecretStr"
 ]

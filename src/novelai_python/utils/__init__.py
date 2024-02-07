@@ -9,6 +9,7 @@ from typing import Union
 
 from loguru import logger
 
+from .encode import encode_access_key  # noqa 401
 from .hash import NovelAiMetadata
 
 
