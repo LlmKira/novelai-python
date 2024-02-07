@@ -69,5 +69,9 @@ python3 -m novelai_python.server -h '0.0.0.0' -p 7888
 ## Acknowledgements 🙏
 
 [BackEnd](https://api.novelai.net/docs)
+
 [novelai-api](https://github.com/Aedial/novelai-api)
+
+[NovelAI-API](https://github.com/HanaokaYuzu/NovelAI-API)
+
 
