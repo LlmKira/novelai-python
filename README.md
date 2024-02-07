@@ -8,6 +8,7 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 ### Roadmap 🚧
 
 - [x] /ai/generate-image
+- [x] /user/subscription
 - [ ] /ai/generate-image/suggest-tags
 - [ ] /ai/annotate-image
 - [ ] /ai/classify
