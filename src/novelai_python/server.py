@@ -10,10 +10,12 @@ import zipfile
 import uvicorn
 from fastapi import FastAPI, Depends, Security
 from fastapi.security import APIKeyHeader
+from loguru import logger
 from starlette.responses import JSONResponse, StreamingResponse
 
 from .credential import JwtCredential, SecretStr
 from .sdk.ai.generate_image import GenerateImageInfer
+from .sdk.user.subscription import Subscription
 
 app = FastAPI()
 token_key = APIKeyHeader(name="Authorization")
@@ -33,6 +35,24 @@ def get_current_token(auth_key: str = Security(token_key)):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/user/subscription")
+async def subscription(
+        current_token: str = Depends(get_current_token)
+):
+    """
+    订阅
+    :param current_token: Authorization
+    :param req: Subscription
+    :return:
+    """
+    try:
+        _result = await Subscription().request(session=get_session(current_token))
+        return _result.model_dump()
+    except Exception as e:
+        logger.exception(e)
+        return JSONResponse(status_code=500, content=e.__dict__)
 
 
 @app.post("/ai/generate_image")
@@ -58,6 +78,7 @@ async def generate_image(
             'Content-Disposition': 'attachment;filename=multiple_files.zip'
         })
     except Exception as e:
+        logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)
 
 
