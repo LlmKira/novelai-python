@@ -3,10 +3,16 @@
 # @Author  : sudoskys
 # @File    : random_prompt.py
 # @Software: PyCharm
-import random
 
 from novelai_python.utils.random_prompt import RandomPromptGenerator
 
-print(random.random())
-s = RandomPromptGenerator(nsfw_enabled=True).generate()
-print(s)
+gen = RandomPromptGenerator(nsfw_enabled=True)
+print(gen.get_weighted_choice([[1, 35], [2, 20], [3, 7]], []))
+print("====")
+print(gen.get_weighted_choice([['mss', 30], ['fdd', 50], ['oa', 10]], []))
+print("====")
+print(gen.get_weighted_choice([['m', 30], ['f', 50], ['o', 10]], ['m']))
+print("====")
+for i in range(200):
+    s = RandomPromptGenerator(nsfw_enabled=True).generate()
+    print(s)

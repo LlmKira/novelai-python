@@ -30,16 +30,25 @@ class RandomPromptGenerator(object):
         :param existing_tags:  a list of existing tags
         :return:  a tag
         """
-        valid_tags = [tag for tag in tags if
-                      len(tag) < 3 or not tag[2] or any(sub_tag in existing_tags for sub_tag in tag[2])]
+        valid_tags = [tag
+                      for tag in tags
+                      if len(tag) < 3 or not tag[2] or any(sub_tag in existing_tags for sub_tag in tag[2])]
         total_weight = sum(tagr[1] for tagr in valid_tags if len(tagr) > 1)
         if total_weight == 0:
-            return random.choice(tags)
+            if isinstance(tags, list):
+                rd = random.choice(tags)
+            elif isinstance(tags, str):
+                rd = tags
+            else:
+                raise ValueError('get_weighted_choice: should not reach here')
+            return rd
         random_number = random.randint(1, total_weight)
         cumulative_weight = 0
         for tag in valid_tags:
             cumulative_weight += tag[1]
             if random_number <= cumulative_weight:
+                if isinstance(tag, str):
+                    raise Exception("tag is string")
                 return tag[0]
         raise ValueError('get_weighted_choice: should not reach here')
 
