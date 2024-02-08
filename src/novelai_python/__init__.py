@@ -8,7 +8,7 @@ from ._exceptions import (
     AuthError,
     NovelAiError, APIError,
 )
-from .credential import JwtCredential, LoginCredential
+from .credential import JwtCredential, LoginCredential, ApiCredential
 from .sdk import GenerateImageInfer, ImageGenerateResp
 from .sdk import Information, InformationResp
 from .sdk import Login, LoginResp
@@ -29,6 +29,7 @@ __all__ = [
 
     "JwtCredential",
     "LoginCredential",
+    "ApiCredential",
 
     "APIError",
     "AuthError",
