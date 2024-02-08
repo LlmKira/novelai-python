@@ -21,7 +21,7 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 
 ### Usage 🖥️
 
-More examples can be found in the [playground](/playground) directory.
+More examples can be found in the [playground](https://github.com/LlmKira/novelai-python/tree/main/playground) directory.
 
 ```python
 import asyncio

@@ -109,6 +109,12 @@ def decode_base64(encoded_data):
 
 
 def decode_image(img: Union[str, BytesIO], output_path: str):
+    """
+    Find LCB
+    :param img:
+    :param output_path:
+    :return:
+    """
     encoded_image = Image.open(img)
     red_channel = encoded_image.split()[3]
     x_size = encoded_image.size[0]
