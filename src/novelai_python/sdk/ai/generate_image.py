@@ -18,8 +18,8 @@ from typing_extensions import override
 
 from ..._exceptions import APIError, AuthError
 from ..._response import ImageGenerateResp
-from ...utils import try_jsonfy, NovelAiMetadata
 from ...credential import CredentialBase
+from ...utils import try_jsonfy, NovelAiMetadata
 
 
 class GenerateImageInfer(BaseModel):
@@ -297,6 +297,9 @@ class GenerateImageInfer(BaseModel):
                 data=json.dumps(request_data).encode("utf-8")
             )
             if response.headers.get('Content-Type') not in ['binary/octet-stream', 'application/x-zip-compressed']:
+                logger.error(
+                    f"Error with content type: {response.headers.get('Content-Type')} and code: {response.status_code}"
+                )
                 try:
                     _msg = response.json()
                 except Exception:

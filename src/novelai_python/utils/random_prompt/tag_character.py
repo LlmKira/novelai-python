@@ -71,7 +71,7 @@ rankCharacter = [
 ]
 
 rankIdentity = [
-    ['vtuber', 20], ['accountant', 20], ['worker', 10], ['manager', 10], ['traffic_controller', 10],
+    ['virtual_youtuber', 60], ['accountant', 20], ['worker', 10], ['manager', 10], ['traffic_controller', 10],
     ['airline_cabin_crew', 10],
     ['art_therapist', 10],
     ['arts_administrator', 10], ['auditor', 10], ['automotive_engineer', 10], ['barrister', 10],
@@ -99,7 +99,7 @@ rankIdentity = [
     ['interpreter', 10], ['postman', 10], ['processfor', 10],
     ['tailor', 10], ['technician', 10], ['waiter', 20],
     ['waitress', 50], ['journalist', 10], ['fisherman', 10],
-    ['vtuber', 90], ['landscape_architect', 10], ['learning_disability_nurse', 10],
+    ['vtuber', 70], ['landscape_architect', 10], ['learning_disability_nurse', 10],
     ['midwife', 10], ['photographer', 10], ['police_officer', 10],
     ['writer', 10], ['youth_worker', 10]
 ]

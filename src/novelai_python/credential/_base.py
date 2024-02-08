@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 class CredentialBase(BaseModel):
     _session: AsyncSession = None
+    """会话"""
 
     async def get_session(self, timeout: int = 180):
         raise NotImplementedError

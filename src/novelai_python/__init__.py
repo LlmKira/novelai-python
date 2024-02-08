@@ -10,6 +10,7 @@ from ._exceptions import (
 )
 from .credential import JwtCredential, LoginCredential
 from .sdk import GenerateImageInfer, ImageGenerateResp
+from .sdk import Information, InformationResp
 from .sdk import Login, LoginResp
 from .sdk import Subscription, SubscriptionResp
 
@@ -22,6 +23,9 @@ __all__ = [
 
     "Login",
     "LoginResp",
+
+    "Information",
+    "InformationResp",
 
     "JwtCredential",
     "LoginCredential",

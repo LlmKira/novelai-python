@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2024/2/7 上午10:04
+# @Time    : 2024/2/8 下午3:09
 # @Author  : sudoskys
-# @File    : subscription.py.py
+# @File    : information.py
 # @Software: PyCharm
 from typing import Optional, Union
 
@@ -11,17 +11,17 @@ from loguru import logger
 from pydantic import BaseModel, PrivateAttr
 
 from ..._exceptions import APIError, AuthError
-from ..._response.user.subscription import SubscriptionResp
+from ..._response.user.information import InformationResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy
 
 
-class Subscription(BaseModel):
+class Information(BaseModel):
     _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
 
     @property
     def base_url(self):
-        return f"{self.endpoint.strip('/')}/user/subscription"
+        return f"{self.endpoint.strip('/')}/user/information"
 
     @property
     def endpoint(self):
@@ -33,7 +33,7 @@ class Subscription(BaseModel):
 
     async def request(self,
                       session: Union[AsyncSession, CredentialBase],
-                      ) -> SubscriptionResp:
+                      ) -> InformationResp:
         """
         Request to get user subscription information
         :param session: 
@@ -42,7 +42,7 @@ class Subscription(BaseModel):
         if isinstance(session, CredentialBase):
             session = await session.get_session()
         request_data = {}
-        logger.debug("Subscription")
+        logger.debug("Information")
         try:
             assert hasattr(session, "get"), "session must have get method."
             response = await session.get(
@@ -73,7 +73,7 @@ class Subscription(BaseModel):
                     # An unknown error occured.
                     raise APIError(message, request=request_data, status_code=status_code, response=_msg)
                 raise APIError(message, request=request_data, status_code=status_code, response=_msg)
-            return SubscriptionResp.model_validate(response.json())
+            return InformationResp.model_validate(response.json())
         except RequestsError as exc:
             logger.exception(exc)
             raise RuntimeError(f"An AsyncSession error occurred: {exc}")

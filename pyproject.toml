@@ -1,6 +1,6 @@
 [project]
 name = "novelai-python"
-version = "0.2.1"
+version = "0.2.2"
 description = "Novelai Python Binding With Pydantic"
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
@@ -30,6 +30,7 @@ Issues = "https://github.com/LlmKira/novelai-python/issues"
 [project.optional-dependencies]
 testing = [
     "pytest>=7.4.4",
+    "pytest-asyncio>=0.23.4",
 ]
 [build-system]
 requires = ["pdm-backend"]

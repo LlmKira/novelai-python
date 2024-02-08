@@ -18,6 +18,7 @@ from ...utils import try_jsonfy, encode_access_key
 
 class Login(BaseModel):
     _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
+    _session: Optional[AsyncSession] = PrivateAttr(None)
     key: str = Field(..., description="User's key")
 
     @property
@@ -34,11 +35,19 @@ class Login(BaseModel):
 
     @property
     def session(self):
-        return AsyncSession(timeout=180, headers={
-            "Content-Type": "application/json",
-            "Origin": "https://novelai.net",
-            "Referer": "https://novelai.net/",
-        }, impersonate="chrome110")
+        if self._session is None:
+            self._session = AsyncSession(timeout=180, headers={
+                "Content-Type": "application/json",
+                "Origin": "https://novelai.net",
+                "Referer": "https://novelai.net/",
+            }, impersonate="chrome110")
+        return self._session
+
+    @session.setter
+    def session(self, value):
+        if not isinstance(value, AsyncSession):
+            raise ValueError("session must be an instance of AsyncSession")
+        self._session = value
 
     @classmethod
     def build(cls, *, user_name: str, password: str):
@@ -65,7 +74,9 @@ class Login(BaseModel):
                 data=json.dumps(request_data).encode("utf-8")
             )
             if "application/json" not in response.headers.get('Content-Type') or response.status_code != 201:
-                logger.error(f"Unexpected content type: {response.headers.get('Content-Type')}")
+                logger.error(
+                    f"Error with content type: {response.headers.get('Content-Type')} and code: {response.status_code}"
+                )
                 try:
                     _msg = response.json()
                 except Exception:
