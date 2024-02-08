@@ -3,5 +3,3 @@
 # @Author  : sudoskys
 # @File    : __init__.py.py
 # @Software: PyCharm
-
-from .subscription import *  # noqa: F403

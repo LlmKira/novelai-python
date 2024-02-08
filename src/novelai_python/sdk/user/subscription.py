@@ -3,7 +3,7 @@
 # @Author  : sudoskys
 # @File    : subscription.py.py
 # @Software: PyCharm
-from typing import Optional, Union, Type
+from typing import Optional, Union
 
 import httpx
 from curl_cffi.requests import AsyncSession, RequestsError
@@ -49,7 +49,9 @@ class Subscription(BaseModel):
                 self.base_url,
             )
             if "application/json" not in response.headers.get('Content-Type') or response.status_code != 200:
-                logger.error(f"Unexpected content type: {response.headers.get('Content-Type')}")
+                logger.error(
+                    f"Error with content type: {response.headers.get('Content-Type')} and code: {response.status_code}"
+                )
                 try:
                     _msg = response.json()
                 except Exception:
