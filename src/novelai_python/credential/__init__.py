@@ -5,6 +5,7 @@
 # @Software: PyCharm
 from pydantic import SecretStr
 
+from .ApiToken import ApiCredential
 from .JwtToken import JwtCredential
 from .UserAuth import LoginCredential
 from ._base import CredentialBase
@@ -13,5 +14,6 @@ __all__ = [
     "JwtCredential",
     "LoginCredential",
     "CredentialBase",
+    "ApiCredential",
     "SecretStr"
 ]
