@@ -26,6 +26,8 @@ async def main():
     try:
         gen = GenerateImageInfer.build(
             prompt=f"1girl, winter, jacket, sfw, angel, flower,{enhance}")
+        cost = gen.calculate_cost(is_opus=True)
+        print(f"charge: {cost} if you are vip3")
         print(f"charge: {gen.calculate_cost(is_opus=True)}")
         _res = await gen.generate(
             session=globe_s, remove_sign=True
