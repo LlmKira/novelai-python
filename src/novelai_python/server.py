@@ -15,6 +15,7 @@ from starlette.responses import JSONResponse, StreamingResponse
 
 from .credential import JwtCredential, SecretStr
 from .sdk.ai.generate_image import GenerateImageInfer
+from .sdk.user.information import Information
 from .sdk.user.login import Login
 from .sdk.user.subscription import Subscription
 
@@ -49,6 +50,23 @@ async def login(
     """
     try:
         _result = await req.request()
+        return _result.model_dump()
+    except Exception as e:
+        logger.exception(e)
+        return JSONResponse(status_code=500, content=e.__dict__)
+
+
+@app.get("/user/information")
+async def information(
+        current_token: str = Depends(get_current_token)
+):
+    """
+    用户信息
+    :param current_token: Authorization
+    :return:
+    """
+    try:
+        _result = await Information().request(session=get_session(current_token))
         return _result.model_dump()
     except Exception as e:
         logger.exception(e)
