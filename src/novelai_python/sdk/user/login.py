@@ -65,7 +65,7 @@ class Login(BaseModel):
         Request to get user access token
         :return:
         """
-        request_data = self.model_dump(exclude_none=True)
+        request_data = self.model_dump(mode="json", exclude_none=True)
         logger.debug("Login")
         try:
             assert hasattr(self.session, "post"), "session must have get method."

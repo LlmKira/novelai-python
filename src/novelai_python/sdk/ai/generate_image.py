@@ -6,8 +6,9 @@
 import json
 import math
 import random
+from enum import Enum, IntEnum
 from io import BytesIO
-from typing import Optional, Union, Literal
+from typing import Optional, Union
 from zipfile import ZipFile
 
 import httpx
@@ -20,6 +21,54 @@ from ..._exceptions import APIError, AuthError
 from ..._response import ImageGenerateResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy, NovelAiMetadata
+
+
+class Sampler(Enum):
+    K_EULER = "k_euler"
+    K_EULER_ANCESTRAL = "k_euler_ancestral"
+    K_DPMPP_2S_ANCESTRAL = "k_dpmpp_2s_ancestral"
+    K_DPMPP_2M = "k_dpmpp_2m"
+    K_DPMPP_SDE = "k_dpmpp_sde"
+    DDIM_V3 = "ddim_v3"
+
+
+class NoiseSchedule(Enum):
+    NATIVE = "native"
+    KARRAS = "karras"
+    EXPONENTIAL = "exponential"
+    POLYEXPONENTIAL = "polyexponential"
+
+
+class UCPreset(IntEnum):
+    TYPE0 = 0
+    TYPE1 = 1
+    TYPE2 = 2
+    TYPE3 = 3
+
+
+class Action(Enum):
+    GENERATE = "generate"
+    IMG2IMG = "img2img"
+    INFILL = "infill"
+
+
+class Model(Enum):
+    NAI_DIFFUSION_3 = "nai-diffusion-3"
+    NAI_DIFFUSION_3_INPAINTING = "nai-diffusion-3-inpainting"
+
+
+class Resolution(Enum):
+    RES_512_768 = (512, 768)
+    RES_768_512 = (768, 512)
+    RES_640_640 = (640, 640)
+    RES_832_1216 = (832, 1216)
+    RES_1216_832 = (1216, 832)
+    RES_1024_1024 = (1024, 1024)
+    RES_1024_1536 = (1024, 1536)
+    RES_1536_1024 = (1536, 1024)
+    RES_1472_1472 = (1472, 1472)
+    RES_1088_1920 = (1088, 1920)
+    RES_1920_1088 = (1920, 1088)
 
 
 class GenerateImageInfer(BaseModel):
@@ -44,7 +93,7 @@ class GenerateImageInfer(BaseModel):
 
         n_samples: Optional[int] = Field(1, ge=1, le=8)
         negative_prompt: Optional[str] = ''
-        noise_schedule: Optional[Union[str, Literal['native', 'polyexponential', 'exponential']]] = "native"
+        noise_schedule: Optional[NoiseSchedule] = NoiseSchedule.NATIVE
 
         # Misc
         params_version: Optional[int] = 1
@@ -52,7 +101,7 @@ class GenerateImageInfer(BaseModel):
         legacy_v3_extend: Optional[bool] = False
 
         qualityToggle: Optional[bool] = True
-        sampler: Optional[str] = "k_euler"
+        sampler: Optional[Sampler] = Sampler.K_EULER
         scale: Optional[float] = Field(6.0, ge=0, le=10, multiple_of=0.1)
         # Seed
         seed: Optional[int] = Field(
@@ -69,7 +118,7 @@ class GenerateImageInfer(BaseModel):
         sm: Optional[bool] = False
         sm_dyn: Optional[bool] = False
         steps: Optional[int] = Field(28, ge=1, le=50)
-        ucPreset: Optional[Literal[0, 1, 2, 3]] = 0
+        ucPreset: Optional[UCPreset] = 0
         uncond_scale: Optional[float] = Field(1.0, ge=0, le=1.5, multiple_of=0.05)
         width: Optional[int] = Field(832, ge=64, le=49152)
 
@@ -80,25 +129,6 @@ class GenerateImageInfer(BaseModel):
             if image != add_origin:
                 raise ValueError('Invalid Model Params For img2img2 mode... image should match add_original_image!')
             return self
-
-        @field_validator('sampler')
-        def sampler_validator(cls, v: str):
-            if v not in ["k_euler", "k_euler_ancestral", 'k_dpmpp_2s_ancestral', "k_dpmpp_2m", "k_dpmpp_sde",
-                         "ddim_v3"]:
-                raise ValueError("Invalid sampler.")
-            return v
-
-        @field_validator('noise_schedule')
-        def noise_schedule_validator(cls, v: str):
-            if v not in ["native", "karras", "exponential", "polyexponential"]:
-                raise ValueError("Invalid noise_schedule.")
-            return v
-
-        @field_validator('steps')
-        def steps_validator(cls, v: int):
-            if v > 28:
-                logger.warning(f"steps {v} > 28, maybe charge more.")
-            return v
 
         @field_validator('width')
         def width_validator(cls, v: int):
@@ -122,9 +152,9 @@ class GenerateImageInfer(BaseModel):
                 raise ValueError("Invalid height, must be multiple of 64.")
             return v
 
-    action: Union[str, Literal["generate", "img2img", "infill"]] = "generate"
+    action: Union[str, Action] = Field(Action.GENERATE, description="Mode for img generate")
     input: str = "1girl, best quality, amazing quality, very aesthetic, absurdres"
-    model: Optional[str] = "nai-diffusion-3"
+    model: Optional[Model] = "nai-diffusion-3"
     parameters: Params = Params()
     model_config = ConfigDict(extra="ignore")
 
@@ -169,18 +199,6 @@ class GenerateImageInfer(BaseModel):
     @endpoint.setter
     def endpoint(self, value):
         self._endpoint = value
-
-    @staticmethod
-    def valid_wh():
-        """
-        宽高
-        :return:
-        """
-        return [
-            (832, 1216),
-            (1216, 832),
-            (1024, 1024),
-        ]
 
     def calculate_cost(self, is_opus: bool = False):
         """
@@ -227,17 +245,18 @@ class GenerateImageInfer(BaseModel):
     def build(cls,
               prompt: str,
               *,
-              model: str = "nai-diffusion-3",
-              action: Literal['generate', 'img2img'] = 'generate',
+              model: Union[Model, str] = "nai-diffusion-3",
+              action: Union[Action, str] = 'generate',
               negative_prompt: str = "",
               seed: int = None,
               steps: int = 28,
               cfg_rescale: int = 0,
-              sampler: str = "k_euler",
+              sampler: Union[Sampler, str] = Sampler.K_EULER,
               width: int = 832,
               height: int = 1216,
               qualityToggle: bool = True,
-              ucPreset: int = 0,
+              ucPreset: Union[UCPreset, int] = UCPreset.TYPE0,
+              **kwargs
               ):
         """
         正负面, step, cfg, 采样方式, seed
@@ -257,7 +276,7 @@ class GenerateImageInfer(BaseModel):
         """
         assert isinstance(prompt, str)
         _negative_prompt = negative_prompt
-        param = {
+        kwargs.update({
             "negative_prompt": _negative_prompt,
             "seed": seed,
             "steps": steps,
@@ -267,9 +286,9 @@ class GenerateImageInfer(BaseModel):
             "height": height,
             "qualityToggle": qualityToggle,
             "ucPreset": ucPreset,
-        }
+        })
         # 清理空值
-        param = {k: v for k, v in param.items() if v is not None}
+        param = {k: v for k, v in kwargs.items() if v is not None}
         return cls(
             input=prompt,
             model=model,
@@ -288,7 +307,7 @@ class GenerateImageInfer(BaseModel):
         """
         if isinstance(session, CredentialBase):
             session = await session.get_session()
-        request_data = self.model_dump(exclude_none=True)
+        request_data = self.model_dump(mode="json", exclude_none=True)
         logger.debug(f"Request Data: {request_data}")
         try:
             assert hasattr(session, "post"), "session must have post method."

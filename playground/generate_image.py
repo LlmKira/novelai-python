@@ -11,6 +11,7 @@ from pydantic import SecretStr
 
 from novelai_python import APIError, Login
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
+from novelai_python.sdk.ai.generate_image import Action
 
 load_dotenv()
 
@@ -25,7 +26,9 @@ async def main():
                              ).request()
     try:
         gen = GenerateImageInfer.build(
-            prompt=f"1girl, winter, jacket, sfw, angel, flower,{enhance}")
+            prompt=f"1girl, winter, jacket, sfw, angel, flower,{enhance}",
+            action=Action.GENERATE,
+        )
         cost = gen.calculate_cost(is_opus=True)
         print(f"charge: {cost} if you are vip3")
         print(f"charge: {gen.calculate_cost(is_opus=True)}")
