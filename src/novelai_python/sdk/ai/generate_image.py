@@ -3,6 +3,7 @@
 # @Author  : sudoskys
 # @File    : generate_image.py
 # @Software: PyCharm
+import base64
 import json
 import math
 import random
@@ -11,8 +12,9 @@ from io import BytesIO
 from typing import Optional, Union
 from zipfile import ZipFile
 
+import curl_cffi
 import httpx
-from curl_cffi.requests import AsyncSession, RequestsError
+from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator, Field
 from typing_extensions import override
@@ -48,13 +50,38 @@ class UCPreset(IntEnum):
 
 class Action(Enum):
     GENERATE = "generate"
+    """Generate Image"""
     IMG2IMG = "img2img"
+    """Image to Image"""
     INFILL = "infill"
+    """Inpainting"""
 
 
 class Model(Enum):
     NAI_DIFFUSION_3 = "nai-diffusion-3"
     NAI_DIFFUSION_3_INPAINTING = "nai-diffusion-3-inpainting"
+
+    NAI_DIFFUSION = "nai-diffusion"
+    NAI_DIFFUSION_INPAINTING = "nai-diffusion-inpainting"
+
+    SAFE_DIFFUSION = "safe-diffusion"
+    SAFE_DIFFUSION_INPAINTING = "safe-diffusion-inpainting"
+
+    NAI_DIFFUSION_FURRY = "nai-diffusion-furry"
+    FURRY_DIFFUSION_INPAINTING = "furry-diffusion-inpainting"
+
+
+class ControlNetModel(Enum):
+    HED = "hed"
+    """边缘检测"""
+    MIDAS = "midas"
+    """景深"""
+    FAKE_SCRIBBLE = "fake_scribble"
+    """伪涂鸦"""
+    M_LSD = "mlsd"
+    """(建筑)线条检测"""
+    LANDSCAPER = "uniformer"
+    """风景生成"""
 
 
 class Resolution(Enum):
@@ -78,18 +105,18 @@ class GenerateImageInfer(BaseModel):
     class Params(BaseModel):
         # Inpaint
         add_original_image: Optional[bool] = False
-        mask: Optional[str] = None
+        mask: Optional[Union[str, bytes]] = None  # img2img,base64
 
         cfg_rescale: Optional[float] = Field(0, ge=0, le=1, multiple_of=0.02)
         controlnet_strength: Optional[float] = Field(1.0, ge=0.1, le=2, multiple_of=0.1)
         dynamic_thresholding: Optional[bool] = False
         height: Optional[int] = Field(1216, ge=64, le=49152)
         # Img2Img
-        image: Optional[str] = None  # img2img,base64
-        strength: Optional[float] = Field(default=0.3, ge=0.01, le=0.99, multiple_of=0.01)
+        image: Optional[Union[str, bytes]] = None  # img2img,base64
+        strength: Optional[float] = Field(default=0.5, ge=0.01, le=0.99, multiple_of=0.01)
         noise: Optional[float] = Field(default=0, ge=0, le=0.99, multiple_of=0.01)
         controlnet_condition: Optional[str] = None
-        controlnet_model: Optional[str] = None
+        controlnet_model: Optional[ControlNetModel] = None
 
         n_samples: Optional[int] = Field(1, ge=1, le=8)
         negative_prompt: Optional[str] = ''
@@ -129,6 +156,22 @@ class GenerateImageInfer(BaseModel):
             if image != add_origin:
                 raise ValueError('Invalid Model Params For img2img2 mode... image should match add_original_image!')
             return self
+
+        @field_validator('mask')
+        def mask_validator(cls, v: Union[str, bytes]):
+            if isinstance(v, str) and v.startswith("data:image/"):
+                raise ValueError("Invalid image format, must be base64 encoded.")
+            if isinstance(v, bytes):
+                return base64.b64encode(v).decode("utf-8")
+            return v
+
+        @field_validator('image')
+        def image_validator(cls, v: Union[str, bytes]):
+            if isinstance(v, str) and v.startswith("data:image/"):
+                raise ValueError("Invalid image format, must be base64 encoded.")
+            if isinstance(v, bytes):
+                return base64.b64encode(v).decode("utf-8")
+            return v
 
         @field_validator('width')
         def width_validator(cls, v: int):
@@ -187,6 +230,12 @@ class GenerateImageInfer(BaseModel):
                                                 "pupils, heart-shaped pupils, glowing eyes")
         if self.parameters.qualityToggle:
             self.input += ", best quality, amazing quality, very aesthetic, absurdres"
+
+    @model_validator(mode="after")
+    def validate_model(self):
+        if self.action == Action.INFILL and not self.parameters.mask:
+            logger.warning("Mask maybe required for infill mode.")
+        return self
 
     @property
     def base_url(self):
@@ -256,6 +305,9 @@ class GenerateImageInfer(BaseModel):
               height: int = 1216,
               qualityToggle: bool = True,
               ucPreset: Union[UCPreset, int] = UCPreset.TYPE0,
+              image: Union[str, bytes] = None,
+              add_original_image: bool = None,
+              strength: float = None,
               **kwargs
               ):
         """
@@ -272,6 +324,9 @@ class GenerateImageInfer(BaseModel):
         :param sampler: 采样方式
         :param width: 宽
         :param height: 高
+        :param image: 图片
+        :param add_original_image: 是否添加原始图片
+        :param strength: IMG2IMG 强度
         :return: self
         """
         assert isinstance(prompt, str)
@@ -286,6 +341,9 @@ class GenerateImageInfer(BaseModel):
             "height": height,
             "qualityToggle": qualityToggle,
             "ucPreset": ucPreset,
+            "image": image,
+            "add_original_image": add_original_image,
+            "strength": strength
         })
         # 清理空值
         param = {k: v for k, v in kwargs.items() if v is not None}
@@ -365,7 +423,7 @@ class GenerateImageInfer(BaseModel):
                 ),
                 files=unzip_content
             )
-        except RequestsError as exc:
+        except curl_cffi.requests.errors.RequestsError as exc:
             logger.exception(exc)
             raise RuntimeError(f"An AsyncSession error occurred: {exc}")
         except httpx.HTTPError as exc:

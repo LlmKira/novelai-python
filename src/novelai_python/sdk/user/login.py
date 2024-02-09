@@ -6,6 +6,7 @@
 import json
 from typing import Optional
 
+import curl_cffi
 import httpx
 from curl_cffi.requests import AsyncSession, RequestsError
 from loguru import logger
@@ -97,7 +98,7 @@ class Login(BaseModel):
                     raise APIError(message, request=request_data, status_code=status_code, response=_msg)
                 raise APIError(message, request=request_data, status_code=status_code, response=_msg)
             return LoginResp.model_validate(response.json())
-        except RequestsError as exc:
+        except curl_cffi.requests.errors.RequestsError as exc:
             logger.exception(exc)
             raise RuntimeError(f"An AsyncSession error occurred: {exc}")
         except httpx.HTTPError as exc:
