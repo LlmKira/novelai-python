@@ -108,8 +108,11 @@ class GenerateImageInfer(BaseModel):
         mask: Optional[Union[str, bytes]] = None  # img2img,base64
 
         cfg_rescale: Optional[float] = Field(0, ge=0, le=1, multiple_of=0.02)
+        """Prompt Guidance Rescale"""
         controlnet_strength: Optional[float] = Field(1.0, ge=0.1, le=2, multiple_of=0.1)
+        """ControlNet Strength"""
         dynamic_thresholding: Optional[bool] = False
+        """Reduce artifacts caused by high prompt guidance values."""
         height: Optional[int] = Field(1216, ge=64, le=49152)
         # Img2Img
         image: Optional[Union[str, bytes]] = None  # img2img,base64
@@ -130,6 +133,7 @@ class GenerateImageInfer(BaseModel):
         qualityToggle: Optional[bool] = True
         sampler: Optional[Sampler] = Sampler.K_EULER
         scale: Optional[float] = Field(6.0, ge=0, le=10, multiple_of=0.1)
+        """Prompt Guidance"""
         # Seed
         seed: Optional[int] = Field(
             default_factory=lambda: random.randint(0, 4294967295 - 7),
@@ -147,6 +151,7 @@ class GenerateImageInfer(BaseModel):
         steps: Optional[int] = Field(28, ge=1, le=50)
         ucPreset: Optional[UCPreset] = 0
         uncond_scale: Optional[float] = Field(1.0, ge=0, le=1.5, multiple_of=0.05)
+        """Undesired Content Strength"""
         width: Optional[int] = Field(832, ge=64, le=49152)
 
         @model_validator(mode="after")
@@ -299,6 +304,7 @@ class GenerateImageInfer(BaseModel):
               negative_prompt: str = "",
               seed: int = None,
               steps: int = 28,
+              scale: float = 6.0,
               cfg_rescale: int = 0,
               sampler: Union[Sampler, str] = Sampler.K_EULER,
               width: int = 832,
@@ -308,25 +314,32 @@ class GenerateImageInfer(BaseModel):
               image: Union[str, bytes] = None,
               add_original_image: bool = None,
               strength: float = None,
+              mask: Union[str, bytes] = None,
+              controlnet_model: Union[ControlNetModel, str] = None,
+              controlnet_condition: str = None,
               **kwargs
               ):
         """
-        正负面, step, cfg, 采样方式, seed
-        :param ucPreset:  0: 重型, 1: 轻型, 2: 人物
-        :param qualityToggle:  是否开启质量
-        :param prompt: 输入
-        :param model: 模型
+        The build Function, more convenient to create a GenerateImageInfer instance.
+        :param ucPreset:  0: Heavy, 1: Light, 2: Character
+        :param qualityToggle:  Is quality toggle
+        :param prompt: Input prompt for generate image
+        :param model: The model for generate image
         :param action: Mode for img generate [generate, img2img, infill]
-        :param negative_prompt: 负面
-        :param seed: 随机种子
-        :param steps: 步数
-        :param cfg_rescale: 0-1
-        :param sampler: 采样方式
+        :param negative_prompt: The content of negative prompt
+        :param seed: The seed for generate image
+        :param steps: The steps for generate image
+        :param scale: Prompt Guidance
+        :param cfg_rescale: Prompt Guidance Rescale 0-1 lower is more creative
+        :param sampler: The sampler for generate image
         :param width: 宽
         :param height: 高
         :param image: 图片
         :param add_original_image: 是否添加原始图片
         :param strength: IMG2IMG 强度
+        :param mask: Inpainting mask
+        :param controlnet_model: 控制网络模型
+        :param controlnet_condition: 控制网络条件
         :return: self
         """
         assert isinstance(prompt, str)
@@ -335,6 +348,7 @@ class GenerateImageInfer(BaseModel):
             "negative_prompt": _negative_prompt,
             "seed": seed,
             "steps": steps,
+            "scale": scale,
             "cfg_rescale": cfg_rescale,
             "sampler": sampler,
             "width": width,
@@ -343,7 +357,10 @@ class GenerateImageInfer(BaseModel):
             "ucPreset": ucPreset,
             "image": image,
             "add_original_image": add_original_image,
-            "strength": strength
+            "strength": strength,
+            "mask": mask,
+            "controlnet_model": controlnet_model,
+            "controlnet_condition": controlnet_condition
         })
         # 清理空值
         param = {k: v for k, v in kwargs.items() if v is not None}
