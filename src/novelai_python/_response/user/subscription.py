@@ -45,8 +45,34 @@ class SubscriptionResp(BaseModel):
 
     @property
     def anlas_left(self):
-        return self.trainingStepsLeft.fixedTrainingStepsLeft
+        return self.trainingStepsLeft.fixedTrainingStepsLeft + self.trainingStepsLeft.purchasedTrainingSteps
 
     @property
     def is_unlimited_image_generation(self):
-        return self.perks.unlimitedImageGeneration
+        return self.perks.unlimitedImageGeneration and self.perks.imageGeneration
+
+    @property
+    def get_tier_name(self):
+        if self.tier == 0:
+            return "Paper"
+        elif self.tier == 1:
+            return "Tablet"
+        elif self.tier == 2:
+            return "Scroll"
+        elif self.tier == 3:
+            return "Opus"
+        else:
+            return "Unknown"
+
+    @property
+    def limit_perks(self):
+        perks = []
+        if not self.perks.imageGeneration:
+            perks.append("imageGeneration")
+        if not self.perks.voiceGeneration:
+            perks.append("voiceGeneration")
+        if not self.perks.unlimitedImageGeneration:
+            perks.append("unlimitedImageGeneration")
+        if not self.perks.unlimitedMaxPriority:
+            perks.append("unlimitedMaxPriority")
+        return perks
