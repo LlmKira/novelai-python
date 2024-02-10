@@ -49,6 +49,15 @@ class APIError(NovelAiError):
         }
 
 
+class ConcurrentGenerationError(APIError):
+    """
+    ConcurrentGenerationError is raised when the API returns an error.
+    """
+
+    def __init__(self, message: str, request: dict, response: Union[dict, str], status_code: str) -> None:
+        super().__init__(message, request, response, status_code)
+
+
 class AuthError(APIError):
     """
     AuthError is raised when the API returns an error.

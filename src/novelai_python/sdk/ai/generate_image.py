@@ -21,7 +21,7 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_
 from typing_extensions import override
 
 from ..schema import ApiBaseModel
-from ..._exceptions import APIError, AuthError
+from ..._exceptions import APIError, AuthError, ConcurrentGenerationError
 from ..._response import ImageGenerateResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy, NovelAiMetadata
@@ -450,6 +450,14 @@ class GenerateImageInfer(ApiBaseModel):
                 if status_code in [409]:
                     # conflict error
                     raise APIError(message, request=request_data, status_code=status_code, response=_msg)
+                if status_code in [429]:
+                    # concurrent error
+                    raise ConcurrentGenerationError(
+                        message=message,
+                        request=request_data,
+                        status_code=status_code,
+                        response=_msg
+                    )
                 raise APIError(message, request=request_data, status_code=status_code, response=_msg)
             zip_file = ZipFile(BytesIO(response.content))
             unzip_content = []
