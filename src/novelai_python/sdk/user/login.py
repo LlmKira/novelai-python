@@ -4,20 +4,22 @@
 # @File    : login.py
 # @Software: PyCharm
 import json
-from typing import Optional
+from typing import Optional, Union
 
 import curl_cffi
 import httpx
-from curl_cffi.requests import AsyncSession, RequestsError
+from curl_cffi.requests import AsyncSession
 from loguru import logger
-from pydantic import BaseModel, PrivateAttr, Field
+from pydantic import PrivateAttr, Field
 
+from ..schema import ApiBaseModel
 from ..._exceptions import APIError
 from ..._response.user.login import LoginResp
+from ...credential import CredentialBase
 from ...utils import try_jsonfy, encode_access_key
 
 
-class Login(BaseModel):
+class Login(ApiBaseModel):
     _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
     _session: Optional[AsyncSession] = PrivateAttr(None)
     key: str = Field(..., description="User's key")
@@ -60,13 +62,28 @@ class Login(BaseModel):
         """
         return cls(key=encode_access_key(user_name, password))
 
+    async def necessary_headers(self, request_data) -> dict:
+        return {}
+
     async def request(self,
+                      session: Union[AsyncSession, CredentialBase] = None,
+                      *,
+                      override_headers: Optional[dict] = None,
                       ) -> LoginResp:
         """
         Request to get user access token
         :return:
         """
+        # Data Build
         request_data = self.model_dump(mode="json", exclude_none=True)
+        if isinstance(session, AsyncSession):
+            session.headers.update(self.necessary_headers(request_data))
+        elif isinstance(session, CredentialBase):
+            session = await session.get_session(update_headers=await self.necessary_headers(request_data))
+        # Header
+        if override_headers:
+            session.headers.clear()
+            session.headers.update(override_headers)
         logger.debug("Login")
         try:
             assert hasattr(self.session, "post"), "session must have get method."

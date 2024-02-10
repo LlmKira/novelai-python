@@ -10,6 +10,7 @@ import random
 from enum import Enum, IntEnum
 from io import BytesIO
 from typing import Optional, Union
+from urllib.parse import urlparse
 from zipfile import ZipFile
 
 import curl_cffi
@@ -19,6 +20,7 @@ from loguru import logger
 from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator, Field
 from typing_extensions import override
 
+from ..schema import ApiBaseModel
 from ..._exceptions import APIError, AuthError
 from ..._response import ImageGenerateResp
 from ...credential import CredentialBase
@@ -98,7 +100,7 @@ class Resolution(Enum):
     RES_1920_1088 = (1920, 1088)
 
 
-class GenerateImageInfer(BaseModel):
+class GenerateImageInfer(ApiBaseModel):
     _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
     _charge: bool = PrivateAttr(False)
 
@@ -371,18 +373,52 @@ class GenerateImageInfer(BaseModel):
             parameters=cls.Params(**param)
         )
 
-    async def generate(self, session: Union[AsyncSession, "CredentialBase"],
-                       *,
-                       remove_sign: bool = False) -> ImageGenerateResp:
+    async def necessary_headers(self, request_data) -> dict:
+        """
+        :param request_data:
+        :return:
+        """
+        return {
+            "Host": urlparse(self.endpoint).netloc,
+            "Accept": "*/*",
+            "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Referer": "https://novelai.net/",
+            "Content-Type": "application/json",
+            "Origin": "https://novelai.net",
+            "Content-Length": str(len(json.dumps(request_data).encode("utf-8"))),
+            "Connection": "keep-alive",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-site",
+            "Pragma": "no-cache",
+            "Cache-Control": "no-cache",
+        }
+
+    async def request(self,
+                      session: Union[AsyncSession, "CredentialBase"],
+                      *,
+                      override_headers: Optional[dict] = None,
+                      remove_sign: bool = False
+                      ) -> ImageGenerateResp:
         """
         生成图片
+        :param override_headers:
         :param session:  session
         :param remove_sign:  移除追踪信息
         :return:
         """
-        if isinstance(session, CredentialBase):
-            session = await session.get_session()
+        # Data Build
         request_data = self.model_dump(mode="json", exclude_none=True)
+        # Header
+        if isinstance(session, AsyncSession):
+            session.headers.update(self.necessary_headers(request_data))
+        elif isinstance(session, CredentialBase):
+            update_header = await self.necessary_headers(request_data)
+            session = await session.get_session(update_headers=update_header)
+        if override_headers:
+            session.headers.clear()
+            session.headers.update(override_headers)
         logger.debug(f"Request Data: {request_data}")
         try:
             assert hasattr(session, "post"), "session must have post method."
