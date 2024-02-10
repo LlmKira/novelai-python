@@ -13,6 +13,13 @@ class NovelAiError(Exception):
     pass
 
 
+class InvalidRequestHeader(NovelAiError):
+    """
+    InvalidRequestHeader is raised when the request header is invalid.
+    """
+    pass
+
+
 class APIError(NovelAiError):
     """
     APIError is raised when the API returns an error.
