@@ -21,6 +21,7 @@ async def test_successful_user_login():
     }
     session = mock.MagicMock(spec=AsyncSession)
     session.post = mock.AsyncMock(return_value=successful_login_response)
+    session.headers = {}
 
     login = Login(key="encoded_key")
     login.session = session
@@ -40,6 +41,7 @@ async def test_validation_error_during_login():
     }
     session = mock.MagicMock(spec=AsyncSession)
     session.post = mock.AsyncMock(return_value=validation_error_response)
+    session.headers = {}
 
     login = Login(key="encoded_key")
     login.session = session
@@ -61,6 +63,7 @@ async def test_incorrect_access_key_during_login():
     }
     session = mock.MagicMock(spec=AsyncSession)
     session.post = mock.AsyncMock(return_value=incorrect_key_response)
+    session.headers = {}
 
     login = Login(key="encoded_key")
     login.session = session
@@ -82,6 +85,8 @@ async def test_unknown_error_during_login():
     }
     session = mock.MagicMock(spec=AsyncSession)
     session.post = mock.AsyncMock(return_value=unknown_error_response)
+    session.headers = {}
+
     login = Login(key="encoded_key")
     login.session = session
     with pytest.raises(APIError) as e:

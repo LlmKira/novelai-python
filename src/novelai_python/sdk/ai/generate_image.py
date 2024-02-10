@@ -3,20 +3,24 @@
 # @Author  : sudoskys
 # @File    : generate_image.py
 # @Software: PyCharm
+import base64
 import json
 import math
 import random
 from enum import Enum, IntEnum
 from io import BytesIO
 from typing import Optional, Union
+from urllib.parse import urlparse
 from zipfile import ZipFile
 
+import curl_cffi
 import httpx
-from curl_cffi.requests import AsyncSession, RequestsError
+from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator, Field
 from typing_extensions import override
 
+from ..schema import ApiBaseModel
 from ..._exceptions import APIError, AuthError
 from ..._response import ImageGenerateResp
 from ...credential import CredentialBase
@@ -48,13 +52,38 @@ class UCPreset(IntEnum):
 
 class Action(Enum):
     GENERATE = "generate"
+    """Generate Image"""
     IMG2IMG = "img2img"
+    """Image to Image"""
     INFILL = "infill"
+    """Inpainting"""
 
 
 class Model(Enum):
     NAI_DIFFUSION_3 = "nai-diffusion-3"
     NAI_DIFFUSION_3_INPAINTING = "nai-diffusion-3-inpainting"
+
+    NAI_DIFFUSION = "nai-diffusion"
+    NAI_DIFFUSION_INPAINTING = "nai-diffusion-inpainting"
+
+    SAFE_DIFFUSION = "safe-diffusion"
+    SAFE_DIFFUSION_INPAINTING = "safe-diffusion-inpainting"
+
+    NAI_DIFFUSION_FURRY = "nai-diffusion-furry"
+    FURRY_DIFFUSION_INPAINTING = "furry-diffusion-inpainting"
+
+
+class ControlNetModel(Enum):
+    HED = "hed"
+    """边缘检测"""
+    MIDAS = "midas"
+    """景深"""
+    FAKE_SCRIBBLE = "fake_scribble"
+    """伪涂鸦"""
+    M_LSD = "mlsd"
+    """(建筑)线条检测"""
+    LANDSCAPER = "uniformer"
+    """风景生成"""
 
 
 class Resolution(Enum):
@@ -71,25 +100,28 @@ class Resolution(Enum):
     RES_1920_1088 = (1920, 1088)
 
 
-class GenerateImageInfer(BaseModel):
+class GenerateImageInfer(ApiBaseModel):
     _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
     _charge: bool = PrivateAttr(False)
 
     class Params(BaseModel):
         # Inpaint
         add_original_image: Optional[bool] = False
-        mask: Optional[str] = None
+        mask: Optional[Union[str, bytes]] = None  # img2img,base64
 
         cfg_rescale: Optional[float] = Field(0, ge=0, le=1, multiple_of=0.02)
+        """Prompt Guidance Rescale"""
         controlnet_strength: Optional[float] = Field(1.0, ge=0.1, le=2, multiple_of=0.1)
+        """ControlNet Strength"""
         dynamic_thresholding: Optional[bool] = False
+        """Reduce artifacts caused by high prompt guidance values."""
         height: Optional[int] = Field(1216, ge=64, le=49152)
         # Img2Img
-        image: Optional[str] = None  # img2img,base64
-        strength: Optional[float] = Field(default=0.3, ge=0.01, le=0.99, multiple_of=0.01)
+        image: Optional[Union[str, bytes]] = None  # img2img,base64
+        strength: Optional[float] = Field(default=0.5, ge=0.01, le=0.99, multiple_of=0.01)
         noise: Optional[float] = Field(default=0, ge=0, le=0.99, multiple_of=0.01)
         controlnet_condition: Optional[str] = None
-        controlnet_model: Optional[str] = None
+        controlnet_model: Optional[ControlNetModel] = None
 
         n_samples: Optional[int] = Field(1, ge=1, le=8)
         negative_prompt: Optional[str] = ''
@@ -103,6 +135,7 @@ class GenerateImageInfer(BaseModel):
         qualityToggle: Optional[bool] = True
         sampler: Optional[Sampler] = Sampler.K_EULER
         scale: Optional[float] = Field(6.0, ge=0, le=10, multiple_of=0.1)
+        """Prompt Guidance"""
         # Seed
         seed: Optional[int] = Field(
             default_factory=lambda: random.randint(0, 4294967295 - 7),
@@ -120,6 +153,7 @@ class GenerateImageInfer(BaseModel):
         steps: Optional[int] = Field(28, ge=1, le=50)
         ucPreset: Optional[UCPreset] = 0
         uncond_scale: Optional[float] = Field(1.0, ge=0, le=1.5, multiple_of=0.05)
+        """Undesired Content Strength"""
         width: Optional[int] = Field(832, ge=64, le=49152)
 
         @model_validator(mode="after")
@@ -129,6 +163,22 @@ class GenerateImageInfer(BaseModel):
             if image != add_origin:
                 raise ValueError('Invalid Model Params For img2img2 mode... image should match add_original_image!')
             return self
+
+        @field_validator('mask')
+        def mask_validator(cls, v: Union[str, bytes]):
+            if isinstance(v, str) and v.startswith("data:image/"):
+                raise ValueError("Invalid image format, must be base64 encoded.")
+            if isinstance(v, bytes):
+                return base64.b64encode(v).decode("utf-8")
+            return v
+
+        @field_validator('image')
+        def image_validator(cls, v: Union[str, bytes]):
+            if isinstance(v, str) and v.startswith("data:image/"):
+                raise ValueError("Invalid image format, must be base64 encoded.")
+            if isinstance(v, bytes):
+                return base64.b64encode(v).decode("utf-8")
+            return v
 
         @field_validator('width')
         def width_validator(cls, v: int):
@@ -187,6 +237,12 @@ class GenerateImageInfer(BaseModel):
                                                 "pupils, heart-shaped pupils, glowing eyes")
         if self.parameters.qualityToggle:
             self.input += ", best quality, amazing quality, very aesthetic, absurdres"
+
+    @model_validator(mode="after")
+    def validate_model(self):
+        if self.action == Action.INFILL and not self.parameters.mask:
+            logger.warning("Mask maybe required for infill mode.")
+        return self
 
     @property
     def base_url(self):
@@ -250,28 +306,42 @@ class GenerateImageInfer(BaseModel):
               negative_prompt: str = "",
               seed: int = None,
               steps: int = 28,
+              scale: float = 6.0,
               cfg_rescale: int = 0,
               sampler: Union[Sampler, str] = Sampler.K_EULER,
               width: int = 832,
               height: int = 1216,
               qualityToggle: bool = True,
               ucPreset: Union[UCPreset, int] = UCPreset.TYPE0,
+              image: Union[str, bytes] = None,
+              add_original_image: bool = None,
+              strength: float = None,
+              mask: Union[str, bytes] = None,
+              controlnet_model: Union[ControlNetModel, str] = None,
+              controlnet_condition: str = None,
               **kwargs
               ):
         """
-        正负面, step, cfg, 采样方式, seed
-        :param ucPreset:  0: 重型, 1: 轻型, 2: 人物
-        :param qualityToggle:  是否开启质量
-        :param prompt: 输入
-        :param model: 模型
+        The build Function, more convenient to create a GenerateImageInfer instance.
+        :param ucPreset:  0: Heavy, 1: Light, 2: Character
+        :param qualityToggle:  Is quality toggle
+        :param prompt: Input prompt for generate image
+        :param model: The model for generate image
         :param action: Mode for img generate [generate, img2img, infill]
-        :param negative_prompt: 负面
-        :param seed: 随机种子
-        :param steps: 步数
-        :param cfg_rescale: 0-1
-        :param sampler: 采样方式
+        :param negative_prompt: The content of negative prompt
+        :param seed: The seed for generate image
+        :param steps: The steps for generate image
+        :param scale: Prompt Guidance
+        :param cfg_rescale: Prompt Guidance Rescale 0-1 lower is more creative
+        :param sampler: The sampler for generate image
         :param width: 宽
         :param height: 高
+        :param image: 图片
+        :param add_original_image: 是否添加原始图片
+        :param strength: IMG2IMG 强度
+        :param mask: Inpainting mask
+        :param controlnet_model: 控制网络模型
+        :param controlnet_condition: 控制网络条件
         :return: self
         """
         assert isinstance(prompt, str)
@@ -280,12 +350,19 @@ class GenerateImageInfer(BaseModel):
             "negative_prompt": _negative_prompt,
             "seed": seed,
             "steps": steps,
+            "scale": scale,
             "cfg_rescale": cfg_rescale,
             "sampler": sampler,
             "width": width,
             "height": height,
             "qualityToggle": qualityToggle,
             "ucPreset": ucPreset,
+            "image": image,
+            "add_original_image": add_original_image,
+            "strength": strength,
+            "mask": mask,
+            "controlnet_model": controlnet_model,
+            "controlnet_condition": controlnet_condition
         })
         # 清理空值
         param = {k: v for k, v in kwargs.items() if v is not None}
@@ -296,18 +373,52 @@ class GenerateImageInfer(BaseModel):
             parameters=cls.Params(**param)
         )
 
-    async def generate(self, session: Union[AsyncSession, "CredentialBase"],
-                       *,
-                       remove_sign: bool = False) -> ImageGenerateResp:
+    async def necessary_headers(self, request_data) -> dict:
+        """
+        :param request_data:
+        :return:
+        """
+        return {
+            "Host": urlparse(self.endpoint).netloc,
+            "Accept": "*/*",
+            "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Referer": "https://novelai.net/",
+            "Content-Type": "application/json",
+            "Origin": "https://novelai.net",
+            "Content-Length": str(len(json.dumps(request_data).encode("utf-8"))),
+            "Connection": "keep-alive",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-site",
+            "Pragma": "no-cache",
+            "Cache-Control": "no-cache",
+        }
+
+    async def request(self,
+                      session: Union[AsyncSession, "CredentialBase"],
+                      *,
+                      override_headers: Optional[dict] = None,
+                      remove_sign: bool = False
+                      ) -> ImageGenerateResp:
         """
         生成图片
+        :param override_headers:
         :param session:  session
         :param remove_sign:  移除追踪信息
         :return:
         """
-        if isinstance(session, CredentialBase):
-            session = await session.get_session()
+        # Data Build
         request_data = self.model_dump(mode="json", exclude_none=True)
+        # Header
+        if isinstance(session, AsyncSession):
+            session.headers.update(self.necessary_headers(request_data))
+        elif isinstance(session, CredentialBase):
+            update_header = await self.necessary_headers(request_data)
+            session = await session.get_session(update_headers=update_header)
+        if override_headers:
+            session.headers.clear()
+            session.headers.update(override_headers)
         logger.debug(f"Request Data: {request_data}")
         try:
             assert hasattr(session, "post"), "session must have post method."
@@ -365,7 +476,7 @@ class GenerateImageInfer(BaseModel):
                 ),
                 files=unzip_content
             )
-        except RequestsError as exc:
+        except curl_cffi.requests.errors.RequestsError as exc:
             logger.exception(exc)
             raise RuntimeError(f"An AsyncSession error occurred: {exc}")
         except httpx.HTTPError as exc:

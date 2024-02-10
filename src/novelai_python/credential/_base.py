@@ -11,5 +11,5 @@ class CredentialBase(BaseModel):
     _session: AsyncSession = None
     """会话"""
 
-    async def get_session(self, timeout: int = 180):
+    async def get_session(self, timeout: int = 180, update_headers: dict = None):
         raise NotImplementedError

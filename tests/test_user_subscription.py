@@ -49,6 +49,8 @@ async def test_successful_subscription_request():
     }
     session = mock.MagicMock(spec=AsyncSession)
     session.get = mock.AsyncMock(return_value=successful_response)
+    session.headers = {}
+
     subscription = Subscription()
     resp = await subscription.request(session)
     assert isinstance(resp, SubscriptionResp)
@@ -65,6 +67,7 @@ async def test_incorrect_access_token_subscription_request():
     }
     session = mock.MagicMock(spec=AsyncSession)
     session.get = mock.AsyncMock(return_value=incorrect_token_response)
+    session.headers = {}
 
     subscription = Subscription()
     with pytest.raises(AuthError) as e:
@@ -85,6 +88,7 @@ async def test_unknown_error_subscription_request():
     }
     session = mock.MagicMock(spec=AsyncSession)
     session.get = mock.AsyncMock(return_value=unknown_error_response)
+    session.headers = {}
 
     subscription = Subscription()
     with pytest.raises(APIError) as e:
