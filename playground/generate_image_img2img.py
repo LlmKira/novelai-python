@@ -42,7 +42,7 @@ async def main():
         cost = gen.calculate_cost(is_opus=True)
         print(f"charge: {cost} if you are vip3")
         print(f"charge: {gen.calculate_cost(is_opus=True)}")
-        _res = await gen.generate(
+        _res = await gen.request(
             session=globe_s, remove_sign=True
         )
     except APIError as e:

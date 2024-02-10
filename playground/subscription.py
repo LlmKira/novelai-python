@@ -23,7 +23,8 @@ jwt = os.getenv("NOVELAI_JWT") or token
 async def main():
     globe_s = JwtCredential(jwt_token=SecretStr(jwt))
     try:
-        _res = await Subscription().request(
+        sub = Subscription()
+        _res = await sub.request(
             session=globe_s
         )
         _res: SubscriptionResp
