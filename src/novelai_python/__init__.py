@@ -5,8 +5,10 @@
 # @Software: PyCharm
 
 from ._exceptions import (
+    NovelAiError,
+    APIError,
     AuthError,
-    NovelAiError, APIError,
+    ConcurrentGenerationError
 )
 from .credential import JwtCredential, LoginCredential, ApiCredential
 from .sdk import GenerateImageInfer, ImageGenerateResp
@@ -34,4 +36,5 @@ __all__ = [
     "APIError",
     "AuthError",
     "NovelAiError",
+    "ConcurrentGenerationError"
 ]
