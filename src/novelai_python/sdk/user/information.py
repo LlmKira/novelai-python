@@ -77,13 +77,17 @@ class Information(ApiBaseModel):
                 )
                 try:
                     _msg = response.json()
-                except Exception:
-                    raise APIError(
-                        message=f"Unexpected content type: {response.headers.get('Content-Type')}",
-                        request=request_data,
-                        status_code=response.status_code,
-                        response=try_jsonfy(response.content)
-                    )
+                except Exception as e:
+                    logger.warning(e)
+                    if not isinstance(response.content, str) and len(response.content) < 50:
+                        raise APIError(
+                            message=f"Unexpected content type: {response.headers.get('Content-Type')}",
+                            request=request_data,
+                            status_code=response.status_code,
+                            response=try_jsonfy(response.content)
+                        )
+                    else:
+                        _msg = {"statusCode": response.status_code, "message": response.content}
                 status_code = _msg.get("statusCode", response.status_code)
                 message = _msg.get("message", "Unknown error")
                 if status_code in [400, 401, 402]:
