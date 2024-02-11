@@ -419,7 +419,23 @@ class GenerateImageInfer(ApiBaseModel):
         if override_headers:
             session.headers.clear()
             session.headers.update(override_headers)
-        logger.debug(f"Request Data: {request_data}")
+        try:
+            _log_data = request_data.copy()
+            if self.action == Action.GENERATE:
+                logger.debug(f"Request Data: {_log_data}")
+            else:
+                _log_data.get("parameters", {}).update({
+                    "image": "base64 data" if self.parameters.image else "None",
+                }
+                )
+                _log_data.get("parameters", {}).update(
+                    {
+                        "mask": "base64 data" if self.parameters.mask else "None",
+                    }
+                )
+                logger.debug(f"Request Data: {request_data}")
+        except Exception as e:
+            logger.warning(f"Error when print log data: {e}")
         try:
             assert hasattr(session, "post"), "session must have post method."
             response = await session.post(
