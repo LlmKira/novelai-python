@@ -43,17 +43,4 @@ class QueSelect(object):
         return selected
 
 
-if __name__ == '__main__':
-    q = QueSelect(['a', 'b'])
-    print(q.get(1))
-    # print(q.get(2))
-    print(q.get(1))
-    # print(q.get(2))
-    print(q.get(1))
-    # print(q.get(2))
-    print(q.get(1))
-    print(q.get(1))
-    print(q.get(1))
-    print(q.get(1))
-    print(q.get(1))
-    print(q.get(1))
+
