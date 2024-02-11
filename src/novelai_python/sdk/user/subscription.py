@@ -12,7 +12,7 @@ from loguru import logger
 from pydantic import PrivateAttr
 
 from ..schema import ApiBaseModel
-from ..._exceptions import APIError, AuthError
+from ..._exceptions import APIError, AuthError, SessionHttpError
 from ..._response.user.subscription import SubscriptionResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy
@@ -84,13 +84,17 @@ class Subscription(ApiBaseModel):
                 )
                 try:
                     _msg = response.json()
-                except Exception:
-                    raise APIError(
-                        message=f"Unexpected content type: {response.headers.get('Content-Type')}",
-                        request=request_data,
-                        status_code=response.status_code,
-                        response=try_jsonfy(response.content)
-                    )
+                except Exception as e:
+                    logger.warning(e)
+                    if not isinstance(response.content, str) and len(response.content) < 50:
+                        raise APIError(
+                            message=f"Unexpected content type: {response.headers.get('Content-Type')}",
+                            request=request_data,
+                            code=response.status_code,
+                            response=try_jsonfy(response.content)
+                        )
+                    else:
+                        _msg = {"statusCode": response.status_code, "message": response.content}
                 status_code = _msg.get("statusCode", response.status_code)
                 message = _msg.get("message", "Unknown error")
                 if status_code in [400, 401, 402]:
@@ -98,17 +102,18 @@ class Subscription(ApiBaseModel):
                     # 401 : unauthorized
                     # 402 : payment required
                     # 409 : conflict
-                    raise AuthError(message, request=request_data, status_code=status_code, response=_msg)
+                    raise AuthError(message, request=request_data, code=status_code, response=_msg)
                 if status_code in [500]:
                     # An unknown error occured.
-                    raise APIError(message, request=request_data, status_code=status_code, response=_msg)
-                raise APIError(message, request=request_data, status_code=status_code, response=_msg)
+                    raise APIError(message, request=request_data, code=status_code, response=_msg)
+                raise APIError(message, request=request_data, code=status_code, response=_msg)
             return SubscriptionResp.model_validate(response.json())
         except curl_cffi.requests.errors.RequestsError as exc:
             logger.exception(exc)
-            raise RuntimeError(f"An AsyncSession error occurred: {exc}")
+            raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
         except httpx.HTTPError as exc:
-            raise RuntimeError(f"An HTTP error occurred: {exc}")
+            logger.exception(exc)
+            raise SessionHttpError("An HTTPError occurred, maybe SSL error. Try again later!")
         except APIError as e:
             raise e
         except Exception as e:

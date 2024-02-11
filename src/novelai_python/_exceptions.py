@@ -10,7 +10,17 @@ class NovelAiError(Exception):
     """
     NovelAiError is the base exception for all novelai_python errors.
     """
-    pass
+    message: str
+    exception: Optional[Exception] = None
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+
+    @property
+    def __dict__(self):
+        return {
+            "message": self.message,
+        }
 
 
 class InvalidRequestHeader(NovelAiError):
@@ -20,33 +30,36 @@ class InvalidRequestHeader(NovelAiError):
     pass
 
 
+class SessionHttpError(NovelAiError):
+    """
+    HTTPError is raised when a request to the API fails.
+    """
+    pass
+
+
 class APIError(NovelAiError):
     """
     APIError is raised when the API returns an error.
     """
-    message: str
     request: Any
     code: Optional[str] = None
     response: Union[Dict[str, Any], str] = None
 
-    def __init__(self, message: str, request: dict, response: Union[dict, str], status_code: str) -> None:
-        if not isinstance(response, dict):
-            response = {"error": f"data type error, should be dict, but got {type(response)}"}
-        if not isinstance(request, dict):
-            request = {"error": f"data type error, should be dict, but got {type(request)}"}
+    def __init__(self, message: str, request: Any, response: Union[Dict[str, Any], str], code: Optional[str]) -> None:
+        super().__init__(message)
         self.request = request
-        self.message = message
-        self.code = status_code
         self.response = response
+        self.code = code
 
     @property
     def __dict__(self):
-        return {
-            "message": self.message,
+        parent_dict = super().__dict__
+        parent_dict.update({
             "request": self.request,
             "response": self.response,
             "code": self.code
-        }
+        })
+        return parent_dict
 
 
 class ConcurrentGenerationError(APIError):
@@ -54,8 +67,7 @@ class ConcurrentGenerationError(APIError):
     ConcurrentGenerationError is raised when the API returns an error.
     """
 
-    def __init__(self, message: str, request: dict, response: Union[dict, str], status_code: str) -> None:
-        super().__init__(message, request, response, status_code)
+    pass
 
 
 class AuthError(APIError):
@@ -63,5 +75,4 @@ class AuthError(APIError):
     AuthError is raised when the API returns an error.
     """
 
-    def __init__(self, message: str, request: dict, response: Union[dict, str], status_code: str) -> None:
-        super().__init__(message, request, response, status_code)
+    pass

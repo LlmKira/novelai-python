@@ -21,7 +21,7 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_
 from typing_extensions import override
 
 from ..schema import ApiBaseModel
-from ..._exceptions import APIError, AuthError, ConcurrentGenerationError
+from ..._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ..._response import ImageGenerateResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy, NovelAiMetadata
@@ -432,13 +432,17 @@ class GenerateImageInfer(ApiBaseModel):
                 )
                 try:
                     _msg = response.json()
-                except Exception:
-                    raise APIError(
-                        message=f"Unexpected content type: {response.headers.get('Content-Type')}",
-                        request=request_data,
-                        status_code=response.status_code,
-                        response=try_jsonfy(response.content)
-                    )
+                except Exception as e:
+                    logger.warning(e)
+                    if not isinstance(response.content, str) and len(response.content) < 50:
+                        raise APIError(
+                            message=f"Unexpected content type: {response.headers.get('Content-Type')}",
+                            request=request_data,
+                            code=response.status_code,
+                            response=try_jsonfy(response.content)
+                        )
+                    else:
+                        _msg = {"statusCode": response.status_code, "message": response.content}
                 status_code = _msg.get("statusCode", response.status_code)
                 message = _msg.get("message", "Unknown error")
                 if status_code in [400, 401, 402]:
@@ -446,19 +450,19 @@ class GenerateImageInfer(ApiBaseModel):
                     # 401 : unauthorized
                     # 402 : payment required
                     # 409 : conflict
-                    raise AuthError(message, request=request_data, status_code=status_code, response=_msg)
+                    raise AuthError(message, request=request_data, code=status_code, response=_msg)
                 if status_code in [409]:
                     # conflict error
-                    raise APIError(message, request=request_data, status_code=status_code, response=_msg)
+                    raise APIError(message, request=request_data, code=status_code, response=_msg)
                 if status_code in [429]:
                     # concurrent error
                     raise ConcurrentGenerationError(
                         message=message,
                         request=request_data,
-                        status_code=status_code,
+                        code=status_code,
                         response=_msg
                     )
-                raise APIError(message, request=request_data, status_code=status_code, response=_msg)
+                raise APIError(message, request=request_data, code=status_code, response=_msg)
             zip_file = ZipFile(BytesIO(response.content))
             unzip_content = []
             with zip_file as zf:
@@ -467,7 +471,7 @@ class GenerateImageInfer(ApiBaseModel):
                     raise APIError(
                         message="No file in zip",
                         request=request_data,
-                        status_code=response.status_code,
+                        code=response.status_code,
                         response=try_jsonfy(response.content)
                     )
                 for filename in file_list:
@@ -486,9 +490,10 @@ class GenerateImageInfer(ApiBaseModel):
             )
         except curl_cffi.requests.errors.RequestsError as exc:
             logger.exception(exc)
-            raise RuntimeError(f"An AsyncSession error occurred: {exc}")
+            raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
         except httpx.HTTPError as exc:
-            raise RuntimeError(f"An HTTP error occurred: {exc}")
+            logger.exception(exc)
+            raise SessionHttpError("An HTTPError occurred, maybe SSL error. Try again later!")
         except APIError as e:
             raise e
         except Exception as e:
