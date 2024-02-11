@@ -28,6 +28,9 @@ class NovelAiMetadata(BaseModel):
     title: str = "AI generated image"
     description: str
     comment: Union[dict, str] = {}
+    """
+    {'prompt': 'very very aesthetic, absurdres', 'steps': 28, 'height': 1216, 'width': 832, 'scale': 6.0, 'uncond_scale': 1.0, 'cfg_rescale': 0.0, 'seed': 121910159, 'n_samples': 1, 'hide_debug_overlay': False, 'noise_schedule': 'native', 'legacy_v3_extend': False, 'sampler': 'k_euler', 'controlnet_strength': 1.0, 'controlnet_model': None, 'dynamic_thresholding': False, 'dynamic_thresholding_percentile': 0.999, 'dynamic_thresholding_mimic_scale': 10.0, 'sm': False, 'sm_dyn': False, 'skip_cfg_below_sigma': 0.0, 'lora_unet_weights': None, 'lora_clip_weights': None, 'uc': ', lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, glowing eyes, nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry', 'request_type': 'PromptGenerateRequest', 'signed_hash': '11111='}
+    """
 
     @property
     def metadata(self):
