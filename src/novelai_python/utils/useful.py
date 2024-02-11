@@ -5,7 +5,7 @@
 # @Software: PyCharm
 import collections
 import random
-from typing import List
+from typing import List, Union
 
 
 def enum_to_list(enum_):
@@ -22,7 +22,8 @@ class QueSelect(object):
         self.used = collections.deque()
         self.users = {}
 
-    def get(self, user_id: int) -> str:
+    def get(self, user_id: Union[int, str]) -> str:
+        user_id = str(user_id)
         if user_id not in self.users:
             self.users[user_id] = {'data': self.data.copy(), 'used': collections.deque()}
 
@@ -41,6 +42,3 @@ class QueSelect(object):
         user_used.append(selected)
 
         return selected
-
-
-
