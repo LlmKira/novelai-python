@@ -12,6 +12,7 @@ from pydantic import SecretStr
 from novelai_python import APIError, Login
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
 from novelai_python.sdk.ai.generate_image import Action
+from novelai_python.utils.useful import enum_to_list
 
 load_dotenv()
 
@@ -25,13 +26,14 @@ async def main():
     _res = await Login.build(user_name=os.getenv("NOVELAI_USER"), password=os.getenv("NOVELAI_PASS")
                              ).request()
     try:
+        print(f"Action List:{enum_to_list(Action)}")
         gen = GenerateImageInfer.build(
             prompt=f"1girl, winter, jacket, sfw, angel, flower,{enhance}",
             action=Action.GENERATE,
         )
         cost = gen.calculate_cost(is_opus=True)
         print(f"charge: {cost} if you are vip3")
-        print(f"charge: {gen.calculate_cost(is_opus=True)}")
+        print(f"charge: {gen.calculate_cost(is_opus=False)} if you are not vip3")
         _res = await gen.request(
             session=globe_s, remove_sign=True
         )
