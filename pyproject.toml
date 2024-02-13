@@ -18,6 +18,7 @@ dependencies = [
     "uvicorn[standard]>=0.27.0.post1",
     "numpy>=1.24.4",
     "argon2-cffi>=23.1.0",
+    "opencv-python>=4.8.1.78",
 ]
 requires-python = ">=3.8"
 readme = "README.md"
