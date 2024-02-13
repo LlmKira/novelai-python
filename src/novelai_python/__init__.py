@@ -13,6 +13,7 @@ from ._exceptions import (
 )
 from .credential import JwtCredential, LoginCredential, ApiCredential
 from .sdk import GenerateImageInfer, ImageGenerateResp
+from .sdk import SuggestTags, SuggestTagsResp
 from .sdk import Information, InformationResp
 from .sdk import Login, LoginResp
 from .sdk import Subscription, SubscriptionResp
@@ -30,6 +31,9 @@ __all__ = [
 
     "Login",
     "LoginResp",
+
+    "SuggestTags",
+    "SuggestTagsResp",
 
     "Information",
     "InformationResp",

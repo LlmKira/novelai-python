@@ -25,6 +25,7 @@ class ApiCredential(CredentialBase):
                 "Accept": "*/*",
                 "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
                 "Accept-Encoding": "gzip, deflate, br",
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_2_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
                 "Authorization": f"Bearer {self.api_token.get_secret_value()}",
                 "Content-Type": "application/json",
                 "Origin": "https://novelai.net",

@@ -22,3 +22,12 @@ class ImageGenerateResp(RespBase):
         if not isinstance(self.meta.raw_request.get("parameters"), dict):
             raise Exception("Resp parameters is not dict")
         return self.meta.raw_request.get("parameters").get(key, default)
+
+
+class SuggestTagsResp(RespBase):
+    class Tag(BaseModel):
+        tag: str
+        count: int
+        confidence: float
+
+    tags: List[Tag] = None

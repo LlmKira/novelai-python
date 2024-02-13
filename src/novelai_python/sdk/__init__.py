@@ -5,7 +5,8 @@
 # @Software: PyCharm
 
 from .ai.generate_image import GenerateImageInfer, ImageGenerateResp  # noqa 401
+from .ai.generate_image.suggest_tags import SuggestTags, SuggestTagsResp  # noqa 401
+from .ai.upscale import Upscale, UpscaleResp  # noqa 401
 from .user.information import Information, InformationResp  # noqa 401
 from .user.login import Login, LoginResp  # noqa 401
 from .user.subscription import Subscription, SubscriptionResp  # noqa 401
-from .ai.upscale import Upscale, UpscaleResp  # noqa 401
