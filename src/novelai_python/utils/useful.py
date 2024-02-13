@@ -6,7 +6,6 @@
 import collections
 import random
 from typing import List, Union
-from typing import Optional
 
 import cv2 as cv
 import numpy as np
@@ -50,11 +49,13 @@ class QueSelect(object):
 
 def create_mask_from_sketch(original_img_bytes: bytes,
                             sketch_img_bytes: bytes,
-                            output_format: Optional[str] = '.png'
+                            output_format: str = '.png',
+                            jagged_edges: bool = True
                             ) -> bytes:
     """
     Function to create a mask from original and sketch images input as bytes. Returns bytes.
 
+    :param jagged_edges:  Whether to create jagged edges in the mask. Defaults to False.
     :param original_img_bytes: Bytes corresponding to the original image.
     :param sketch_img_bytes: Bytes corresponding to the sketch image.
     :param output_format: Format of the output image. Defaults to '.png'. It could also be '.jpg'
@@ -77,18 +78,27 @@ def create_mask_from_sketch(original_img_bytes: bytes,
     # Threshold to create the mask
     _, thresh = cv.threshold(diff_gray, 10, 255, cv.THRESH_BINARY)
 
+    if jagged_edges:
+        # Use a bigger kernel for dilation to create larger 'step' effect at the edges
+        kernel = np.ones((7, 7), np.uint8)
+    else:
+        kernel = np.ones((3, 3), np.uint8)
+
     # Perform morphological opening to remove small noise
-    kernel = np.ones((3, 3), np.uint8)
     opening = cv.morphologyEx(thresh, cv.MORPH_OPEN, kernel, iterations=2)
 
-    # 高斯模糊
+    # Further remove noise with a Gaussian filter
     smooth = cv.GaussianBlur(opening, (5, 5), 0)
 
-    # Convert image to bytes
+    if jagged_edges:
+        # Apply additional thresholding to create sharper, jagged edges
+        _, smooth = cv.threshold(smooth, 128, 255, cv.THRESH_BINARY)
+
+    # Convert image to BytesIO object
     is_success, buffer = cv.imencode(output_format, smooth)
     if is_success:
-        output_bytes = buffer.tobytes()
+        output_io = buffer.tobytes()
     else:
-        raise ValueError("Error during conversion of image to bytes")
+        raise ValueError("Error during conversion of image to BytesIO object")
 
-    return output_bytes
+    return output_io
