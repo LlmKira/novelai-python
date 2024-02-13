@@ -47,6 +47,10 @@ class QueSelect(object):
         return selected
 
 
+import cv2 as cv
+import numpy as np
+
+
 def create_mask_from_sketch(original_img_bytes: bytes,
                             sketch_img_bytes: bytes,
                             min_block_size: int = 15,
@@ -81,6 +85,7 @@ def create_mask_from_sketch(original_img_bytes: bytes,
     # Threshold to create the mask
     _, thresh = cv.threshold(diff_gray, 10, 255, cv.THRESH_BINARY)
 
+    # Create bigger kernel for morphological operations
     if jagged_edges:
         # Use a bigger kernel for dilation to create larger 'step' effect at the edges
         kernel = np.ones((7, 7), np.uint8)
@@ -94,7 +99,7 @@ def create_mask_from_sketch(original_img_bytes: bytes,
     dilation = cv.dilate(opening, kernel, iterations=2)
 
     # Perform morphological closing to connect separated areas
-    closing = cv.morphologyEx(dilation, cv.MORPH_CLOSE, kernel, iterations=2)
+    closing = cv.morphologyEx(dilation, cv.MORPH_CLOSE, kernel, iterations=3)
 
     # Further remove noise with a Gaussian filter
     smooth = cv.GaussianBlur(closing, (5, 5), 0)
