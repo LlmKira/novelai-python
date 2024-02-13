@@ -1,6 +1,6 @@
 # novelai-python
 
-[![PyPI version](https://badge.fury.io/py/novelai_python.svg)](https://badge.fury.io/py/novelai_python)
+[![PyPI version](https://badge.fury.io/py/novelai-python.svg)](https://badge.fury.io/py/novelai-python)
 [![Downloads](https://pepy.tech/badge/novelai_python)](https://pepy.tech/project/novelai_python)
 
 The goal of this repository is to use Pydantic to build legitimate requests to access the Novelai API service.
@@ -11,15 +11,19 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 - [x] /user/subscription
 - [x] /user/login
 - [x] /user/information
+- [x] /ai/upscale
 - [ ] /ai/generate-image/suggest-tags
 - [ ] /ai/annotate-image
 - [ ] /ai/classify
-- [ ] /ai/upscale
 - [ ] /ai/generate-prompt
 - [ ] /ai/generate
 - [ ] /ai/generate-voice
 
 ### Usage 🖥️
+
+```shell
+pip install novelai-python
+```
 
 More examples can be found in the [playground](https://github.com/LlmKira/novelai-python/tree/main/playground) directory.
 

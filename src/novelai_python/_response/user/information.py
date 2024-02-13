@@ -4,10 +4,12 @@
 # @File    : information.py
 # @Software: PyCharm
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from ..schema import RespBase
 
 
-class InformationResp(BaseModel):
+class InformationResp(RespBase):
     emailVerified: bool = Field(..., description="Email verification status")
     emailVerificationLetterSent: bool = Field(..., description="Email verification letter sent status")
     trialActivated: bool = Field(..., description="Trial activation status")

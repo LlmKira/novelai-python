@@ -7,6 +7,8 @@ from typing import Optional, Dict, Any, List
 
 from pydantic import BaseModel, Field
 
+from ..schema import RespBase
+
 
 class TrainingSteps(BaseModel):
     fixedTrainingStepsLeft: int
@@ -30,7 +32,7 @@ class Perks(BaseModel):
     contextTokens: int
 
 
-class SubscriptionResp(BaseModel):
+class SubscriptionResp(RespBase):
     tier: int = Field(..., description="Subscription tier")
     active: bool = Field(..., description="Subscription status")
     expiresAt: int = Field(..., description="Subscription expiration time")

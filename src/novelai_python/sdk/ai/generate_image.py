@@ -22,7 +22,7 @@ from typing_extensions import override
 
 from ..schema import ApiBaseModel
 from ..._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
-from ..._response import ImageGenerateResp
+from ..._response.ai.generate_image import ImageGenerateResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy, NovelAiMetadata
 
@@ -102,7 +102,6 @@ class Resolution(Enum):
 
 class GenerateImageInfer(ApiBaseModel):
     _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
-    _charge: bool = PrivateAttr(False)
 
     class Params(BaseModel):
         # Inpaint
@@ -412,14 +411,30 @@ class GenerateImageInfer(ApiBaseModel):
         request_data = self.model_dump(mode="json", exclude_none=True)
         # Header
         if isinstance(session, AsyncSession):
-            session.headers.update(self.necessary_headers(request_data))
+            session.headers.update(await self.necessary_headers(request_data))
         elif isinstance(session, CredentialBase):
             update_header = await self.necessary_headers(request_data)
             session = await session.get_session(update_headers=update_header)
         if override_headers:
             session.headers.clear()
             session.headers.update(override_headers)
-        logger.debug(f"Request Data: {request_data}")
+        try:
+            _log_data = request_data.copy()
+            if self.action == Action.GENERATE:
+                logger.debug(f"Request Data: {_log_data}")
+            else:
+                _log_data.get("parameters", {}).update({
+                    "image": "base64 data" if self.parameters.image else "None",
+                }
+                )
+                _log_data.get("parameters", {}).update(
+                    {
+                        "mask": "base64 data" if self.parameters.mask else "None",
+                    }
+                )
+                logger.debug(f"Request Data: {request_data}")
+        except Exception as e:
+            logger.warning(f"Error when print log data: {e}")
         try:
             assert hasattr(session, "post"), "session must have post method."
             response = await session.post(

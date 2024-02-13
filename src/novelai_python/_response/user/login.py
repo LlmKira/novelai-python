@@ -3,8 +3,9 @@
 # @Author  : sudoskys
 # @File    : login.py
 # @Software: PyCharm
-from pydantic import BaseModel
+
+from ..schema import RespBase
 
 
-class LoginResp(BaseModel):
+class LoginResp(RespBase):
     accessToken: str
