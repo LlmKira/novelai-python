@@ -207,6 +207,14 @@ class GenerateImageInfer(ApiBaseModel):
     parameters: Params = Params()
     model_config = ConfigDict(extra="ignore")
 
+    @property
+    def endpoint(self):
+        return self._endpoint
+
+    @endpoint.setter
+    def endpoint(self, value):
+        self._endpoint = value
+
     @override
     def model_post_init(self, *args) -> None:
         """
@@ -241,19 +249,13 @@ class GenerateImageInfer(ApiBaseModel):
     def validate_model(self):
         if self.action == Action.INFILL and not self.parameters.mask:
             logger.warning("Mask maybe required for infill mode.")
+        if self.action == Action.INFILL:
+            self.parameters.extra_noise_seed = self.parameters.seed
         return self
 
     @property
     def base_url(self):
         return f"{self.endpoint.strip('/')}/ai/generate-image"
-
-    @property
-    def endpoint(self):
-        return self._endpoint
-
-    @endpoint.setter
-    def endpoint(self, value):
-        self._endpoint = value
 
     def calculate_cost(self, is_opus: bool = False):
         """
