@@ -49,13 +49,13 @@ class QueSelect(object):
 
 def create_mask_from_sketch(original_img_bytes: bytes,
                             sketch_img_bytes: bytes,
-                            min_block_size: int = 2,
-                            jagged_edges: bool = False,
+                            min_block_size: int = 15,
+                            jagged_edges: bool = True,
                             output_format: str = '.png'
                             ) -> bytes:
     """
     Function to create a mask from original and sketch images input as bytes. Returns BytesIO object.
-    
+
     :param original_img_bytes:  Bytes corresponding to the original image.
     :param sketch_img_bytes:  Bytes corresponding to the sketch image.
     :param min_block_size:  The minimum size of the pixel blocks. Default is 1, i.e., no pixelation.
@@ -90,14 +90,21 @@ def create_mask_from_sketch(original_img_bytes: bytes,
     # Perform morphological opening to remove small noise
     opening = cv.morphologyEx(thresh, cv.MORPH_OPEN, kernel, iterations=2)
 
+    # Perform morphological dilation
+    dilation = cv.dilate(opening, kernel, iterations=2)
+
+    # Perform morphological closing to connect separated areas
+    closing = cv.morphologyEx(dilation, cv.MORPH_CLOSE, kernel, iterations=2)
+
     # Further remove noise with a Gaussian filter
-    smooth = cv.GaussianBlur(opening, (5, 5), 0)
+    smooth = cv.GaussianBlur(closing, (5, 5), 0)
 
     if min_block_size > 1:
         # Resize to smaller image, then resize back to original size to create a pixelated effect
         small = cv.resize(smooth, (smooth.shape[1] // min_block_size, smooth.shape[0] // min_block_size),
                           interpolation=cv.INTER_LINEAR)
         smooth = cv.resize(small, (smooth.shape[1], smooth.shape[0]), interpolation=cv.INTER_NEAREST)
+
     if jagged_edges:
         # Apply additional thresholding to create sharper, jagged edges
         _, smooth = cv.threshold(smooth, 128, 255, cv.THRESH_BINARY)
