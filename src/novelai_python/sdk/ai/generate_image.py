@@ -7,6 +7,7 @@ import base64
 import json
 import math
 import random
+from copy import deepcopy
 from enum import Enum, IntEnum
 from io import BytesIO
 from typing import Optional, Union
@@ -249,7 +250,7 @@ class GenerateImageInfer(ApiBaseModel):
     def validate_model(self):
         if self.action == Action.INFILL and not self.parameters.mask:
             logger.warning("Mask maybe required for infill mode.")
-        if self.action == Action.INFILL:
+        if self.action != Action.GENERATE:
             self.parameters.extra_noise_seed = self.parameters.seed
         return self
 
@@ -394,6 +395,7 @@ class GenerateImageInfer(ApiBaseModel):
             "Sec-Fetch-Site": "same-site",
             "Pragma": "no-cache",
             "Cache-Control": "no-cache",
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0"
         }
 
     async def request(self,
@@ -421,20 +423,21 @@ class GenerateImageInfer(ApiBaseModel):
             session.headers.clear()
             session.headers.update(override_headers)
         try:
-            _log_data = request_data.copy()
+            _log_data = deepcopy(request_data)
             if self.action == Action.GENERATE:
                 logger.debug(f"Request Data: {_log_data}")
             else:
                 _log_data.get("parameters", {}).update({
-                    "image": "base64 data" if self.parameters.image else "None",
+                    "image": "base64 data" if self.parameters.image else None,
                 }
                 )
                 _log_data.get("parameters", {}).update(
                     {
-                        "mask": "base64 data" if self.parameters.mask else "None",
+                        "mask": "base64 data" if self.parameters.mask else None,
                     }
                 )
-                logger.debug(f"Request Data: {request_data}")
+                logger.debug(f"Request Data: {_log_data}")
+            del _log_data
         except Exception as e:
             logger.warning(f"Error when print log data: {e}")
         try:

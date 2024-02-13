@@ -32,10 +32,10 @@ async def main():
     try:
         gen = GenerateImageInfer.build(
             prompt=f"1girl, spring, jacket, sfw, angel, flower,{enhance}",
-            action=Action.GENERATE,
+            action=Action.IMG2IMG,
             image=encoded,
             add_original_image=True,
-            strength=0.99,
+            strength=0.5,
             width=1088,
             height=896
         )
