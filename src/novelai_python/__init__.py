@@ -16,10 +16,14 @@ from .sdk import GenerateImageInfer, ImageGenerateResp
 from .sdk import Information, InformationResp
 from .sdk import Login, LoginResp
 from .sdk import Subscription, SubscriptionResp
+from .sdk import Upscale, UpscaleResp
 
 __all__ = [
     "GenerateImageInfer",
     "ImageGenerateResp",
+
+    "Upscale",
+    "UpscaleResp",
 
     "Subscription",
     "SubscriptionResp",

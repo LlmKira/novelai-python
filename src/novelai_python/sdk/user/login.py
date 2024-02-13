@@ -77,7 +77,7 @@ class Login(ApiBaseModel):
         # Data Build
         request_data = self.model_dump(mode="json", exclude_none=True)
         if isinstance(session, AsyncSession):
-            session.headers.update(self.necessary_headers(request_data))
+            session.headers.update(await self.necessary_headers(request_data))
         elif isinstance(session, CredentialBase):
             session = await session.get_session(update_headers=await self.necessary_headers(request_data))
         # Header

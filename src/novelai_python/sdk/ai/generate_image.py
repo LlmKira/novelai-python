@@ -22,7 +22,7 @@ from typing_extensions import override
 
 from ..schema import ApiBaseModel
 from ..._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
-from ..._response import ImageGenerateResp
+from ..._response.ai.generate_image import ImageGenerateResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy, NovelAiMetadata
 
@@ -102,7 +102,6 @@ class Resolution(Enum):
 
 class GenerateImageInfer(ApiBaseModel):
     _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
-    _charge: bool = PrivateAttr(False)
 
     class Params(BaseModel):
         # Inpaint
@@ -412,7 +411,7 @@ class GenerateImageInfer(ApiBaseModel):
         request_data = self.model_dump(mode="json", exclude_none=True)
         # Header
         if isinstance(session, AsyncSession):
-            session.headers.update(self.necessary_headers(request_data))
+            session.headers.update(await self.necessary_headers(request_data))
         elif isinstance(session, CredentialBase):
             update_header = await self.necessary_headers(request_data)
             session = await session.get_session(update_headers=update_header)

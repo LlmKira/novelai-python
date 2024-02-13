@@ -7,8 +7,10 @@ from typing import Tuple, List
 
 from pydantic import BaseModel
 
+from ..schema import RespBase
 
-class ImageGenerateResp(BaseModel):
+
+class ImageGenerateResp(RespBase):
     class RequestParams(BaseModel):
         endpoint: str
         raw_request: dict = None

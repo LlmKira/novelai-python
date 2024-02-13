@@ -24,6 +24,7 @@ class JwtCredential(CredentialBase):
             self._session = AsyncSession(timeout=timeout, headers={
                 "Accept": "*/*",
                 "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
+                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0",
                 "Accept-Encoding": "gzip, deflate, br",
                 "Authorization": f"Bearer {self.jwt_token.get_secret_value()}",
                 "Content-Type": "application/json",
