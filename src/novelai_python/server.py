@@ -15,6 +15,7 @@ from starlette.responses import JSONResponse, StreamingResponse
 
 from .credential import JwtCredential, SecretStr
 from .sdk.ai.generate_image import GenerateImageInfer
+from .sdk.ai.generate_image.suggest_tags import SuggestTags
 from .sdk.ai.upscale import Upscale
 from .sdk.user.information import Information
 from .sdk.user.login import Login
@@ -113,6 +114,25 @@ async def upscale(
         return StreamingResponse(zip_file_bytes, media_type='application/zip', headers={
             'Content-Disposition': 'attachment;filename=image.zip'
         })
+    except Exception as e:
+        logger.exception(e)
+        return JSONResponse(status_code=500, content=e.__dict__)
+
+
+@app.get("/ai/generate_image/suggest_tags")
+async def suggest_tags(
+        req: SuggestTags,
+        current_token: str = Depends(get_current_token)
+):
+    """
+    生成建议
+    :param current_token: Authorization
+    :param req: SuggestTags
+    :return:
+    """
+    try:
+        _result = await req.request(session=get_session(current_token))
+        return _result.model_dump()
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)

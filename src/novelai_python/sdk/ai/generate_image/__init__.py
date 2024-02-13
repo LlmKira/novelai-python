@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2024/1/26 上午11:21
+# @Time    : 2024/2/13 下午8:08
 # @Author  : sudoskys
-# @File    : generate_image.py
+# @File    : __init__.py.py
 # @Software: PyCharm
 import base64
 import json
 import math
 import random
 from copy import deepcopy
-from enum import Enum, IntEnum
 from io import BytesIO
 from typing import Optional, Union
 from urllib.parse import urlparse
@@ -21,84 +20,12 @@ from loguru import logger
 from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator, Field
 from typing_extensions import override
 
-from ..schema import ApiBaseModel
-from ..._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
-from ..._response.ai.generate_image import ImageGenerateResp
-from ...credential import CredentialBase
-from ...utils import try_jsonfy, NovelAiMetadata
-
-
-class Sampler(Enum):
-    K_EULER = "k_euler"
-    K_EULER_ANCESTRAL = "k_euler_ancestral"
-    K_DPMPP_2S_ANCESTRAL = "k_dpmpp_2s_ancestral"
-    K_DPMPP_2M = "k_dpmpp_2m"
-    K_DPMPP_SDE = "k_dpmpp_sde"
-    DDIM_V3 = "ddim_v3"
-
-
-class NoiseSchedule(Enum):
-    NATIVE = "native"
-    KARRAS = "karras"
-    EXPONENTIAL = "exponential"
-    POLYEXPONENTIAL = "polyexponential"
-
-
-class UCPreset(IntEnum):
-    TYPE0 = 0
-    TYPE1 = 1
-    TYPE2 = 2
-    TYPE3 = 3
-
-
-class Action(Enum):
-    GENERATE = "generate"
-    """Generate Image"""
-    IMG2IMG = "img2img"
-    """Image to Image"""
-    INFILL = "infill"
-    """Inpainting"""
-
-
-class Model(Enum):
-    NAI_DIFFUSION_3 = "nai-diffusion-3"
-    NAI_DIFFUSION_3_INPAINTING = "nai-diffusion-3-inpainting"
-
-    NAI_DIFFUSION = "nai-diffusion"
-    NAI_DIFFUSION_INPAINTING = "nai-diffusion-inpainting"
-
-    SAFE_DIFFUSION = "safe-diffusion"
-    SAFE_DIFFUSION_INPAINTING = "safe-diffusion-inpainting"
-
-    NAI_DIFFUSION_FURRY = "nai-diffusion-furry"
-    FURRY_DIFFUSION_INPAINTING = "furry-diffusion-inpainting"
-
-
-class ControlNetModel(Enum):
-    HED = "hed"
-    """边缘检测"""
-    MIDAS = "midas"
-    """景深"""
-    FAKE_SCRIBBLE = "fake_scribble"
-    """伪涂鸦"""
-    M_LSD = "mlsd"
-    """(建筑)线条检测"""
-    LANDSCAPER = "uniformer"
-    """风景生成"""
-
-
-class Resolution(Enum):
-    RES_512_768 = (512, 768)
-    RES_768_512 = (768, 512)
-    RES_640_640 = (640, 640)
-    RES_832_1216 = (832, 1216)
-    RES_1216_832 = (1216, 832)
-    RES_1024_1024 = (1024, 1024)
-    RES_1024_1536 = (1024, 1536)
-    RES_1536_1024 = (1536, 1024)
-    RES_1472_1472 = (1472, 1472)
-    RES_1088_1920 = (1088, 1920)
-    RES_1920_1088 = (1920, 1088)
+from ._enum import Model, Sampler, NoiseSchedule, ControlNetModel, Action, UCPreset
+from ...schema import ApiBaseModel
+from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
+from ...._response.ai.generate_image import ImageGenerateResp
+from ....credential import CredentialBase
+from ....utils import try_jsonfy, NovelAiMetadata
 
 
 class GenerateImageInfer(ApiBaseModel):
@@ -395,7 +322,7 @@ class GenerateImageInfer(ApiBaseModel):
             "Sec-Fetch-Site": "same-site",
             "Pragma": "no-cache",
             "Cache-Control": "no-cache",
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0"
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_2_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
         }
 
     async def request(self,

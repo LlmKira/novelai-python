@@ -30,7 +30,7 @@ class LoginCredential(CredentialBase):
             resp = await Login.build(user_name=self.username, password=self.password.get_secret_value()).request()
             self._session = AsyncSession(timeout=timeout, headers={
                 "Accept": "*/*",
-                "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:123.0) Gecko/20100101 Firefox/123.0",
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_2_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
                 "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
                 "Accept-Encoding": "gzip, deflate, br",
                 "Authorization": f"Bearer {resp.accessToken}",
