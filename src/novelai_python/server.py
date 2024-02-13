@@ -15,6 +15,7 @@ from starlette.responses import JSONResponse, StreamingResponse
 
 from .credential import JwtCredential, SecretStr
 from .sdk.ai.generate_image import GenerateImageInfer
+from .sdk.ai.upscale import Upscale
 from .sdk.user.information import Information
 from .sdk.user.login import Login
 from .sdk.user.subscription import Subscription
@@ -90,6 +91,33 @@ async def subscription(
         return JSONResponse(status_code=500, content=e.__dict__)
 
 
+@app.post("/ai/upscale")
+async def upscale(
+        req: Upscale,
+        current_token: str = Depends(get_current_token)
+):
+    """
+    生成图片
+    :param current_token: Authorization
+    :param req: Upscale
+    :return:
+    """
+    try:
+        _result = await req.request(session=get_session(current_token), remove_sign=True)
+        zip_file_bytes = io.BytesIO()
+        with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+            file = _result.files  # ONLY TUPLE
+            zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
+        # return the zip file
+        zip_file_bytes.seek(0)
+        return StreamingResponse(zip_file_bytes, media_type='application/zip', headers={
+            'Content-Disposition': 'attachment;filename=image.zip'
+        })
+    except Exception as e:
+        logger.exception(e)
+        return JSONResponse(status_code=500, content=e.__dict__)
+
+
 @app.post("/ai/generate_image")
 async def generate_image(
         req: GenerateImageInfer,
@@ -110,7 +138,7 @@ async def generate_image(
         # return the zip file
         zip_file_bytes.seek(0)
         return StreamingResponse(zip_file_bytes, media_type='application/zip', headers={
-            'Content-Disposition': 'attachment;filename=multiple_files.zip'
+            'Content-Disposition': 'attachment;filename=image.zip'
         })
     except Exception as e:
         logger.exception(e)
