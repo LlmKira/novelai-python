@@ -236,7 +236,7 @@ class GenerateImageInfer(ApiBaseModel):
               seed: int = None,
               steps: int = 28,
               scale: float = 6.0,
-              cfg_rescale: int = 0,
+              cfg_rescale: float = 0,
               sampler: Union[Sampler, str] = Sampler.K_EULER,
               width: int = 832,
               height: int = 1216,
