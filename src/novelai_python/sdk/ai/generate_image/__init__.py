@@ -179,6 +179,9 @@ class GenerateImageInfer(ApiBaseModel):
             logger.warning("Mask maybe required for infill mode.")
         if self.action != Action.GENERATE:
             self.parameters.extra_noise_seed = self.parameters.seed
+        if self.action == Action.IMG2IMG:
+            self.parameters.sm = False
+            self.parameters.sm_dyn = False
         return self
 
     @property
