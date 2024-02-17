@@ -84,7 +84,7 @@ class SuggestTags(ApiBaseModel):
                 url=self.base_url + "?" + "&".join([f"{k}={v}" for k, v in request_data.items()])
             )
             if "application/json" not in response.headers.get('Content-Type') or response.status_code != 200:
-                logger.error(
+                logger.warning(
                     f"Error with content type: {response.headers.get('Content-Type')} and code: {response.status_code}"
                 )
                 try:
