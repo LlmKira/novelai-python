@@ -7,7 +7,7 @@ from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import SecretStr, Field, field_validator
 
-from ._base import CredentialBase
+from ._base import CredentialBase, FAKE_UA
 
 
 class ApiCredential(CredentialBase):
@@ -25,12 +25,12 @@ class ApiCredential(CredentialBase):
                 "Accept": "*/*",
                 "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
                 "Accept-Encoding": "gzip, deflate, br",
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_2_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+                "User-Agent": FAKE_UA.edge,
                 "Authorization": f"Bearer {self.api_token.get_secret_value()}",
                 "Content-Type": "application/json",
                 "Origin": "https://novelai.net",
                 "Referer": "https://novelai.net/",
-            }, impersonate="chrome110")
+            }, impersonate="edge101")
         self._session.headers.update(update_headers)
         return self._session
 

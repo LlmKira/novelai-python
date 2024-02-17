@@ -4,7 +4,10 @@
 # @File    : _shema.py
 # @Software: PyCharm
 from curl_cffi.requests import AsyncSession
+from fake_useragent import UserAgent
 from pydantic import BaseModel
+
+FAKE_UA = UserAgent()
 
 
 class CredentialBase(BaseModel):

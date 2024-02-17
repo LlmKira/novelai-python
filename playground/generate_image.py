@@ -38,6 +38,7 @@ async def main():
             session=globe_s, remove_sign=True
         )
     except APIError as e:
+        print(str(e))
         print(e.response)
         return
 

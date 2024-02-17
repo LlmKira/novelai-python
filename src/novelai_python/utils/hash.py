@@ -74,17 +74,18 @@ class NovelAiMetadata(BaseModel):
     @classmethod
     def build_from_img(cls, image_io):
         with Image.open(image_io) as img:
-            title = img.info.get("Title")
-            if not title == 'AI generated image':
+            title = img.info.get("Title", "Empty")
+            if title != 'AI generated image':
                 raise ValueError("Not a NaiPic")
             prompt = img.info.get("Description")
-            comment = img.info.get("Comment")
+            comment = img.info.get("Comment", None)
+            assert isinstance(comment, str), ValueError("Comment Empty")
             try:
                 comment = json.loads(comment)
             except Exception as e:
                 logger.debug(e)
                 comment = {}
-            return cls(title=title, description=prompt, comment=comment)
+        return cls(title=title, description=prompt, comment=comment)
 
     @classmethod
     def build_from_param(cls, prompt, neg_prompt, **kwargs):

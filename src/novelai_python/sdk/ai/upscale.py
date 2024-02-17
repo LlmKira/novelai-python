@@ -15,6 +15,7 @@ import httpx
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import ConfigDict, PrivateAttr, model_validator
+from tenacity import wait_random, retry, stop_after_attempt, retry_if_exception
 
 from ..schema import ApiBaseModel
 from ..._exceptions import APIError, AuthError, SessionHttpError
@@ -73,7 +74,6 @@ class Upscale(ApiBaseModel):
         return {
             "Host": urlparse(self.endpoint).netloc,
             "Accept": "*/*",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_2_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
             "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
             "Accept-Encoding": "gzip, deflate, br",
             "Referer": "https://novelai.net/",
@@ -88,6 +88,12 @@ class Upscale(ApiBaseModel):
             "Cache-Control": "no-cache",
         }
 
+    @retry(
+        wait=wait_random(min=1, max=3),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
+        reraise=True
+    )
     async def request(self,
                       session: Union[AsyncSession, "CredentialBase"],
                       *,
