@@ -5,7 +5,7 @@
 groups = ["default", "dev", "testing"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:ff215917aa0a4f634788c7f83cab0540c5d5446b0b6d551af9ab635b03e14469"
+content_hash = "sha256:90a2e0d19ce5af6c64699269d1f82ca785c5ef752121c570efdee808a295bb3d"
 
 [[package]]
 name = "annotated-types"
@@ -1054,6 +1054,17 @@ dependencies = [
 files = [
     {file = "starlette-0.35.1-py3-none-any.whl", hash = "sha256:50bbbda9baa098e361f398fda0928062abbaf1f54f4fadcbe17c092a01eb9a25"},
     {file = "starlette-0.35.1.tar.gz", hash = "sha256:3e2639dac3520e4f58734ed22553f950d3f3cb1001cd2eaac4d57e8cdc5f66bc"},
+]
+
+[[package]]
+name = "tenacity"
+version = "8.2.3"
+requires_python = ">=3.7"
+summary = "Retry code until it succeeds"
+groups = ["default"]
+files = [
+    {file = "tenacity-8.2.3-py3-none-any.whl", hash = "sha256:ce510e327a630c9e1beaf17d42e6ffacc88185044ad85cf74c0a8887c6a0f88c"},
+    {file = "tenacity-8.2.3.tar.gz", hash = "sha256:5398ef0d78e63f40007c1fb4c0bff96e1911394d2fa8d194f77619c05ff6cc8a"},
 ]
 
 [[package]]

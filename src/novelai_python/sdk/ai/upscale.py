@@ -15,6 +15,7 @@ import httpx
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import ConfigDict, PrivateAttr, model_validator
+from tenacity import wait_random, retry, stop_after_attempt, retry_if_exception
 
 from ..schema import ApiBaseModel
 from ..._exceptions import APIError, AuthError, SessionHttpError
@@ -87,6 +88,12 @@ class Upscale(ApiBaseModel):
             "Cache-Control": "no-cache",
         }
 
+    @retry(
+        wait=wait_random(min=1, max=3),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
+        reraise=True
+    )
     async def request(self,
                       session: Union[AsyncSession, "CredentialBase"],
                       *,

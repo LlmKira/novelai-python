@@ -18,6 +18,7 @@ import httpx
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator, Field
+from tenacity import retry, stop_after_attempt, wait_random, retry_if_exception
 from typing_extensions import override
 
 from ._enum import Model, Sampler, NoiseSchedule, ControlNetModel, Action, UCPreset
@@ -327,6 +328,12 @@ class GenerateImageInfer(ApiBaseModel):
             "Cache-Control": "no-cache",
         }
 
+    @retry(
+        wait=wait_random(min=1, max=3),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
+        reraise=True
+    )
     async def request(self,
                       session: Union[AsyncSession, "CredentialBase"],
                       *,
