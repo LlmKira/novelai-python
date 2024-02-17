@@ -9,8 +9,6 @@ from pydantic import BaseModel
 
 FAKE_UA = UserAgent()
 
-print(FAKE_UA.chrome)
-
 
 class CredentialBase(BaseModel):
     _session: AsyncSession = None

@@ -24,13 +24,13 @@ class JwtCredential(CredentialBase):
             self._session = AsyncSession(timeout=timeout, headers={
                 "Accept": "*/*",
                 "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
-                "User-Agent": FAKE_UA.chrome,
+                "User-Agent": FAKE_UA.edge,
                 "Accept-Encoding": "gzip, deflate, br",
                 "Authorization": f"Bearer {self.jwt_token.get_secret_value()}",
                 "Content-Type": "application/json",
                 "Origin": "https://novelai.net",
                 "Referer": "https://novelai.net/",
-            }, impersonate="chrome110")
+            }, impersonate="edge101")
         assert isinstance(update_headers, dict), "update_headers must be a dict"
         self._session.headers.update(update_headers)
         return self._session
