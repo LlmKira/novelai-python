@@ -325,7 +325,6 @@ class GenerateImageInfer(ApiBaseModel):
             "Sec-Fetch-Site": "same-site",
             "Pragma": "no-cache",
             "Cache-Control": "no-cache",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_2_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
         }
 
     async def request(self,
