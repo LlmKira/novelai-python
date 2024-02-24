@@ -274,6 +274,7 @@ class GenerateImageInfer(ApiBaseModel):
               mask: Union[str, bytes] = None,
               controlnet_model: Union[ControlNetModel, str] = None,
               controlnet_condition: str = None,
+              sm_dyn: bool = False,
               **kwargs
               ):
         """
@@ -298,6 +299,7 @@ class GenerateImageInfer(ApiBaseModel):
         :param mask: Inpainting mask
         :param controlnet_model: 控制网络模型
         :param controlnet_condition: 控制网络条件
+        :param sm_dyn: 是否使用动态sm
         :return: self
         """
         assert isinstance(prompt, str)
@@ -316,7 +318,8 @@ class GenerateImageInfer(ApiBaseModel):
             "add_original_image": add_original_image,
             "mask": mask,
             "controlnet_model": controlnet_model,
-            "controlnet_condition": controlnet_condition
+            "controlnet_condition": controlnet_condition,
+            "sm_dyn": sm_dyn,
         })
         if reference_mode:
             kwargs.update({
