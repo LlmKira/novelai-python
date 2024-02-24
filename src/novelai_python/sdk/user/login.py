@@ -92,7 +92,7 @@ class Login(ApiBaseModel):
                 data=json.dumps(request_data).encode("utf-8")
             )
             if "application/json" not in response.headers.get('Content-Type') or response.status_code != 201:
-                logger.error(
+                logger.warning(
                     f"Error with content type: {response.headers.get('Content-Type')} and code: {response.status_code}"
                 )
                 try:

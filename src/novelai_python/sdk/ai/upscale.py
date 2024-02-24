@@ -131,7 +131,7 @@ class Upscale(ApiBaseModel):
                 data=json.dumps(request_data).encode("utf-8")
             )
             if response.headers.get('Content-Type') not in ['binary/octet-stream', 'application/x-zip-compressed']:
-                logger.error(
+                logger.warning(
                     f"Error with content type: {response.headers.get('Content-Type')} and code: {response.status_code}"
                 )
                 try:

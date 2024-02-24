@@ -34,7 +34,7 @@ class GenerateImageInfer(ApiBaseModel):
 
     class Params(BaseModel):
         # Inpaint
-        add_original_image: Optional[bool] = False
+        add_original_image: Optional[bool] = False  # FIXME: 未知作用
         mask: Optional[Union[str, bytes]] = None  # img2img,base64
 
         cfg_rescale: Optional[float] = Field(0, ge=0, le=1, multiple_of=0.02)
@@ -57,6 +57,20 @@ class GenerateImageInfer(ApiBaseModel):
 
         # Misc
         params_version: Optional[int] = 1
+        reference_image: Optional[Union[str, bytes]] = None
+        reference_information_extracted: Optional[float] = Field(1,
+                                                                 ge=0,
+                                                                 le=1,
+                                                                 multiple_of=0.01,
+                                                                 description="extracting concepts or features"
+                                                                 )
+        reference_strength: Optional[float] = Field(0.6,
+                                                    ge=0,
+                                                    le=1,
+                                                    multiple_of=0.01,
+                                                    description="the stronger the AI will try to emulate visual cues."
+                                                    )
+
         legacy: Optional[bool] = False
         legacy_v3_extend: Optional[bool] = False
 
@@ -84,14 +98,6 @@ class GenerateImageInfer(ApiBaseModel):
         """Undesired Content Strength"""
         width: Optional[int] = Field(832, ge=64, le=49152)
 
-        @model_validator(mode="after")
-        def validate_img2img(self):
-            image = True if self.image else False
-            add_origin = True if self.add_original_image else False
-            if image != add_origin:
-                raise ValueError('Invalid Model Params For img2img2 mode... image should match add_original_image!')
-            return self
-
         @field_validator('mask')
         def mask_validator(cls, v: Union[str, bytes]):
             if isinstance(v, str) and v.startswith("data:image/"):
@@ -101,6 +107,14 @@ class GenerateImageInfer(ApiBaseModel):
             return v
 
         @field_validator('image')
+        def image_validator(cls, v: Union[str, bytes]):
+            if isinstance(v, str) and v.startswith("data:image/"):
+                raise ValueError("Invalid image format, must be base64 encoded.")
+            if isinstance(v, bytes):
+                return base64.b64encode(v).decode("utf-8")
+            return v
+
+        @field_validator('reference_image')
         def image_validator(cls, v: Union[str, bytes]):
             if isinstance(v, str) and v.startswith("data:image/"):
                 raise ValueError("Invalid image format, must be base64 encoded.")
@@ -176,13 +190,20 @@ class GenerateImageInfer(ApiBaseModel):
 
     @model_validator(mode="after")
     def validate_model(self):
-        if self.action == Action.INFILL and not self.parameters.mask:
-            logger.warning("Mask maybe required for infill mode.")
+        if self.action == Action.INFILL:
+            if not self.parameters.mask:
+                logger.warning("Mask maybe required for infill mode.")
         if self.action != Action.GENERATE:
             self.parameters.extra_noise_seed = self.parameters.seed
         if self.action == Action.IMG2IMG:
             self.parameters.sm = False
             self.parameters.sm_dyn = False
+            if not self.parameters.image:
+                raise ValueError("image is must required for img2img mode.")
+            if not self.parameters.add_original_image:
+                raise ValueError("add_original_image is must required for img2img mode.")
+        if self.parameters.image and self.parameters.reference_image:
+            logger.warning("image and reference_image should not be used together.")
         return self
 
     @property
@@ -247,6 +268,7 @@ class GenerateImageInfer(ApiBaseModel):
               qualityToggle: bool = True,
               ucPreset: Union[UCPreset, int] = UCPreset.TYPE0,
               image: Union[str, bytes] = None,
+              reference_mode: bool = False,
               add_original_image: bool = None,
               strength: float = None,
               mask: Union[str, bytes] = None,
@@ -264,12 +286,13 @@ class GenerateImageInfer(ApiBaseModel):
         :param negative_prompt: The content of negative prompt
         :param seed: The seed for generate image
         :param steps: The steps for generate image
-        :param scale: Prompt Guidance
+        :param scale: The scale for generate image
         :param cfg_rescale: Prompt Guidance Rescale 0-1 lower is more creative
         :param sampler: The sampler for generate image
         :param width: 宽
         :param height: 高
         :param image: 图片
+        :param reference_mode: 是否是参考模式
         :param add_original_image: 是否添加原始图片
         :param strength: IMG2IMG 强度
         :param mask: Inpainting mask
@@ -290,13 +313,21 @@ class GenerateImageInfer(ApiBaseModel):
             "height": height,
             "qualityToggle": qualityToggle,
             "ucPreset": ucPreset,
-            "image": image,
             "add_original_image": add_original_image,
-            "strength": strength,
             "mask": mask,
             "controlnet_model": controlnet_model,
             "controlnet_condition": controlnet_condition
         })
+        if reference_mode:
+            kwargs.update({
+                "reference_image": image,
+                "reference_strength": strength,
+            })
+        else:
+            kwargs.update({
+                "image": image,
+                "strength": strength,
+            })
         # 清理空值
         param = {k: v for k, v in kwargs.items() if v is not None}
         return cls(
@@ -361,17 +392,15 @@ class GenerateImageInfer(ApiBaseModel):
         try:
             _log_data = deepcopy(request_data)
             if self.action == Action.GENERATE:
+                _log_data.get("parameters", {}).update({
+                    "reference_image": "base64 data" if self.parameters.reference_image else None,
+                })
                 logger.debug(f"Request Data: {_log_data}")
             else:
                 _log_data.get("parameters", {}).update({
                     "image": "base64 data" if self.parameters.image else None,
-                }
-                )
-                _log_data.get("parameters", {}).update(
-                    {
-                        "mask": "base64 data" if self.parameters.mask else None,
-                    }
-                )
+                    "mask": "base64 data" if self.parameters.mask else None,
+                })
                 logger.debug(f"Request Data: {_log_data}")
             del _log_data
         except Exception as e:
@@ -383,7 +412,7 @@ class GenerateImageInfer(ApiBaseModel):
                 data=json.dumps(request_data).encode("utf-8")
             )
             if response.headers.get('Content-Type') not in ['binary/octet-stream', 'application/x-zip-compressed']:
-                logger.error(
+                logger.warning(
                     f"Error with content type: {response.headers.get('Content-Type')} and code: {response.status_code}"
                 )
                 try:
