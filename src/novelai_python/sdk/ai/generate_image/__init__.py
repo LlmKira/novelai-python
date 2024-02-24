@@ -34,7 +34,7 @@ class GenerateImageInfer(ApiBaseModel):
 
     class Params(BaseModel):
         # Inpaint
-        add_original_image: Optional[bool] = True  # FIXME: 未知作用
+        add_original_image: Optional[bool] = False  # FIXME: 未知作用
         mask: Optional[Union[str, bytes]] = None  # img2img,base64
 
         cfg_rescale: Optional[float] = Field(0, ge=0, le=1, multiple_of=0.02)
@@ -100,7 +100,7 @@ class GenerateImageInfer(ApiBaseModel):
 
         @model_validator(mode="after")
         def validate_img2img(self):
-            image = True if self.image else False
+            image = True if self.image or self.reference_image else False
             add_origin = True if self.add_original_image else False
             if image != add_origin:
                 raise ValueError('Invalid Model Params For img2img2 mode... image should match add_original_image!')
@@ -198,15 +198,18 @@ class GenerateImageInfer(ApiBaseModel):
 
     @model_validator(mode="after")
     def validate_model(self):
-        if self.action == Action.INFILL and not self.parameters.mask:
-            logger.warning("Mask maybe required for infill mode.")
+        if self.action == Action.INFILL:
+            if not self.parameters.mask:
+                logger.warning("Mask maybe required for infill mode.")
         if self.action != Action.GENERATE:
             self.parameters.extra_noise_seed = self.parameters.seed
         if self.action == Action.IMG2IMG:
             self.parameters.sm = False
             self.parameters.sm_dyn = False
+            if not self.parameters.image:
+                raise ValueError("image is must required for img2img mode.")
         if self.parameters.image and self.parameters.reference_image:
-            raise ValueError("image and reference_image cannot be used together.")
+            logger.warning("image and reference_image should not be used together.")
         return self
 
     @property
@@ -395,17 +398,15 @@ class GenerateImageInfer(ApiBaseModel):
         try:
             _log_data = deepcopy(request_data)
             if self.action == Action.GENERATE:
+                _log_data.get("parameters", {}).update({
+                    "reference_image": "base64 data" if self.parameters.reference_image else None,
+                })
                 logger.debug(f"Request Data: {_log_data}")
             else:
                 _log_data.get("parameters", {}).update({
                     "image": "base64 data" if self.parameters.image else None,
-                }
-                )
-                _log_data.get("parameters", {}).update(
-                    {
-                        "mask": "base64 data" if self.parameters.mask else None,
-                    }
-                )
+                    "mask": "base64 data" if self.parameters.mask else None,
+                })
                 logger.debug(f"Request Data: {_log_data}")
             del _log_data
         except Exception as e:
