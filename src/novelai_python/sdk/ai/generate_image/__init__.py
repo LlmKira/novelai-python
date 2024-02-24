@@ -286,7 +286,7 @@ class GenerateImageInfer(ApiBaseModel):
         :param negative_prompt: The content of negative prompt
         :param seed: The seed for generate image
         :param steps: The steps for generate image
-        :param scale: Prompt Guidance
+        :param scale: The scale for generate image
         :param cfg_rescale: Prompt Guidance Rescale 0-1 lower is more creative
         :param sampler: The sampler for generate image
         :param width: 宽
