@@ -98,16 +98,6 @@ class GenerateImageInfer(ApiBaseModel):
         """Undesired Content Strength"""
         width: Optional[int] = Field(832, ge=64, le=49152)
 
-        @model_validator(mode="after")
-        def validate_img2img(self):
-            # Deprecated
-            return self
-            image = True if self.image or self.reference_image else False
-            add_origin = True if self.add_original_image else False
-            if image != add_origin:
-                raise ValueError('Invalid Model Params For img2img2 mode... image should match add_original_image!')
-            return self
-
         @field_validator('mask')
         def mask_validator(cls, v: Union[str, bytes]):
             if isinstance(v, str) and v.startswith("data:image/"):
@@ -210,6 +200,8 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.sm_dyn = False
             if not self.parameters.image:
                 raise ValueError("image is must required for img2img mode.")
+            if not self.parameters.add_original_image:
+                raise ValueError("add_original_image is must required for img2img mode.")
         if self.parameters.image and self.parameters.reference_image:
             logger.warning("image and reference_image should not be used together.")
         return self
