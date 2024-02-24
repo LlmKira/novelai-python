@@ -100,6 +100,8 @@ class GenerateImageInfer(ApiBaseModel):
 
         @model_validator(mode="after")
         def validate_img2img(self):
+            # Deprecated
+            return self
             image = True if self.image or self.reference_image else False
             add_origin = True if self.add_original_image else False
             if image != add_origin:
