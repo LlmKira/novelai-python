@@ -64,6 +64,7 @@ class Resolution(Enum):
     RES_1088_1920 = (1088, 1920)
     RES_1920_1088 = (1920, 1088)
 
+
 class Model(Enum):
     NAI_DIFFUSION_3 = "nai-diffusion-3"
     NAI_DIFFUSION_3_INPAINTING = "nai-diffusion-3-inpainting"
@@ -76,3 +77,10 @@ class Model(Enum):
 
     NAI_DIFFUSION_FURRY = "nai-diffusion-furry"
     FURRY_DIFFUSION_INPAINTING = "furry-diffusion-inpainting"
+
+
+INPAINTING_MODEL_LIST = [Model.NAI_DIFFUSION_3_INPAINTING,
+                         Model.NAI_DIFFUSION_INPAINTING,
+                         Model.SAFE_DIFFUSION_INPAINTING,
+                         Model.FURRY_DIFFUSION_INPAINTING
+                         ]
