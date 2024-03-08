@@ -162,3 +162,16 @@ cython_debug/
 .idea/
 /playground/generate_image.png
 /playground/generate_image_img2img.png
+/playground/vibe_inpaint.png
+/playground/vibe_img2img.png
+/playground/vibe.png
+/playground/upscale.py.png
+/playground/upscale.png
+/playground/test.png
+/playground/random_play/
+/playground/upscale/
+/playground/vibe/
+/playground/mask/
+/playground/newtag/
+/playground/oldtag/
+/playground/art_assert/
