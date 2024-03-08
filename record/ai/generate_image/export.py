@@ -7,6 +7,10 @@ from io import BytesIO
 from loguru import logger
 
 
+def ignore(*args, **kwargs):
+    pass
+
+
 def decode_base64_in_dict(data, current_path):
     if isinstance(data, dict):
         for k, v in data.items():
@@ -18,7 +22,7 @@ def decode_base64_in_dict(data, current_path):
                     image_bytes = base64.b64decode(v)
                     image = Image.open(BytesIO(image_bytes))
                 except Exception as e:
-                    pass
+                    ignore(e)
                 else:
                     logger.info(f"Decoding Base64 data in {k}")
                     img_name = f"{current_path}/{k}.png"
