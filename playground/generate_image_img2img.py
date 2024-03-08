@@ -4,57 +4,64 @@
 # @File    : generate_image_img2img.py
 # @Software: PyCharm
 import asyncio
-import base64
 import os
-
+import pathlib
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
 from novelai_python import APIError, Login
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
-from novelai_python.sdk.ai.generate_image import Action
-
-load_dotenv()
-
-enhance = "year 2023,dynamic angle, best quality, amazing quality, very aesthetic, absurdres"
-token = None
-jwt = os.getenv("NOVELAI_JWT") or token
+from novelai_python.sdk.ai.generate_image import Action, Sampler
+from novelai_python.utils.useful import enum_to_list
 
 
-async def main():
-    globe_s = JwtCredential(jwt_token=SecretStr(jwt))
-    _res = await Login.build(user_name=os.getenv("NOVELAI_USER"), password=os.getenv("NOVELAI_PASS")
-                             ).request()
-    with open("raw_test_image.png", "rb") as f:
-        data = f.read()
-    # Base64 encode the data
-    encoded = base64.b64encode(data).decode()
+async def generate(
+        prompt="1girl, year 2023, dynamic angle, best quality, amazing quality, very aesthetic, absurdres",
+        image_path="static_image.png"
+):
+    jwt = os.getenv("NOVELAI_JWT", None)
+    if jwt is None:
+        raise ValueError("NOVELAI_JWT is not set in `.env` file, please create one and set it")
+    credential = JwtCredential(jwt_token=SecretStr(jwt))
+    """Or you can use the login credential to get the jwt token"""
+    _login_credential = Login.build(
+        user_name=os.getenv("NOVELAI_USER"),
+        password=os.getenv("NOVELAI_PASS")
+    )
+    # await _login_credential.request()
+    print(f"Action List:{enum_to_list(Action)}")
+    print(f"Image Path: {image_path}")
     try:
-        gen = GenerateImageInfer.build(
-            prompt=f"1girl, spring, jacket, sfw, angel, flower,{enhance}",
+        if not os.path.exists(image_path):
+            raise ValueError(f"Image not found: {image_path}")
+        with open(image_path, "rb") as f:
+            image = f.read()
+        agent = GenerateImageInfer.build(
+            prompt=prompt,
             action=Action.IMG2IMG,
-            image=encoded,
-            add_original_image=True,
-            strength=0.5,
-            width=1088,
-            height=896
+            sampler=Sampler.K_DPMPP_SDE,
+            image=image,
+            add_original_image=False,
+            strength=0.9,
+            noise=0.1,
+            qualityToggle=True,
         )
-        cost = gen.calculate_cost(is_opus=True)
-        print(f"charge: {cost} if you are vip3")
-        print(f"charge: {gen.calculate_cost(is_opus=True)}")
-        _res = await gen.request(
-            session=globe_s, remove_sign=True
+        print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
+        print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
+        result = await agent.request(
+            session=credential, remove_sign=True
         )
     except APIError as e:
-        print(e.response)
-        return
-
+        print(f"Error: {e.message}")
+        return None
+    else:
+        print(f"Meta: {result.meta}")
     _res: ImageGenerateResp
-    print(_res.meta)
-    file = _res.files[0]
-    with open("generate_image_img2img.png", "wb") as f:
+    file = result.files[0]
+    with open(f"{pathlib.Path(__file__).stem}.png", "wb") as f:
         f.write(file[1])
 
 
+load_dotenv()
 loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
+loop.run_until_complete(generate(image_path="static_refer.png"))

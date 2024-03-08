@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2024/1/26 下午12:23
-# @Author  : sudoskys
-# @File    : __init__.py.py
-# @Software: PyCharm
 import asyncio
 import os
 import pathlib
@@ -15,12 +11,16 @@ from novelai_python.sdk.ai.generate_image import Action, Sampler
 from novelai_python.utils.useful import enum_to_list
 
 
-async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazing quality, very aesthetic, absurdres"):
+async def generate(
+        prompt="1girl, year 2023, dynamic angle, best quality, amazing quality, very aesthetic, absurdres",
+        image_path="static_image.png",
+        reference_image_path="static_refer.png"
+):
     jwt = os.getenv("NOVELAI_JWT", None)
     if jwt is None:
         raise ValueError("NOVELAI_JWT is not set in `.env` file, please create one and set it")
     credential = JwtCredential(jwt_token=SecretStr(jwt))
-    """Or you can use the login credential to get the renewable jwt token"""
+    """Or you can use the login credential to get the jwt token"""
     _login_credential = Login.build(
         user_name=os.getenv("NOVELAI_USER"),
         password=os.getenv("NOVELAI_PASS")
@@ -28,10 +28,27 @@ async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazin
     # await _login_credential.request()
     print(f"Action List:{enum_to_list(Action)}")
     try:
+        if not os.path.exists(image_path):
+            raise ValueError(f"Image not found: {image_path}")
+        if not os.path.exists(reference_image_path):
+            raise ValueError(f"Image not found: {reference_image_path}")
+        with open(image_path, "rb") as f:
+            image = f.read()
+        with open(reference_image_path, "rb") as f:
+            reference_image = f.read()
         agent = GenerateImageInfer.build(
             prompt=prompt,
-            action=Action.GENERATE,
+            action=Action.IMG2IMG,
             sampler=Sampler.K_DPMPP_SDE,
+
+            image=image,
+            strength=0.6,
+
+            reference_image=reference_image,
+            reference_strength=0.6,
+            reference_information_extracted=1,
+
+            add_original_image=True,  # This Not affect the vibe generation
             qualityToggle=True,
         )
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
