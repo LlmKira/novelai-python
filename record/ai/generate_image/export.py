@@ -46,7 +46,7 @@ def handle_file(filename):
     request_data = json.loads(json_data.get("body", ""))
     request_data = decode_base64_in_dict(request_data, filename_wo_ext)
     # 写出包含替换字段的 JSON 文件回同名的文件夹
-    with open(f"{filename_wo_ext}/{filename_wo_ext}.json", 'w') as jsonfile:
+    with open(f"{filename_wo_ext}/schema.json", 'w') as jsonfile:
         json.dump(request_data, jsonfile, indent=2)
 
 
