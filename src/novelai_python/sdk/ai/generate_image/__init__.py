@@ -148,7 +148,7 @@ class GenerateImageInfer(ApiBaseModel):
         @staticmethod
         def add_image_to_black_background(image: Union[str, bytes], width: int = 448, height: int = 448):
             """
-            将图像缩放到一个指定的黑背景上，使其最大，比例不变。
+            缩放图像到指定的黑色透明背景上，使其尽可能大且保持比例。
             :param image: 图像
             :param width: 宽
             :param height: 高
@@ -157,7 +157,7 @@ class GenerateImageInfer(ApiBaseModel):
             if isinstance(image, str):
                 image = base64.b64decode(image)
 
-            open_image = Image.open(BytesIO(image))
+            open_image = Image.open(BytesIO(image)).convert("RGBA")
             # 如果尺寸相同，直接返回
             if open_image.width == width and open_image.height == height:
                 return base64.b64encode(image).decode("utf-8")
@@ -170,8 +170,8 @@ class GenerateImageInfer(ApiBaseModel):
             new_image_size = (int(open_image.width * ratio), int(open_image.height * ratio))
             open_image = open_image.resize(new_image_size, Image.Resampling.BICUBIC)
 
-            # 创建一个黑色背景的新图像
-            new_image = Image.new("RGB", (width, height), (0, 0, 0))
+            # 创建一个黑色透明背景的新图像，颜色深度32位
+            new_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
 
             # 计算居中位置
             position = ((width - open_image.width) // 2, (height - open_image.height) // 2)
