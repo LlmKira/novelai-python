@@ -4,6 +4,7 @@
 # @File    : generate_image_img2img.py
 # @Software: PyCharm
 import asyncio
+import base64
 import os
 import pathlib
 from dotenv import load_dotenv
@@ -35,7 +36,9 @@ async def generate(
         if not os.path.exists(image_path):
             raise ValueError(f"Image not found: {image_path}")
         with open(image_path, "rb") as f:
-            image = f.read()
+            # Base64 encode the image
+            image = base64.b64encode(f.read()).decode()
+            # image = f.read() # Or you can use the raw bytes
         agent = GenerateImageInfer.build(
             prompt=prompt,
             action=Action.IMG2IMG,
