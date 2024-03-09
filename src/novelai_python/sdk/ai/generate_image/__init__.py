@@ -146,7 +146,7 @@ class GenerateImageInfer(ApiBaseModel):
             return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
         @staticmethod
-        def add_image_to_black_background(image: Union[str, bytes], width: int, height: int):
+        def add_image_to_black_background(image: Union[str, bytes], width: int = 448, height: int = 448):
             """
             将图像缩放到一个指定的黑背景上，使其最大，比例不变。
             :param image: 图像
@@ -201,7 +201,7 @@ class GenerateImageInfer(ApiBaseModel):
             if self.image is not None:
                 self.image = self.resize_image(self.image, self.width, self.height)
             if self.reference_image is not None:
-                self.reference_image = self.add_image_to_black_background(self.reference_image, self.width, self.height)
+                self.reference_image = self.add_image_to_black_background(self.reference_image, width=448, height=448)
             return self
 
         @field_validator('width')
