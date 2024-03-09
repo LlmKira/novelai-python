@@ -13,7 +13,7 @@ from novelai_python.utils.useful import enum_to_list
 
 async def generate(
         prompt="1girl, year 2023, dynamic angle, best quality, amazing quality, very aesthetic, absurdres",
-        image_path="static_refer.png"
+        image_path="static_refer_banner.png"
 ):
     jwt = os.getenv("NOVELAI_JWT", None)
     if jwt is None:
@@ -36,7 +36,7 @@ async def generate(
             action=Action.GENERATE,
             sampler=Sampler.K_DPMPP_SDE,
             reference_image=image,
-            reference_strength=0.6,
+            reference_strength=0.9,
             reference_information_extracted=1,
             add_original_image=True,  # This Not affect the vibe generation
             qualityToggle=True,
