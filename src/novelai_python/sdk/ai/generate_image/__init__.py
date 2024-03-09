@@ -133,7 +133,7 @@ class GenerateImageInfer(ApiBaseModel):
             """
             if isinstance(image, str):
                 image = base64.b64decode(image)
-            open_image = Image.open(BytesIO(image))
+            open_image = Image.open(BytesIO(image)).convert("RGBA")
             # 如果尺寸相同，直接返回
             if open_image.width == width and open_image.height == height:
                 logger.debug("Image size is same, return directly.")
