@@ -8,6 +8,7 @@ import base64
 import os
 import pathlib
 from dotenv import load_dotenv
+from loguru import logger
 from pydantic import SecretStr
 
 from novelai_python import APIError, Login
@@ -63,6 +64,7 @@ async def generate(
     file = result.files[0]
     with open(f"{pathlib.Path(__file__).stem}.png", "wb") as f:
         f.write(file[1])
+    logger.warning(f"If you use the nai-generated image as input,please diff the seed!")
 
 
 load_dotenv()

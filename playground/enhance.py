@@ -5,5 +5,5 @@
 # @Software: PyCharm
 
 # NOTE About Enhance Mode
-# Enhance Mode = origin model name + img2img action + width *1.5(or 1) +height *1.5(or 1) + change seed
+# Enhance Mode = origin model name + img2img action + width *1.5(or 1) +height *1.5(or 1) + !!diff seed!!
 # :)
