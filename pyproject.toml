@@ -1,6 +1,6 @@
 [project]
 name = "novelai-python"
-version = "0.3.6"
+version = "0.3.7"
 description = "Novelai Python Binding With Pydantic"
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
