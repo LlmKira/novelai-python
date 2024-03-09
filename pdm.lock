@@ -5,7 +5,7 @@
 groups = ["default", "dev", "testing"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:05422c519ee13e8e97a1f1a5cb2e2f29bea853de5aa96f17eba4dd0a4414ecc0"
+content_hash = "sha256:5fc3571d83c68c12f732e371eaa12f154c8d71625917bca1ba385ce54c9a8f3c"
 
 [[package]]
 name = "annotated-types"
@@ -300,15 +300,15 @@ files = [
 
 [[package]]
 name = "fake-useragent"
-version = "1.4.0"
+version = "1.5.0"
 summary = "Up-to-date simple useragent faker with real world database"
 groups = ["default"]
 dependencies = [
     "importlib-resources>=5.0; python_version < \"3.10\"",
 ]
 files = [
-    {file = "fake-useragent-1.4.0.tar.gz", hash = "sha256:5426e4015d8ccc5bb25f64d3dfcfd3915eba30ffebd31b86b60dc7a4c5d65528"},
-    {file = "fake_useragent-1.4.0-py3-none-any.whl", hash = "sha256:9acce439ee2c6cf9c3772fa6c200f62dc8d56605063327a4d8c5d0e47f414b85"},
+    {file = "fake-useragent-1.5.0.tar.gz", hash = "sha256:c2adf4c536f9b74053e1161374398cdd78d28762062db9b741639b2133da0016"},
+    {file = "fake_useragent-1.5.0-py3-none-any.whl", hash = "sha256:1ee651ebd17fa2442abe4393f00e311769051765cd20de23cc50dc771db89540"},
 ]
 
 [[package]]
