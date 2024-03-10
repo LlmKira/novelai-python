@@ -1,12 +1,19 @@
 # -*- coding: utf-8 -*-
-from enum import Enum
+from dataclasses import dataclass
+from .cell_schema import BaseCell
+import pathlib
 
 _Accessories = ['主题发饰', '乐器', '体育', '其他', '其他1', '其他2', '其他3', '厨具', '头顶', '容器', '尾巴', '工具',
                 '手套', '数码', '文具', '日用', '材料', '武器', '汤和饮料', '玩具', '甜点', '翅膀', '耳饰', '肉禽蛋',
                 '胸部', '脸部', '腕臂', '腰部', '腿脚', '调味料和酱汁', '颈饰', '食物', '餐具', '鱼和海鲜']
 
 
-class AccessoryType(Enum):
+@dataclass(frozen=True, order=True)
+class AccessoryType(BaseCell):
+    def source(self):
+        data = pathlib.Path(__file__).parent.joinpath("raw/Accessories.json")  # 获取当前文件夹下的raw文件夹中的Accessories.json文件
+        return data
+
     THEME_DECORATIONS = '主题发饰'
     INSTRUMENTS = '乐器'
     SPORTS = '体育'
