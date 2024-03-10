@@ -1,0 +1,64 @@
+{
+  "修饰": {
+    "泪痣": "mole under eye",
+    "浓妆": "makeup",
+    "美人痣": "mole under mouth",
+    "胡须(男)": "facial hair",
+    "脸上疤痕": "scar on cheek",
+    "面纹": "facepaint"
+  },
+  "其他": {
+    "大眼睛": "big eyes",
+    "明亮的眼睛": "bright eyes",
+    "漂亮精细的眼睛": "beautiful detailed eyes",
+    "眼睛反射": "eye reflection",
+    "第三只眼": "third eye"
+  },
+  "嘴巴": {
+    "上牙": "upper teech",
+    "唾液": "saliva",
+    "圆齿": "round teeth",
+    "尖牙": "fangs",
+    "牙齿": "teeth",
+    "舌头": "tongue",
+    "虎牙": "skin fang"
+  },
+  "整体": {
+    "动漫脸": "anime face",
+    "可爱脸": "cute face"
+  },
+  "眉毛": {
+    "头发后的眉毛": "eyebrows visible through hair",
+    "男性俊眉": "v shaped eyebrows",
+    "短眉毛": "short eyebrows",
+    "粗眉毛": "thick eyebrows"
+  },
+  "眼部": {
+    "眼睛疤痕": "scar across eye"
+  },
+  "眼部装饰": {
+    "眼影": "eye shadow"
+  },
+  "瞳孔形状": {
+    "失神眼": "empty eyes",
+    "心形眼": "heart-shaped pupils",
+    "星星眼": "star-shaped pupils",
+    "火焰眼": "fire in eyes",
+    "瞳孔放大": "dilated pupils",
+    "竖瞳": "slit pupils",
+    "符号眼": "symbol-shaped pupils"
+  },
+  "颜色": {
+    "不对称虹膜": "asymmetrical irises",
+    "巩膜色": "color:sclera",
+    "异色瞳": "heterochromia",
+    "彩色瞳": "multicolored eyes",
+    "瞳色": "color:eyes",
+    "虹膜色": "color:pupils"
+  },
+  "额头": {
+    "大额头": "big forehead",
+    "额前宝石": "forehead jewel",
+    "额头记号": "forehead mark"
+  }
+}
