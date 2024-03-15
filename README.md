@@ -1,7 +1,11 @@
-# novelai-python
+![banner](./playground/banner.png)
+
+---
 
 [![PyPI version](https://badge.fury.io/py/novelai-python.svg)](https://badge.fury.io/py/novelai-python)
 [![Downloads](https://pepy.tech/badge/novelai_python)](https://pepy.tech/project/novelai_python)
+
+✨ Novelai api python sdk with Pydantic
 
 The goal of this repository is to use Pydantic to build legitimate requests to access the Novelai API service.
 
@@ -27,7 +31,8 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 pip install novelai-python
 ```
 
-More examples can be found in the [playground](https://github.com/LlmKira/novelai-python/tree/main/playground) directory.
+More examples can be found in the [playground](https://github.com/LlmKira/novelai-python/tree/main/playground)
+directory.
 
 ```python
 import asyncio
