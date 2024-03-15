@@ -1,0 +1,76 @@
+{
+  "传统材质": {
+    "丙烯漆料画": "acrylic paint",
+    "书法毛笔": "calligraphy brush",
+    "传统纸画": "traditional media",
+    "墨绘": "sumi-e",
+    "彩铅绘": "watercolor pencil",
+    "水墨": "ink and wash painting",
+    "水彩": "watercolor",
+    "水粉": "guache",
+    "油画": "oil painting",
+    "涂鸦": "child drawing",
+    "炭笔画": "graphite",
+    "签绘风格": "faux traditional media",
+    "粉彩": "pastel colors",
+    "粉色蜡笔": "pastel",
+    "素描": "sketch",
+    "线条画": "lineart",
+    "绘画风格": "drawing",
+    "蘸水笔画风": "fountain pen",
+    "蛋彩画": "tempera",
+    "铅笔画": "pencil sketch lines",
+    "马克笔": "copics"
+  },
+  "作品": {
+    "cygames": "cygames",
+    "p5风格": "persona 5",
+    "偶像大师": "idolmaster",
+    "原神": "genshin impact",
+    "命运石之门": "steins;gate",
+    "塞尔达": "the legend of zelda",
+    "影之诗": "shadowverse",
+    "炼金工房系列": "atelier",
+    "碧蓝幻想风": "granblue fantasy",
+    "碧蓝档案": "blue archive",
+    "碧蓝航线": "azur lane",
+    "紫罗兰的永恒花园": "violet evergarden"
+  },
+  "其他风格": {
+    "8位机风格": "8bit",
+    "OC渲染图": "octane render",
+    "体素图": "voxel art",
+    "像素画": "pixel art",
+    "写实": "realistic",
+    "厚涂": "lmpasto",
+    "复古设计": "vintage",
+    "复古风": "retro",
+    "平涂风格": "flat color",
+    "平面着色": "flat shading",
+    "怀旧": "nostalgic",
+    "扳机风": "promare",
+    "旧时尚": "old-fashioned",
+    "梦幻的": "dreamy",
+    "照片写实": "photo realistic",
+    "网点": "screentones",
+    "草图素描": "roughsketch",
+    "赛璐璐动画": "retro artstyle //老动画"
+  },
+  "年代风": {
+    "1980年代": "1980s",
+    "1990年代": "90's"
+  },
+  "流派": {
+    "印象派": "impressionism",
+    "哥特式": "gothic",
+    "文艺复兴": "renaissance",
+    "新艺术": "art nouveau",
+    "洛可可": "rococo",
+    "浮世绘": "ukiyo-e style"
+  },
+  "艺术家": {
+    "穆夏风格": "mucha style",
+    "莫奈": "claude monet",
+    "透纳": "william turner"
+  }
+}

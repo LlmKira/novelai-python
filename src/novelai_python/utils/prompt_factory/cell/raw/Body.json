@@ -1,0 +1,273 @@
+{
+  "侧发": {
+    "侧发后梳": "half updo",
+    "公主卷": "drill hair",
+    "单侧进气口": "single hair intake",
+    "单钻头卷": "side drill",
+    "双钻头卷": "twin drills",
+    "四钻头卷": "quad drills",
+    "垂下的长卷发": "ringlets",
+    "耳前侧发": "sidelocks",
+    "耳后发": "hair behind ear",
+    "进气口(侧发顶部竖起)": "hair intakes"
+  },
+  "其他": {
+    "下垂胸部": "hanging breasts",
+    "中等胸部(C)": "medium breasts",
+    "丰满": "plump // 这个词效果非常猛",
+    "丰满胸部": "perky breasts",
+    "包不住的巨乳": "bursting breasts",
+    "大胸部(D)": "large breasts",
+    "宽胯": "wide hips",
+    "小胸部(B)": "small breasts",
+    "小臀": "flat ass",
+    "尖乳": "pointy breasts",
+    "巨乳(E)": "huge breasts",
+    "怀孕": "pregnant",
+    "有立体感的胸部": "framed breasts",
+    "机械关节": "robot joints",
+    "机械臂": "mechanical arm",
+    "窄腰": "narrow waist",
+    "细腰": "slender waist",
+    "细腿": "slim legs",
+    "肉腿": "thick thigh",
+    "肌肉": "muscle",
+    "肌肉发达": "muscular",
+    "肌肉女": "muscular female",
+    "胖": "fat",
+    "苗条": "skinny",
+    "贫乳(A)": "flat chest",
+    "身体曲线": "curvy",
+    "长脖子": "long neck",
+    "魔乳(F)": "gigantic breasts"
+  },
+  "其他装饰": {
+    "呆毛": "ahoge",
+    "多呆毛(天线)": "antenna hair",
+    "大呆毛": "huge ahoge",
+    "心形呆毛": "heart ahoge",
+    "特殊形状": "special shape",
+    "蝴蝶结状头发": "bow-shaped hair"
+  },
+  "兽耳": {
+    "兔耳": "bunny ears",
+    "兽耳": "kemonomimi mode",
+    "兽耳绒毛": "animal ear fluff",
+    "山羊耳": "goat ears",
+    "松鼠耳": "squirrel ears",
+    "浣熊耳": "raccoon ears",
+    "熊猫耳": "panda ears",
+    "熊耳": "bear ears",
+    "牛耳": "cow ears",
+    "狐耳": "fox ears",
+    "狗耳": "dog ears",
+    "狮耳": "lion ears",
+    "狼耳": "wolf ears",
+    "猪耳": "pig ears",
+    "猫耳": "cat ears",
+    "猴耳": "monkey ears",
+    "羊耳": "sheep ears",
+    "羊驼耳": "alpaca ears",
+    "老鼠耳": "mouse ears",
+    "虎耳": "tiger ears",
+    "蝙蝠耳": "bat ears",
+    "马耳": "horse ears",
+    "鹿耳": "deer ears",
+    "鼬耳": "ferret ears"
+  },
+  "刘海": {
+    "不对称刘海": "asymmetrical bangs",
+    "交错刘海": "crossed bangs",
+    "分刘海": "parted bangs",
+    "刘海": "bangs",
+    "半遮眼": "jitome",
+    "单侧齐刘海": "side blunt bangs",
+    "大背头": "hair slicked back",
+    "扫刘海": "swept bangs",
+    "掀起的刘海": "bangs pinned back",
+    "斜刘海": "diagonal bangs",
+    "朝一个方向的刘海": "side swept bangs",
+    "眼间发": "hair between eyes",
+    "遮单眼刘海": "hair over one eye",
+    "遮眼刘海": "hair over eyes",
+    "长刘海": "long bangs",
+    "齐刘海": "blunt bangs"
+  },
+  "发质": {
+    "刺发": "spiked hair",
+    "卷发": "curly hair",
+    "外卷发": "flipped hair",
+    "波浪发(自然卷)": "wavy hair",
+    "直发": "straight hair"
+  },
+  "发量": {
+    "头发很多": "big hair",
+    "秃头": "bald",
+    "秃头女孩": "bald girl"
+  },
+  "发髻": {
+    "三发髻": "triple bun",
+    "丸子头": "topknot",
+    "侧发髻": "side bun",
+    "单发圈": "single hair ring",
+    "双发髻": "double bun",
+    "发髻/包子头": "hair bun",
+    "发髻辫": "braided bun",
+    "甜甜圈发髻": "doughnut hair bun",
+    "锥形发髻": "cone hair bun",
+    "飞仙髻": "hair rings"
+  },
+  "手": {
+    "手指美甲": "nail polish",
+    "指甲": "nails"
+  },
+  "整体发型": {
+    "公主切": "hime cut",
+    "寸头": "buzz cut",
+    "帽盔头": "undercut",
+    "平头": "crew cut",
+    "波波头": "bob cut",
+    "爆炸头": "afro",
+    "精灵头": "pixie cut",
+    "莫霍克发型": "mohawk",
+    "蓬帕杜发型": "pompadour",
+    "蘑菇头": "bowl cut",
+    "蜂窝头": "beehive hairdo",
+    "超大爆炸头": "huge afro",
+    "鲻鱼头": "mullet"
+  },
+  "特殊耳": {
+    "垂耳": "floppy ears",
+    "尖耳": "pointy ears",
+    "机械耳": "robot ears",
+    "皮卡丘耳": "pikachu ears",
+    "长尖耳": "long pointy ears"
+  },
+  "肩": {
+    "腋": "armpit",
+    "锁骨": "collarbone"
+  },
+  "胸": {
+    "上胸": "upperboob",
+    "下胸": "underboob",
+    "乳沟": "cleavage",
+    "侧乳": "sideboob",
+    "俯身下垂胸部": "sagging breasts",
+    "动态不一胸部": "unaligned breasts",
+    "后乳": "backboob",
+    "大胸肌": "large pectorals",
+    "摇晃的胸部": "bouncing breasts",
+    "摊开的胸部": "breasts apart",
+    "肋骨": "ribs",
+    "胸肌": "chest",
+    "胸部": "breasts",
+    "胸部展开": "breast expansion"
+  },
+  "腰部": {
+    "腰": "waist"
+  },
+  "腹部": {
+    "肚子": "belly",
+    "肚脐": "navel",
+    "腹肌": "abs",
+    "腹部": "stomach",
+    "马甲线": "linea alba"
+  },
+  "腿部": {
+    "大腿": "thighs",
+    "大腿内侧": "inner thigh",
+    "膝盖": "knee",
+    "膝盖内侧": "kneepits"
+  },
+  "臀部": {
+    "翘臀": "buttock",
+    "耻丘": "groin",
+    "股沟": "butt crack",
+    "胯部": "crotch",
+    "腹股沟": "thigh gap",
+    "臀部": "hips",
+    "髋骨": "hipbone"
+  },
+  "花纹": {
+    "心形纹身": "heart tattoo",
+    "泳装晒痕": "tan lines",
+    "流汗": "sweat",
+    "淫纹": "pubic tattoo",
+    "编号纹身": "number tattoo",
+    "腹部纹身": "stomach tattoo",
+    "腿部纹身": "leg tattoo",
+    "连衣裙晒痕": "dress tan lines"
+  },
+  "角": {
+    "山羊角": "goat horns",
+    "恶魔角": "demon horns",
+    "牛角": "cow horns",
+    "角": "color?:horns",
+    "鹿角": "antlers",
+    "龙角": "dragon horns"
+  },
+  "足部": {
+    "内翻足": "pigeon toed",
+    "脚尖": "toe-point",
+    "脚底": "feet soles",
+    "脚趾": "toes",
+    "脚趾美甲": "toenail polish",
+    "足": "feet"
+  },
+  "辫子": {
+    "三股辫": "tri braids",
+    "低双辫": "low twin braids",
+    "低辫长发": "low-braided long hair",
+    "冠型织辫": "crown braid",
+    "刘海辫": "braided bangs",
+    "前辫": "front braid",
+    "单侧辫": "side braid",
+    "单辫": "single braid",
+    "双侧辫": "side braids",
+    "双辫": "twin braids",
+    "四股辫": "quad braids",
+    "多辫": "multiple braids",
+    "法式辫": "french braid",
+    "脏辫": "dreadlocks",
+    "辫子": "braid",
+    "长辫": "long braid"
+  },
+  "长度": {
+    "中等长发": "medium hair",
+    "披肩发": "hair over shoulder",
+    "极长发": "absurdly long hair",
+    "短发": "short hair",
+    "超短发": "very short hair",
+    "超长发": "very long hair",
+    "长发": "long hair"
+  },
+  "颈背": {
+    "肩胛骨": "shoulder blades",
+    "颈": "nape"
+  },
+  "颜色": {
+    "内侧染色": "colored inner hair",
+    "发色": "color:hair",
+    "多彩头发": "multicolored hair",
+    "彩虹发": "rainbow hair",
+    "条纹头发(挑染)": "streaked hair //颜色+ 条纹头发",
+    "渐变发": "gradient hair",
+    "渐变色": "gradient colour",
+    "金发": "blonde hair"
+  },
+  "马尾": {
+    "不对称双马尾": "uneven twintails",
+    "低双马尾": "low twintails",
+    "低马尾": "low ponytail",
+    "侧马尾": "side ponytail",
+    "分开的单马尾": "split ponytail",
+    "双马尾": "twintails",
+    "折叠马尾": "folded ponytail",
+    "短双马尾": "short twintails",
+    "短马尾": "short ponytail",
+    "马尾": "ponytail",
+    "马尾辫": "braided ponytail",
+    "高双马尾": "hair two side up",
+    "高马尾": "hair one side up"
+  }
+}

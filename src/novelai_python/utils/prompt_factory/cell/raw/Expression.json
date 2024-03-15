@@ -1,0 +1,80 @@
+{
+  "其他": {
+    "伸出舌头": "tongue out",
+    "喷嚏": "sneezing",
+    "困惑": "confused",
+    "情绪异常激动的": "hysterical",
+    "无表情": "expressionless",
+    "狂气": "crazy angry smile",
+    "蔑视": "disdain"
+  },
+  "哀": {
+    "哭": "crying",
+    "哭泣": "sobbing",
+    "哭的撕心裂肺": "tearing up",
+    "沮丧": "depressed",
+    "泪如雨下": "streaming tears",
+    "眼含泪水的": "teary-eyed",
+    "眼泪": "tears",
+    "绝望": "despair"
+  },
+  "喜": {
+    "咧嘴笑": "grin",
+    "大笑": ":d",
+    "微笑": "smile",
+    "沾沾自喜的": "smug",
+    "眉毛翘起": "raised eyebrows",
+    "诱人的微笑": "seductive smile",
+    "邪笑": "smirk",
+    "露齿": "clenched teeth",
+    "顽皮的脸": "naughty face"
+  },
+  "嘴": {
+    "嘴唇微开": "parted lips",
+    "张嘴": "open mouth",
+    "方嘴": "rectangular mouth",
+    "波形嘴": "wavy mouth",
+    "猫嘴": "x3",
+    "闭嘴": "closed mouth"
+  },
+  "怒": {
+    "中皱眉": "glaring",
+    "噘嘴": "pout",
+    "大皱眉": "scowl",
+    "小皱眉": "sulking",
+    "恼火": "annoyed",
+    "愤怒": "furious",
+    "眉毛下垂": "furrowed brow"
+  },
+  "惊": {
+    "吓得变色了": "be frightened and change color",
+    "小尖叫": "shouting",
+    "尖叫": "screaming",
+    "惊恐": "horrified",
+    "惊讶": "surprised"
+  },
+  "慌": {
+    "慌张": "flustered",
+    "慌张出汗": "flying sweatdrops",
+    "紧张": "nervous",
+    "紧张出大量的汗": "sweating profusely"
+  },
+  "眼": {
+    "半闭眼": "half closed eyes",
+    "空洞注视": "blank stare",
+    "闭单眼": "blinking",
+    "闭眼": "closed eyes"
+  },
+  "累": {
+    "哈欠": "yawning",
+    "喝醉的": "drunk",
+    "困倦": "sleepy",
+    "无聊": "bored",
+    "精疲力竭的": "exhausted"
+  },
+  "羞": {
+    "害羞": "shy",
+    "尴尬": "embarrassed",
+    "脸红": "blush"
+  }
+}
