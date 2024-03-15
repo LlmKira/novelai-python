@@ -1,4 +1,4 @@
-![banner](./playground/repo-banner-zip.png)
+![banner](https://github.com/LlmKira/novelai-python/blob/main/playground/repo-banner-zip.png?raw=true)
 
 ---
 
