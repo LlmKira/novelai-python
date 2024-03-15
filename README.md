@@ -1,4 +1,4 @@
-![banner](./playground/banner-narrow.png)
+![banner](./playground/repo_banner.png)
 
 ---
 
