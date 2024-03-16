@@ -1,6 +1,6 @@
 [project]
 name = "novelai-python"
-version = "0.3.8"
+version = "0.3.9"
 description = "NovelAI Python Binding With Pydantic"
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
@@ -21,6 +21,7 @@ dependencies = [
     "opencv-python>=4.8.1.78",
     "fake-useragent>=1.4.0",
     "tenacity>=8.2.3",
+    "sentencepiece>=0.2.0",
 ]
 requires-python = ">=3.8"
 readme = "README.md"
