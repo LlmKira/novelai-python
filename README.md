@@ -11,7 +11,6 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 
 ### Roadmap 🚧
 
-- [x] utils.NovelAiMetadata
 - [x] utils.random_prompt
 - [x] /ai/generate-image
 - [x] /user/subscription
