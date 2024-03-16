@@ -85,6 +85,8 @@ class ImageMetadata(BaseModel):
         :param input_img:
         :return:
         """
+        if isinstance(input_img, BytesIO):
+            input_img.seek(0)
         image = Image.open(input_img).convert('RGBA')
         data = np.array(image)
         data[..., 3] = 254
@@ -130,6 +132,8 @@ class ImageMetadata(BaseModel):
         :return: ImageMetadata
         :raises ValidationError:  Data extraction failed
         """
+        if isinstance(image_io, BytesIO):
+            image_io.seek(0)
         try:
             image_data = ImageLsbDataExtractor().extract_data(image_io)
             model = cls(**image_data)
