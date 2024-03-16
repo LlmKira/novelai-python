@@ -12,6 +12,8 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 ### Roadmap 🚧
 
 - [x] tool.random_prompt
+- [x] tool.paint_mask
+- [x] tool.image_metadata
 - [x] /ai/generate-image
 - [x] /user/subscription
 - [x] /user/login
@@ -31,7 +33,7 @@ pip install novelai-python
 ```
 
 More examples can be found in the [playground](https://github.com/LlmKira/novelai-python/tree/main/playground)
-directory.
+directory, read code as documentation.
 
 ```python
 import asyncio
