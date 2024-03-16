@@ -11,7 +11,7 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 
 ### Roadmap 🚧
 
-- [x] utils.random_prompt
+- [x] tool.random_prompt
 - [x] /ai/generate-image
 - [x] /user/subscription
 - [x] /user/login
@@ -81,7 +81,7 @@ loop.run_until_complete(main())
 #### Random Prompt
 
 ```python
-from novelai_python.utils.random_prompt import RandomPromptGenerator
+from novelai_python.tool.random_prompt import RandomPromptGenerator
 
 s = RandomPromptGenerator(nsfw_enabled=False).random_prompt()
 print(s)
