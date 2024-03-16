@@ -6,9 +6,9 @@
 from typing import Any, Optional, Union, Dict
 
 
-class NovelAiError(Exception):
+class NovelAIError(Exception):
     """
-    NovelAiError is the base exception for all novelai_python errors.
+    NovelAIError is the base exception for all novelai_python errors.
     """
     message: str
     exception: Optional[Exception] = None
@@ -23,21 +23,21 @@ class NovelAiError(Exception):
         }
 
 
-class InvalidRequestHeader(NovelAiError):
+class InvalidRequestHeader(NovelAIError):
     """
     InvalidRequestHeader is raised when the request header is invalid.
     """
     pass
 
 
-class SessionHttpError(NovelAiError):
+class SessionHttpError(NovelAIError):
     """
     HTTPError is raised when a request to the API fails.
     """
     pass
 
 
-class APIError(NovelAiError):
+class APIError(NovelAIError):
     """
     APIError is raised when the API returns an error.
     """

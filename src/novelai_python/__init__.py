@@ -5,7 +5,7 @@
 # @Software: PyCharm
 
 from ._exceptions import (
-    NovelAiError,
+    NovelAIError,
     APIError,
     AuthError,
     ConcurrentGenerationError,
@@ -45,6 +45,6 @@ __all__ = [
     "APIError",
     "SessionHttpError",
     "AuthError",
-    "NovelAiError",
+    "NovelAIError",
     "ConcurrentGenerationError"
 ]
