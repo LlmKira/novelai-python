@@ -10,6 +10,8 @@ with Image.open(image_io) as img:
     title = img.info.get("Title", None)
     prompt = img.info.get("Description", None)
     comment = img.info.get("Comment", None)
+    print(img.info)
+
     assert isinstance(comment, str), ValueError("Comment Empty")
     try:
         comment = json.loads(comment)

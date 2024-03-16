@@ -14,6 +14,8 @@ from nacl.signing import VerifyKey
 from pydantic import BaseModel, ConfigDict
 
 from .lsb_extractor import ImageLsbDataExtractor
+from .lsb_injector import inject_data
+from ...sdk.ai.generate_image._enum import PROMOTION, Model
 
 
 class ImageMetadata(BaseModel):
@@ -69,11 +71,20 @@ class ImageMetadata(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     @property
-    def jsonfy(self):
-        return {"Title": self.title, "Description": self.description, "Comment": self.comment.model_dump()}
+    def used_model(self) -> Union[Model, None]:
+        """
+        Get the model used to generate the image from the Model code
+        :return:  Model or None
+        """
+        return PROMOTION.get(self.Source, None)
 
     @staticmethod
     def reset_alpha(input_img: BytesIO) -> BytesIO:
+        """
+        Remove LSB from the image, set the alpha channel to 254
+        :param input_img:
+        :return:
+        """
         image = Image.open(input_img).convert('RGBA')
         data = np.array(image)
         data[..., 3] = 254
@@ -82,23 +93,32 @@ class ImageMetadata(BaseModel):
         new_image.save(_new_img_io, format="PNG")
         return _new_img_io
 
-    def write_out(self,
-                  img_io: BytesIO,
-                  *,
-                  remove_lsb: bool = False
-                  ):
-        if remove_lsb:
-            img_io = self.reset_alpha(img_io)
-        with Image.open(img_io) as img:
-            metadata = PngInfo()
-            for k, v in self.jsonfy.items():
-                if isinstance(v, dict):
-                    v = json.dumps(v)
-                metadata.add_text(k, v)
-            _new_img = BytesIO()
-            # Save original image with metadata
-            img.save(_new_img, format="PNG", pnginfo=metadata, optimize=False, compress_level=0)
-        return _new_img
+    def apply_to_image(self,
+                       origin_image: Image.Image,
+                       *,
+                       inject_lsb: bool = True
+                       ) -> BytesIO:
+        """
+        Write metadata to origin_image
+        If you set inject_lsb to True, the image will be injected with metadata using LSB.
+
+        **But if you set inject_lsb to False, the image will be reset to the 254 alpha channel**
+        :param origin_image:  BytesIO
+        :param inject_lsb:  Inject metadata using LSB
+        :return:  BytesIO
+        """
+        metadata = PngInfo()
+        for k, v in self.model_dump(mode="json").items():
+            if isinstance(v, dict):
+                v = json.dumps(v)
+            metadata.add_text(k, v)
+        if inject_lsb:
+            # Inject metadata using LSB
+            origin_image = inject_data(origin_image, metadata)
+        # Save original image with metadata (and LSB if inject_lsb is True)
+        new_img = BytesIO()
+        origin_image.save(new_img, format="PNG", pnginfo=metadata, optimize=False, compress_level=0)
+        return new_img
 
     @classmethod
     def load_image(cls,
@@ -106,8 +126,9 @@ class ImageMetadata(BaseModel):
                    ):
         """
         Load image and extract metadata using LSB/Metadata
-        :param image_io:
-        :return:
+        :param image_io: str, bytes, Path, BytesIO
+        :return: ImageMetadata
+        :raises ValidationError:  Data extraction failed
         """
         try:
             image_data = ImageLsbDataExtractor().extract_data(image_io)
@@ -115,7 +136,6 @@ class ImageMetadata(BaseModel):
         except Exception as e:
             logger.debug(f"Error trying extracting data in LSB: {e}")
         else:
-            print(model)
             return model
         with Image.open(image_io) as img:
             title = img.info.get("Title", None)
@@ -127,13 +147,22 @@ class ImageMetadata(BaseModel):
             except Exception as e:
                 logger.debug(f"Error loading comment: {e}")
                 comment = {}
-            return cls(Title=title, Description=prompt, Comment=cls.CommentModel(**comment))
+        return cls(Title=title, Description=prompt, Comment=cls.CommentModel(**comment))
 
     @staticmethod
     def verify_image_is_novelai(
             image: Union[Image.Image, np.ndarray],
             verify_key_hex: str = "Y2JcQAOhLwzwSDUJPNgL04nS0Tbqm7cSRc4xk0vRMic="
     ) -> bool:
+        """
+        Verify if the image is a NovelAI generated image
+        :param image:  Image.Image or np.ndarray
+        :param verify_key_hex:
+        :return:  bool
+        :raises RuntimeError:  No metadata found in image
+        :raises RuntimeError:  Comment not in metadata
+        :raises RuntimeError:  signed_hash not in comment
+        """
         # MIT:https://github.com/NovelAI/novelai-image-metadata/blob/main/nai_sig.py
         if isinstance(image, Image.Image):
             image = np.array(image)
