@@ -35,3 +35,37 @@ def encode_access_key(username: str, password: str) -> str:
     hashed = urlsafe_b64encode(raw).decode()
 
     return hashed[:64]
+
+
+import base64
+import hashlib
+import hmac
+import json
+from io import BytesIO
+from typing import Union
+
+import numpy as np
+from PIL import Image
+from PIL.PngImagePlugin import PngInfo
+from loguru import logger
+from pydantic import BaseModel
+
+
+def sign_message(message, key):
+    # 使用 HMAC 算法对消息进行哈希签名
+    hmac_digest = hmac.new(key.encode(), message.encode(), hashlib.sha256).digest()
+    signed_hash = base64.b64encode(hmac_digest).decode()
+    return signed_hash
+
+
+def encode_base64(data):
+    byte_data = data.encode("UTF-8")
+    encoded_data = base64.b64encode(byte_data)
+    return encoded_data.decode("UTF-8")
+
+
+# 解码
+def decode_base64(encoded_data):
+    byte_data = encoded_data.encode('UTF-8')
+    decoded_data = base64.b64decode(byte_data)
+    return decoded_data.decode("UTF-8")
