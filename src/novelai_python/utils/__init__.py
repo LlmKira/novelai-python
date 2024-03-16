@@ -10,7 +10,7 @@ from typing import Union
 from loguru import logger
 
 from .encode import encode_access_key  # noqa 401
-from .hash import NovelAIMetadata
+from .hash import NovelAiMetadata
 
 
 def png_info_reset(img: Union[str, io.BytesIO],
@@ -22,7 +22,7 @@ def png_info_reset(img: Union[str, io.BytesIO],
     :param img: BytesIO 对象
     :return: 
     """
-    _fixed = NovelAIMetadata.rehash(img_io=img, remove_stealth=remove_stealth)
+    _fixed = NovelAiMetadata.rehash(img_io=img, remove_stealth=remove_stealth)
     return _fixed
 
 

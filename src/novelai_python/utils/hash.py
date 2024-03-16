@@ -24,7 +24,7 @@ def sign_message(message, key):
     return signed_hash
 
 
-class NovelAIMetadata(BaseModel):
+class NovelAiMetadata(BaseModel):
     title: str = "AI generated image"
     description: str
     comment: Union[dict, str] = {}
@@ -40,7 +40,7 @@ class NovelAIMetadata(BaseModel):
 
     @staticmethod
     def rehash(img_io, remove_stealth: bool = False):
-        cls = NovelAIMetadata.build_from_img(img_io)
+        cls = NovelAiMetadata.build_from_img(img_io)
         cls.comment["signed_hash"] = sign_message(json.dumps(cls.description), "novalai-client")
         _new_img_io = cls.write_out(img_io=img_io, remove_stealth=remove_stealth)
         return _new_img_io

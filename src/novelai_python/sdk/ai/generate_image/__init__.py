@@ -26,7 +26,7 @@ from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ...._response.ai.generate_image import ImageGenerateResp
 from ....credential import CredentialBase
-from ....utils import try_jsonfy, NovelAIMetadata
+from ....utils import try_jsonfy, NovelAiMetadata
 from PIL import Image
 
 
@@ -611,7 +611,7 @@ class GenerateImageInfer(ApiBaseModel):
                 for filename in file_list:
                     data = zip_file.read(filename)
                     if remove_sign:
-                        data = NovelAIMetadata.rehash(BytesIO(data), remove_stealth=True)
+                        data = NovelAiMetadata.rehash(BytesIO(data), remove_stealth=True)
                         if not isinstance(data, bytes):
                             data = data.getvalue()
                     unzip_content.append((filename, data))

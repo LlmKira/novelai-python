@@ -21,7 +21,7 @@ from ..schema import ApiBaseModel
 from ..._exceptions import APIError, AuthError, SessionHttpError
 from ..._response.ai.upscale import UpscaleResp
 from ...credential import CredentialBase
-from ...utils import try_jsonfy, NovelAIMetadata
+from ...utils import try_jsonfy, NovelAiMetadata
 
 
 class Upscale(ApiBaseModel):
@@ -184,7 +184,7 @@ class Upscale(ApiBaseModel):
                     data = zip_file.read(filename)
                     if remove_sign:
                         try:
-                            data = NovelAIMetadata.rehash(BytesIO(data), remove_stealth=True)
+                            data = NovelAiMetadata.rehash(BytesIO(data), remove_stealth=True)
                             if not isinstance(data, bytes):
                                 data = data.getvalue()
                         except Exception as e:
