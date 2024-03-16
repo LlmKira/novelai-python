@@ -70,6 +70,7 @@ class Model(Enum):
     NAI_DIFFUSION_3_INPAINTING = "nai-diffusion-3-inpainting"
 
     NAI_DIFFUSION = "nai-diffusion"
+    NAI_DIFFUSION_2 = "nai-diffusion-2"
     NAI_DIFFUSION_INPAINTING = "nai-diffusion-inpainting"
 
     SAFE_DIFFUSION = "safe-diffusion"
@@ -84,3 +85,19 @@ INPAINTING_MODEL_LIST = [Model.NAI_DIFFUSION_3_INPAINTING,
                          Model.SAFE_DIFFUSION_INPAINTING,
                          Model.FURRY_DIFFUSION_INPAINTING
                          ]
+
+PROMOTION = {
+    "Stable Diffusion 1D44365E": Model.SAFE_DIFFUSION,
+    "Stable Diffusion F4D50568": Model.SAFE_DIFFUSION,
+    "Stable Diffusion 81274D13": Model.NAI_DIFFUSION,
+    "Stable Diffusion 3B3287AF": Model.NAI_DIFFUSION,
+    "Stable Diffusion 4CC42576": Model.NAI_DIFFUSION_FURRY,
+    "Stable Diffusion 1D09C008": Model.NAI_DIFFUSION_FURRY,
+    "Stable Diffusion 1D09D794": Model.NAI_DIFFUSION_FURRY,
+    "Stable Diffusion F64BA557": Model.NAI_DIFFUSION_FURRY,
+    "Stable Diffusion 49BFAF6A": Model.NAI_DIFFUSION_2,
+    "Stable Diffusion F1022D28": Model.NAI_DIFFUSION_2,
+    "Stable Diffusion XL B0BDF6C1": Model.NAI_DIFFUSION_3,
+    "Stable Diffusion XL C1E1DE52": Model.NAI_DIFFUSION_3,
+    "Stable Diffusion XL 8BA2AF87": Model.NAI_DIFFUSION_3,
+}
