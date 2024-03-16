@@ -4,7 +4,7 @@
 # @File    : test_random_prompt.py
 # @Software: PyCharm
 
-from src.novelai_python.utils.random_prompt import RandomPromptGenerator
+from novelai_python.tool.random_prompt import RandomPromptGenerator
 
 
 def test_generate_returns_string():

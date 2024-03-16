@@ -21,7 +21,7 @@ from ....utils import try_jsonfy
 
 
 class SuggestTags(ApiBaseModel):
-    _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
+    _endpoint: str = PrivateAttr("https://api.novelai.net")
     model: Model = Model.NAI_DIFFUSION_3
     prompt: str = "landscape"
 

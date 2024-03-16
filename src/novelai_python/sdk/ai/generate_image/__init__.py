@@ -26,12 +26,12 @@ from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ...._response.ai.generate_image import ImageGenerateResp
 from ....credential import CredentialBase
-from ....utils import try_jsonfy, NovelAiMetadata
+from ....utils import try_jsonfy
 from PIL import Image
 
 
 class GenerateImageInfer(ApiBaseModel):
-    _endpoint: Optional[str] = PrivateAttr("https://image.novelai.net")
+    _endpoint: str = PrivateAttr("https://image.novelai.net")
 
     class Params(BaseModel):
         add_original_image: Optional[bool] = Field(True, description="Overlay Original Image")
@@ -523,13 +523,11 @@ class GenerateImageInfer(ApiBaseModel):
                       session: Union[AsyncSession, "CredentialBase"],
                       *,
                       override_headers: Optional[dict] = None,
-                      remove_sign: bool = False
                       ) -> ImageGenerateResp:
         """
         生成图片
-        :param override_headers:
+        :param override_headers: the headers to override
         :param session:  session
-        :param remove_sign:  移除追踪信息
         :return:
         """
         # Data Build
@@ -610,10 +608,6 @@ class GenerateImageInfer(ApiBaseModel):
                     )
                 for filename in file_list:
                     data = zip_file.read(filename)
-                    if remove_sign:
-                        data = NovelAiMetadata.rehash(BytesIO(data), remove_stealth=True)
-                        if not isinstance(data, bytes):
-                            data = data.getvalue()
                     unzip_content.append((filename, data))
             return ImageGenerateResp(
                 meta=ImageGenerateResp.RequestParams(

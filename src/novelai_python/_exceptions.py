@@ -2,8 +2,8 @@
 # @Time    : 2024/1/26 上午10:55
 # @Author  : sudoskys
 # @File    : _exceptions.py
-# @Software: PyCharm
-from typing import Any, Optional, Union, Dict
+
+from typing import Any, Union, Dict
 
 
 class NovelAiError(Exception):
@@ -11,7 +11,6 @@ class NovelAiError(Exception):
     NovelAiError is the base exception for all novelai_python errors.
     """
     message: str
-    exception: Optional[Exception] = None
 
     def __init__(self, message: str) -> None:
         self.message = message
@@ -42,10 +41,15 @@ class APIError(NovelAiError):
     APIError is raised when the API returns an error.
     """
     request: Any
-    code: Optional[str] = None
+    code: Union[str, None] = None
     response: Union[Dict[str, Any], str] = None
 
-    def __init__(self, message: str, request: Any, response: Union[Dict[str, Any], str], code: Optional[str]) -> None:
+    def __init__(self,
+                 message: str,
+                 request: Any,
+                 response: Union[Dict[str, Any], str],
+                 code: Union[str, None]
+                 ) -> None:
         super().__init__(message)
         self.request = request
         self.response = response

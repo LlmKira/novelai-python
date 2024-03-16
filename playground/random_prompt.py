@@ -4,7 +4,7 @@
 # @File    : random_prompt.py
 # @Software: PyCharm
 
-from novelai_python.utils.random_prompt import RandomPromptGenerator
+from novelai_python.tool.random_prompt import RandomPromptGenerator
 
 gen = RandomPromptGenerator(nsfw_enabled=True)
 print(gen.get_weighted_choice([[1, 35], [2, 20], [3, 7]], []))

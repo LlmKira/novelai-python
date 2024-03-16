@@ -1,18 +1,19 @@
-![banner](./playground/repo-banner-zip.png)
+![banner](https://github.com/LlmKira/novelai-python/blob/dev/playground/banner-raw.png?raw=true)
 
 ---
 
 [![PyPI version](https://badge.fury.io/py/novelai-python.svg)](https://badge.fury.io/py/novelai-python)
 [![Downloads](https://pepy.tech/badge/novelai_python)](https://pepy.tech/project/novelai_python)
 
-✨ Novelai api python sdk with Pydantic
+✨ NovelAI api python sdk with Pydantic
 
-The goal of this repository is to use Pydantic to build legitimate requests to access the Novelai API service.
+The goal of this repository is to use Pydantic to build legitimate requests to access the NovelAI API service.
 
 ### Roadmap 🚧
 
-- [x] utils.NovelAiMetadata
-- [x] utils.random_prompt
+- [x] tool.random_prompt
+- [x] tool.paint_mask
+- [x] tool.image_metadata
 - [x] /ai/generate-image
 - [x] /user/subscription
 - [x] /user/login
@@ -32,7 +33,7 @@ pip install novelai-python
 ```
 
 More examples can be found in the [playground](https://github.com/LlmKira/novelai-python/tree/main/playground)
-directory.
+directory, read code as documentation.
 
 ```python
 import asyncio
@@ -82,7 +83,7 @@ loop.run_until_complete(main())
 #### Random Prompt
 
 ```python
-from novelai_python.utils.random_prompt import RandomPromptGenerator
+from novelai_python.tool.random_prompt import RandomPromptGenerator
 
 s = RandomPromptGenerator(nsfw_enabled=False).random_prompt()
 print(s)

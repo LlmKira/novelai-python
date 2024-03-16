@@ -21,11 +21,11 @@ from ..schema import ApiBaseModel
 from ..._exceptions import APIError, AuthError, SessionHttpError
 from ..._response.ai.upscale import UpscaleResp
 from ...credential import CredentialBase
-from ...utils import try_jsonfy, NovelAiMetadata
+from ...utils import try_jsonfy
 
 
 class Upscale(ApiBaseModel):
-    _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
+    _endpoint: str = PrivateAttr("https://api.novelai.net")
     image: Union[str, bytes]  # base64
     width: Optional[int] = None
     height: Optional[int] = None
@@ -97,14 +97,12 @@ class Upscale(ApiBaseModel):
     async def request(self,
                       session: Union[AsyncSession, "CredentialBase"],
                       *,
-                      override_headers: Optional[dict] = None,
-                      remove_sign: bool = False
+                      override_headers: Optional[dict] = None
                       ) -> UpscaleResp:
         """
         生成图片
         :param override_headers:
         :param session:  session
-        :param remove_sign:  移除追踪信息
         :return:
         """
         # Data Build
@@ -182,13 +180,6 @@ class Upscale(ApiBaseModel):
                     )
                 for filename in file_list:
                     data = zip_file.read(filename)
-                    if remove_sign:
-                        try:
-                            data = NovelAiMetadata.rehash(BytesIO(data), remove_stealth=True)
-                            if not isinstance(data, bytes):
-                                data = data.getvalue()
-                        except Exception as e:
-                            logger.exception(f"SdkWarn:Remove sign error: {e}")
                     unzip_content.append((filename, data))
             return UpscaleResp(
                 meta=UpscaleResp.RequestParams(

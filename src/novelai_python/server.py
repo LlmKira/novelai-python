@@ -2,7 +2,7 @@
 # @Time    : 2024/1/30 下午11:05
 # @Author  : sudoskys
 # @File    : server.py
-# @Software: PyCharm
+
 import io
 import sys
 import zipfile

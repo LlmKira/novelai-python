@@ -9,7 +9,7 @@ from novelai_python import APIError, Login
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
 from novelai_python.sdk.ai.generate_image import Action, Sampler, Model
 from novelai_python.utils.useful import enum_to_list
-from novelai_python.utils.useful import create_mask_from_sketch
+from novelai_python.tool.paint_mask import create_mask_from_sketch
 
 with open('static_image.png', 'rb') as f:
     ori_bytes = f.read()
