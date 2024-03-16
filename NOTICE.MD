@@ -5,3 +5,5 @@
 The MIT license applies to the files in:
 
     file: "src/novelai_python/sdk/ai/generate_image.py" from https://github.com/HanaokaYuzu/NovelAI-API
+    file: "src/novelai_python/tokenizer/novelai.model" from https://github.com/NovelAI/novelai-tokenizer
+    file: "src/novelai_python/tokenizer/novelai_v2.model from https://github.com/NovelAI/novelai-tokenizer
