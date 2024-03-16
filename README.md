@@ -1,13 +1,13 @@
-![banner](https://github.com/LlmKira/novelai-python/blob/main/playground/repo-banner-zip.png?raw=true)
+![banner](https://github.com/LlmKira/novelai-python/blob/main/playground/banner-raw.png?raw=true)
 
 ---
 
 [![PyPI version](https://badge.fury.io/py/novelai-python.svg)](https://badge.fury.io/py/novelai-python)
 [![Downloads](https://pepy.tech/badge/novelai_python)](https://pepy.tech/project/novelai_python)
 
-✨ Novelai api python sdk with Pydantic
+✨ NovelAi api python sdk with Pydantic
 
-The goal of this repository is to use Pydantic to build legitimate requests to access the Novelai API service.
+The goal of this repository is to use Pydantic to build legitimate requests to access the NovelAi API service.
 
 ### Roadmap 🚧
 
