@@ -1,4 +1,4 @@
-import sys
+# MIT: https://github.com/NovelAI/novelai-image-metadata/blob/main/nai_meta.py
 from io import BytesIO
 from pathlib import Path
 from typing import Union

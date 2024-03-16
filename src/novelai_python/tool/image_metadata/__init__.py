@@ -4,19 +4,13 @@ import json
 from io import BytesIO
 from pathlib import Path
 from typing import Union
-import base64
-import json
-from typing import Union
-
-import numpy as np
-from PIL import Image
-from nacl.encoding import Base64Encoder
-from nacl.signing import VerifyKey
 
 import numpy as np
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 from loguru import logger
+from nacl.encoding import Base64Encoder
+from nacl.signing import VerifyKey
 from pydantic import BaseModel, ConfigDict
 
 from .lsb_extractor import ImageLsbDataExtractor
@@ -140,6 +134,7 @@ class ImageMetadata(BaseModel):
             image: Union[Image.Image, np.ndarray],
             verify_key_hex: str = "Y2JcQAOhLwzwSDUJPNgL04nS0Tbqm7cSRc4xk0vRMic="
     ) -> bool:
+        # MIT:https://github.com/NovelAI/novelai-image-metadata/blob/main/nai_sig.py
         if isinstance(image, Image.Image):
             image = np.array(image)
         metadata = ImageLsbDataExtractor().extract_data(image)
