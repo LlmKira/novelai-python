@@ -25,7 +25,7 @@ from ...utils import try_jsonfy, NovelAiMetadata
 
 
 class Upscale(ApiBaseModel):
-    _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
+    _endpoint: str = PrivateAttr("https://api.novelai.net")
     image: Union[str, bytes]  # base64
     width: Optional[int] = None
     height: Optional[int] = None

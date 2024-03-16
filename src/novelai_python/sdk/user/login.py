@@ -20,7 +20,7 @@ from ...utils import try_jsonfy, encode_access_key
 
 
 class Login(ApiBaseModel):
-    _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
+    _endpoint: str = PrivateAttr("https://api.novelai.net")
     _session: Optional[AsyncSession] = PrivateAttr(None)
     key: str = Field(..., description="User's key")
 

@@ -20,7 +20,7 @@ from ...utils import try_jsonfy
 
 
 class Subscription(ApiBaseModel):
-    _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
+    _endpoint: str = PrivateAttr("https://api.novelai.net")
 
     @property
     def base_url(self):

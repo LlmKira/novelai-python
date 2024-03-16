@@ -31,7 +31,7 @@ from PIL import Image
 
 
 class GenerateImageInfer(ApiBaseModel):
-    _endpoint: Optional[str] = PrivateAttr("https://image.novelai.net")
+    _endpoint: str = PrivateAttr("https://image.novelai.net")
 
     class Params(BaseModel):
         add_original_image: Optional[bool] = Field(True, description="Overlay Original Image")
