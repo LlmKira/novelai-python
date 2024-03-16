@@ -2,7 +2,7 @@
 # @Time    : 2024/2/11 下午12:29
 # @Author  : sudoskys
 # @File    : queue_select.py
-# @Software: PyCharm
+
 from novelai_python.utils.useful import QueSelect
 
 ####

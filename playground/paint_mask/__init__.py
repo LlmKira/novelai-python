@@ -3,7 +3,7 @@
 # @Author  : sudoskys
 # @File    : __init__.py.py
 # @Software: PyCharm
-from novelai_python.utils.useful import create_mask_from_sketch
+from novelai_python.tool.paint_mask import create_mask_from_sketch
 
 with open('sk.jpg', 'rb') as f:
     sk_bytes = f.read()
