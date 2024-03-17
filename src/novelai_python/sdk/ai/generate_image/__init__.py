@@ -33,6 +33,14 @@ from PIL import Image
 class GenerateImageInfer(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://image.novelai.net")
 
+    @property
+    def endpoint(self):
+        return self._endpoint
+
+    @endpoint.setter
+    def endpoint(self, value):
+        self._endpoint = value
+
     class Params(BaseModel):
         add_original_image: Optional[bool] = Field(True, description="Overlay Original Image")
         """
@@ -186,6 +194,11 @@ class GenerateImageInfer(ApiBaseModel):
         # Validators
         @model_validator(mode="after")
         def image_validator(self):
+            if self.sampler:
+                if self.sampler in [Sampler.DDIM]:
+                    logger.warning("sm and sm_dyn is disabled when using ddim sampler.")
+                    self.sm = False
+                    self.sm_dyn = False
             if isinstance(self.image, str) and self.image.startswith("data:"):
                 raise ValueError("Invalid `image` format, must be base64 encoded directly.")
             if isinstance(self.reference_image, str) and self.reference_image.startswith("data:"):
@@ -231,14 +244,6 @@ class GenerateImageInfer(ApiBaseModel):
     model: Optional[Model] = "nai-diffusion-3"
     parameters: Params = Params()
     model_config = ConfigDict(extra="ignore")
-
-    @property
-    def endpoint(self):
-        return self._endpoint
-
-    @endpoint.setter
-    def endpoint(self, value):
-        self._endpoint = value
 
     @override
     def model_post_init(self, *args) -> None:
@@ -327,16 +332,16 @@ class GenerateImageInfer(ApiBaseModel):
         steps: int = self.parameters.steps
         n_samples: int = self.parameters.n_samples
         uncond_scale: float = self.parameters.uncond_scale
-        strength: float = self.action == "img2img" and self.parameters.strength or 1.0
-        smea_factor = self.parameters.sm_dyn and 1.4 or self.parameters.sm and 1.2 or 1.0
-        resolution = max(self.parameters.width * self.parameters.height, 65536)
-
-        # For normal resolutions, squre is adjusted to the same price as portrait/landscape
-        if math.prod(
-                (832, 1216)
-        ) < resolution <= math.prod((1024, 1024)):
+        strength: float = self.action == Action.IMG2IMG and self.parameters.strength or 1.0
+        sm: bool = self.parameters.sm
+        sm_dyn: bool = self.parameters.sm_dyn
+        smea_factor = 1.0
+        smea_factor = sm_dyn and 1.4 or sm and 1.2 or 1.0
+        resolution: int = max(self.parameters.width * self.parameters.height, 65536)
+        # Adjust cost for square resolutions
+        if math.prod((832, 1216)) < resolution <= math.prod((1024, 1024)):
             resolution = math.prod((832, 1216))
-        per_sample = (
+        per_sample: int = (
                 math.ceil(
                     2951823174884865e-21 * resolution
                     + 5.753298233447344e-7 * resolution * steps
@@ -347,8 +352,7 @@ class GenerateImageInfer(ApiBaseModel):
 
         if uncond_scale != 1.0:
             per_sample = math.ceil(per_sample * 1.3)
-
-        opus_discount = (
+        opus_discount: bool = (
                 is_opus
                 and steps <= 28
                 and (resolution <= math.prod((1024, 1024)))

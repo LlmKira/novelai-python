@@ -14,6 +14,18 @@ class Sampler(Enum):
     K_DPMPP_SDE = "k_dpmpp_sde"
     DDIM_V3 = "ddim_v3"
 
+    DDIM = "ddim"
+    PLMS = "plms"
+    K_DPM_2 = "k_dpm_2"
+    K_DPM_2_ANCESTRAL = "k_dpm_2_ancestral"
+    K_LMS = "k_lms"
+    K_DPM_ADAPTIVE = "k_dpm_adaptive"
+    K_DPM_FAST = "k_dpm_fast"
+    K_DPMPP_2M_SDE = "k_dpmpp_2m_sde"
+    K_DPMPP_3M_SDE = "k_dpmpp_3m_sde"
+    # NAI_SMEA = "nai_smea"
+    NAI_SMEA_DYN = "nai_smea_dyn"
+
 
 class NoiseSchedule(Enum):
     NATIVE = "native"
@@ -45,10 +57,22 @@ class ControlNetModel(Enum):
     """景深"""
     FAKE_SCRIBBLE = "fake_scribble"
     """伪涂鸦"""
-    M_LSD = "mlsd"
-    """(建筑)线条检测"""
-    LANDSCAPER = "uniformer"
+    UNIFORMER = "uniformer"
     """风景生成"""
+
+    # Unusable
+    CANNY = "canny"
+    """边缘检测方法之一"""
+    DEPTH = "depth"
+    """深度信息提取"""
+    MLSD = "mlsd"
+    """(建筑)线条检测"""
+    NORMAL = "normal"
+    """法线信息提取"""
+    SCRIBBLE = "scribble"
+    """手绘涂鸦风格生成"""
+    SEG = "seg"
+    """分割算法"""
 
 
 class Resolution(Enum):
@@ -77,7 +101,10 @@ class Model(Enum):
     SAFE_DIFFUSION_INPAINTING = "safe-diffusion-inpainting"
 
     NAI_DIFFUSION_FURRY = "nai-diffusion-furry"
+    # NAI_DIFFUSION_FURRY2 = "nai-diffusion-furry2"
     FURRY_DIFFUSION_INPAINTING = "furry-diffusion-inpainting"
+
+    CUSTOM = "custom"
 
 
 INPAINTING_MODEL_LIST = [Model.NAI_DIFFUSION_3_INPAINTING,

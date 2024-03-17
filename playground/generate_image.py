@@ -11,7 +11,7 @@ from pydantic import SecretStr
 
 from novelai_python import APIError, Login
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
-from novelai_python.sdk.ai.generate_image import Action, Sampler
+from novelai_python.sdk.ai.generate_image import Action, Sampler, Model
 from novelai_python.utils.useful import enum_to_list
 
 
@@ -30,14 +30,15 @@ async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazin
     try:
         agent = GenerateImageInfer.build(
             prompt=prompt,
+            model=Model.NAI_DIFFUSION_3,
             action=Action.GENERATE,
-            sampler=Sampler.K_DPMPP_SDE,
+            sampler=Sampler.DDIM_V3,
             qualityToggle=True,
         )
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
         result = await agent.request(
-            session=credential, remove_sign=True
+            session=credential
         )
     except APIError as e:
         print(f"Error: {e.message}")
