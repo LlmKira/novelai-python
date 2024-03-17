@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_exception
 from typing_extensions import override
 
+from ._const import len_values, tempmin_value, sm_value, dyn_value, map_value
 from ._enum import Model, Sampler, NoiseSchedule, ControlNetModel, Action, UCPreset, INPAINTING_MODEL_LIST
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
@@ -334,7 +335,6 @@ class GenerateImageInfer(ApiBaseModel):
         is_opus: `bool`, optional
             If the subscription tier is Opus. Opus accounts have access to free generations.
         """
-
         steps: int = self.parameters.steps
         n_samples: int = self.parameters.n_samples
         uncond_scale: float = self.parameters.uncond_scale
@@ -344,11 +344,16 @@ class GenerateImageInfer(ApiBaseModel):
         sampler: Sampler = self.parameters.sampler
         resolution = max(self.parameters.width * self.parameters.height, 65536)
         # Determine smea_factor
-        smea_factor = sm_dyn and 1.4 or sm and 1.2 or 1.0
+        smea_factor = 1.4 if sm_dyn else 1.2 if sm else 1.0
 
         # For normal resolutions, square is adjusted to the same price as portrait/landscape
-        if math.prod((832, 1216)) < resolution <= math.prod((1024, 1024)):
+        if resolution < math.prod((832, 1216)) or resolution <= math.prod((1024, 1024)):
             resolution = math.prod((832, 1216))
+
+        # Discount for Opus subscription
+        opus_discount = is_opus and steps <= 28 and resolution <= 1048576
+        if opus_discount:
+            n_samples -= 1
 
         if sampler == Sampler.DDIM_V3:
             per_sample = (
@@ -365,40 +370,30 @@ class GenerateImageInfer(ApiBaseModel):
                         resolution / 1048576 * 0.6326248927474729) - 15.225164493059737) / 28 * steps
             )
         else:
-            def complicated_func(sampler, resolution, steps, sm, sm_dyn):
-                map = [1, 2, 4, 3, 6, 9, 8, 12, 10, 15]  # This is a simplified example
-                tempmin = [0.124, 0.11, 0.124, 0.205, 0.121, 0.307]
-                j = [0.111, 0.3]
-                i = [0.07, 0.067, 0.07, 0.138, 0.0]
-                len = [0.072]
-                if sampler == Sampler.NAI_SMEA_DYN:
-                    min_value = j
-                elif sampler == Sampler.NAI_SMEA:
-                    min_value = tempmin
-                elif sampler == Sampler.K_EULER_ANCESTRAL:
-                    min_value = i
-                elif sampler == Sampler.DDIM:
-                    min_value = len
-                else:
-                    min_value = i
-                if sm_dyn:
-                    min_value = j
-                elif sm:
-                    min_value = tempmin
-                row = map[int(steps / 64) * int(resolution / 64)]
-                result = min_value[row] * resolution + min_value[row + 1]
-                return result
-
-            per_sample = (
-                # use some function to get cost according to sampler, resolution, steps, sm, and sm_dyn
-                complicated_func(sampler, resolution, steps, sm, sm_dyn)
-            )
+            try:
+                min_value = sm_value
+                if sampler in [Sampler.NAI_SMEA, Sampler.NAI_SMEA_DYN, Sampler.K_EULER_ANCESTRAL, Sampler.DDIM]:
+                    min_value = dyn_value if sm_dyn else tempmin_value if sm else sm_value
+                if sampler == Sampler.DDIM:
+                    min_value = len_values
+                # FIXME: This is a bug, the row should be calculated by steps and resolution
+                row = map_value[int(steps / 64) * int(resolution / 64)]
+                per_sample = min_value[row] * resolution + min_value[row + 1]
+            except Exception as e:
+                logger.warning(f"Error when calculate cost: {e}")
+                per_sample = (
+                        math.ceil(
+                            2.951823174884865E-6 * resolution
+                            + 5.753298233447344E-7 * resolution * steps
+                        )
+                        * smea_factor
+                )
         per_sample = max(math.ceil(per_sample * strength), 2)
-        opus_discount = is_opus and steps <= 28 and resolution <= 1048576
 
         if uncond_scale != 1.0:
             per_sample = math.ceil(per_sample * 1.3)
-        return per_sample * (n_samples - int(opus_discount))
+
+        return per_sample * n_samples
 
     @classmethod
     def build(cls,

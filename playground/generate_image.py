@@ -32,7 +32,7 @@ async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazin
             prompt=prompt,
             model=Model.NAI_DIFFUSION_3,
             action=Action.GENERATE,
-            sampler=Sampler.DDIM_V3,
+            sampler=Sampler.DDIM,
             qualityToggle=True,
         )
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
