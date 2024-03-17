@@ -23,7 +23,7 @@ class Sampler(Enum):
     K_DPM_FAST = "k_dpm_fast"
     K_DPMPP_2M_SDE = "k_dpmpp_2m_sde"
     K_DPMPP_3M_SDE = "k_dpmpp_3m_sde"
-    # NAI_SMEA = "nai_smea"
+    NAI_SMEA = "nai_smea"
     NAI_SMEA_DYN = "nai_smea_dyn"
 
 

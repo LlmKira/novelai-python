@@ -195,10 +195,16 @@ class GenerateImageInfer(ApiBaseModel):
         @model_validator(mode="after")
         def image_validator(self):
             if self.sampler:
-                if self.sampler in [Sampler.DDIM]:
-                    logger.warning("sm and sm_dyn is disabled when using ddim sampler.")
+                if self.sampler in [Sampler.DDIM, Sampler.DDIM_V3]:
                     self.sm = False
                     self.sm_dyn = False
+                    if self.sm_dyn or self.sm:
+                        logger.warning("sm and sm_dyn is disabled when using ddim sampler.")
+                if self.sampler in [Sampler.NAI_SMEA_DYN]:
+                    self.sm = True
+                    self.sm_dyn = True
+                    if not self.sm_dyn:
+                        logger.warning("sm and sm_dyn is enabled when using nai_smea_dyn sampler.")
             if isinstance(self.image, str) and self.image.startswith("data:"):
                 raise ValueError("Invalid `image` format, must be base64 encoded directly.")
             if isinstance(self.reference_image, str) and self.reference_image.startswith("data:"):
@@ -335,28 +341,63 @@ class GenerateImageInfer(ApiBaseModel):
         strength: float = self.action == Action.IMG2IMG and self.parameters.strength or 1.0
         sm: bool = self.parameters.sm
         sm_dyn: bool = self.parameters.sm_dyn
-        smea_factor = 1.0
+        sampler: Sampler = self.parameters.sampler
+        resolution = max(self.parameters.width * self.parameters.height, 65536)
+        # Determine smea_factor
         smea_factor = sm_dyn and 1.4 or sm and 1.2 or 1.0
-        resolution: int = max(self.parameters.width * self.parameters.height, 65536)
-        # Adjust cost for square resolutions
+
+        # For normal resolutions, square is adjusted to the same price as portrait/landscape
         if math.prod((832, 1216)) < resolution <= math.prod((1024, 1024)):
             resolution = math.prod((832, 1216))
-        per_sample: int = (
-                math.ceil(
-                    2951823174884865e-21 * resolution
-                    + 5.753298233447344e-7 * resolution * steps
-                )
-                * smea_factor
-        )
+
+        if sampler == Sampler.DDIM_V3:
+            per_sample = (
+                    math.ceil(
+                        2.951823174884865E-6 * resolution
+                        + 5.753298233447344E-7 * resolution * steps
+                    )
+                    * smea_factor
+            )
+        elif resolution <= 1048576 and sampler in [Sampler.PLMS, Sampler.DDIM, Sampler.K_EULER,
+                                                   Sampler.K_EULER_ANCESTRAL, Sampler.K_LMS]:
+            per_sample = (
+                    (15.266497014243718 * math.exp(
+                        resolution / 1048576 * 0.6326248927474729) - 15.225164493059737) / 28 * steps
+            )
+        else:
+            def complicated_func(sampler, resolution, steps, sm, sm_dyn):
+                map = [1, 2, 4, 3, 6, 9, 8, 12, 10, 15]  # This is a simplified example
+                tempmin = [0.124, 0.11, 0.124, 0.205, 0.121, 0.307]
+                j = [0.111, 0.3]
+                i = [0.07, 0.067, 0.07, 0.138, 0.0]
+                len = [0.072]
+                if sampler == Sampler.NAI_SMEA_DYN:
+                    min_value = j
+                elif sampler == Sampler.NAI_SMEA:
+                    min_value = tempmin
+                elif sampler == Sampler.K_EULER_ANCESTRAL:
+                    min_value = i
+                elif sampler == Sampler.DDIM:
+                    min_value = len
+                else:
+                    min_value = i
+                if sm_dyn:
+                    min_value = j
+                elif sm:
+                    min_value = tempmin
+                row = map[int(steps / 64) * int(resolution / 64)]
+                result = min_value[row] * resolution + min_value[row + 1]
+                return result
+
+            per_sample = (
+                # use some function to get cost according to sampler, resolution, steps, sm, and sm_dyn
+                complicated_func(sampler, resolution, steps, sm, sm_dyn)
+            )
         per_sample = max(math.ceil(per_sample * strength), 2)
+        opus_discount = is_opus and steps <= 28 and resolution <= 1048576
 
         if uncond_scale != 1.0:
             per_sample = math.ceil(per_sample * 1.3)
-        opus_discount: bool = (
-                is_opus
-                and steps <= 28
-                and (resolution <= math.prod((1024, 1024)))
-        )
         return per_sample * (n_samples - int(opus_discount))
 
     @classmethod
