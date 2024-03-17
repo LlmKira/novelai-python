@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_exception
 from typing_extensions import override
 
+from ._const import len_values, tempmin_value, sm_value, dyn_value, map_value
 from ._enum import Model, Sampler, NoiseSchedule, ControlNetModel, Action, UCPreset, INPAINTING_MODEL_LIST
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
@@ -32,6 +33,14 @@ from PIL import Image
 
 class GenerateImageInfer(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://image.novelai.net")
+
+    @property
+    def endpoint(self):
+        return self._endpoint
+
+    @endpoint.setter
+    def endpoint(self, value):
+        self._endpoint = value
 
     class Params(BaseModel):
         add_original_image: Optional[bool] = Field(True, description="Overlay Original Image")
@@ -186,6 +195,17 @@ class GenerateImageInfer(ApiBaseModel):
         # Validators
         @model_validator(mode="after")
         def image_validator(self):
+            if self.sampler:
+                if self.sampler in [Sampler.DDIM, Sampler.DDIM_V3]:
+                    self.sm = False
+                    self.sm_dyn = False
+                    if self.sm_dyn or self.sm:
+                        logger.warning("sm and sm_dyn is disabled when using ddim sampler.")
+                if self.sampler in [Sampler.NAI_SMEA_DYN]:
+                    self.sm = True
+                    self.sm_dyn = True
+                    if not self.sm_dyn:
+                        logger.warning("sm and sm_dyn is enabled when using nai_smea_dyn sampler.")
             if isinstance(self.image, str) and self.image.startswith("data:"):
                 raise ValueError("Invalid `image` format, must be base64 encoded directly.")
             if isinstance(self.reference_image, str) and self.reference_image.startswith("data:"):
@@ -231,14 +251,6 @@ class GenerateImageInfer(ApiBaseModel):
     model: Optional[Model] = "nai-diffusion-3"
     parameters: Params = Params()
     model_config = ConfigDict(extra="ignore")
-
-    @property
-    def endpoint(self):
-        return self._endpoint
-
-    @endpoint.setter
-    def endpoint(self, value):
-        self._endpoint = value
 
     @override
     def model_post_init(self, *args) -> None:
@@ -323,37 +335,65 @@ class GenerateImageInfer(ApiBaseModel):
         is_opus: `bool`, optional
             If the subscription tier is Opus. Opus accounts have access to free generations.
         """
-
         steps: int = self.parameters.steps
         n_samples: int = self.parameters.n_samples
         uncond_scale: float = self.parameters.uncond_scale
-        strength: float = self.action == "img2img" and self.parameters.strength or 1.0
-        smea_factor = self.parameters.sm_dyn and 1.4 or self.parameters.sm and 1.2 or 1.0
+        strength: float = self.action == Action.IMG2IMG and self.parameters.strength or 1.0
+        sm: bool = self.parameters.sm
+        sm_dyn: bool = self.parameters.sm_dyn
+        sampler: Sampler = self.parameters.sampler
         resolution = max(self.parameters.width * self.parameters.height, 65536)
+        # Determine smea_factor
+        smea_factor = 1.4 if sm_dyn else 1.2 if sm else 1.0
 
-        # For normal resolutions, squre is adjusted to the same price as portrait/landscape
-        if math.prod(
-                (832, 1216)
-        ) < resolution <= math.prod((1024, 1024)):
+        # For normal resolutions, square is adjusted to the same price as portrait/landscape
+        if resolution < math.prod((832, 1216)) or resolution <= math.prod((1024, 1024)):
             resolution = math.prod((832, 1216))
-        per_sample = (
-                math.ceil(
-                    2951823174884865e-21 * resolution
-                    + 5.753298233447344e-7 * resolution * steps
+
+        # Discount for Opus subscription
+        opus_discount = is_opus and steps <= 28 and resolution <= 1048576
+        if opus_discount:
+            n_samples -= 1
+
+        if sampler == Sampler.DDIM_V3:
+            per_sample = (
+                    math.ceil(
+                        2.951823174884865E-6 * resolution
+                        + 5.753298233447344E-7 * resolution * steps
+                    )
+                    * smea_factor
+            )
+        elif resolution <= 1048576 and sampler in [Sampler.PLMS, Sampler.DDIM, Sampler.K_EULER,
+                                                   Sampler.K_EULER_ANCESTRAL, Sampler.K_LMS]:
+            per_sample = (
+                    (15.266497014243718 * math.exp(
+                        resolution / 1048576 * 0.6326248927474729) - 15.225164493059737) / 28 * steps
+            )
+        else:
+            try:
+                min_value = sm_value
+                if sampler in [Sampler.NAI_SMEA, Sampler.NAI_SMEA_DYN, Sampler.K_EULER_ANCESTRAL, Sampler.DDIM]:
+                    min_value = dyn_value if sm_dyn else tempmin_value if sm else sm_value
+                if sampler == Sampler.DDIM:
+                    min_value = len_values
+                # FIXME: This is a bug, the row should be calculated by steps and resolution
+                row = map_value[int(steps / 64) * int(resolution / 64)]
+                per_sample = min_value[row] * resolution + min_value[row + 1]
+            except Exception as e:
+                logger.warning(f"Error when calculate cost: {e}")
+                per_sample = (
+                        math.ceil(
+                            2.951823174884865E-6 * resolution
+                            + 5.753298233447344E-7 * resolution * steps
+                        )
+                        * smea_factor
                 )
-                * smea_factor
-        )
         per_sample = max(math.ceil(per_sample * strength), 2)
 
         if uncond_scale != 1.0:
             per_sample = math.ceil(per_sample * 1.3)
 
-        opus_discount = (
-                is_opus
-                and steps <= 28
-                and (resolution <= math.prod((1024, 1024)))
-        )
-        return per_sample * (n_samples - int(opus_discount))
+        return per_sample * n_samples
 
     @classmethod
     def build(cls,
