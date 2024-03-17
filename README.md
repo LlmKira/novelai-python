@@ -5,7 +5,7 @@
 [![PyPI version](https://badge.fury.io/py/novelai-python.svg)](https://badge.fury.io/py/novelai-python)
 [![Downloads](https://pepy.tech/badge/novelai_python)](https://pepy.tech/project/novelai_python)
 
-✨ NovelAI api python sdk with Pydantic
+✨ NovelAI api python sdk with Pydantic.
 
 The goal of this repository is to use Pydantic to build legitimate requests to access the NovelAI API service.
 
@@ -25,6 +25,11 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 - [ ] /ai/generate-prompt
 - [ ] /ai/generate
 - [ ] /ai/generate-voice
+
+> GenerateImageInfer.calculate_cost is correct in most cases, but please request account information to get accurate
+> consumption information.
+
+> This repo is maintained by me personally now. If you have any questions, please feel free to open an issue.
 
 ### Usage 🖥️
 
