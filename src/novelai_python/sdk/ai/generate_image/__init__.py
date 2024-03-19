@@ -28,7 +28,7 @@ from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, Sess
 from ...._response.ai.generate_image import ImageGenerateResp
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 
 class GenerateImageInfer(ApiBaseModel):
@@ -155,37 +155,44 @@ class GenerateImageInfer(ApiBaseModel):
             return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
         @staticmethod
-        def add_image_to_black_background(image: Union[str, bytes], width: int = 448, height: int = 448):
+        def add_image_to_black_background(
+                image: Union[str, bytes],
+                width: int = 448,
+                height: int = 448,
+                transparency: bool = False,
+                sharpness: float = 1
+        ):
+
             """
             缩放图像到指定的黑色透明背景上，使其尽可能大且保持比例。
+            :param sharpness: 锐化度
+            :param transparency: 是否透明
             :param image: 图像
             :param width: 宽
             :param height: 高
             :return: 新图像
             """
+
             if isinstance(image, str):
                 image = base64.b64decode(image)
 
             open_image = Image.open(BytesIO(image)).convert("RGBA")
-            # 如果尺寸相同，直接返回
-            if open_image.width == width and open_image.height == height:
-                return base64.b64encode(image).decode("utf-8")
-
-            # 计算正确的缩放因子
             width_ratio = width / open_image.width
             height_ratio = height / open_image.height
             ratio = min(width_ratio, height_ratio)
+            # 在生成新图像前，根据参数进行图像锐化处理
 
             new_image_size = (int(open_image.width * ratio), int(open_image.height * ratio))
-            open_image = open_image.resize(new_image_size, Image.Resampling.BICUBIC)
+            if not (open_image.width == width and open_image.height == height):
+                enhancer = ImageEnhance.Sharpness(open_image)
+                open_image = enhancer.enhance(sharpness)
+                open_image = open_image.resize(new_image_size, Image.Resampling.BOX)
 
-            # 创建一个黑色透明背景的新图像，颜色深度32位
-            new_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            # 新图像的透明度根据输入参数决定
+            bg_color = (0, 0, 0, 0) if transparency else (0, 0, 0)
+            new_image = Image.new("RGBA", (width, height), bg_color)
 
-            # 计算居中位置
             position = ((width - open_image.width) // 2, (height - open_image.height) // 2)
-
-            # 粘贴图像
             new_image.paste(open_image, position)
 
             buffered = BytesIO()
