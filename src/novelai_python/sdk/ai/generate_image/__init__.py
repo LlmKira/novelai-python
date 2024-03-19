@@ -14,7 +14,9 @@ from urllib.parse import urlparse
 from zipfile import ZipFile
 
 import curl_cffi
+import cv2
 import httpx
+import numpy as np
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator, Field
@@ -28,7 +30,7 @@ from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, Sess
 from ...._response.ai.generate_image import ImageGenerateResp
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 
 class GenerateImageInfer(ApiBaseModel):
@@ -155,42 +157,61 @@ class GenerateImageInfer(ApiBaseModel):
             return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
         @staticmethod
-        def add_image_to_black_background(image: Union[str, bytes], width: int = 448, height: int = 448):
+        def add_image_to_black_background(
+                image: Union[str, bytes],
+                width: int = 448,
+                height: int = 448,
+                transparency: bool = False
+        ):
+
             """
             缩放图像到指定的黑色透明背景上，使其尽可能大且保持比例。
+            :param transparency: 是否透明
             :param image: 图像
             :param width: 宽
             :param height: 高
             :return: 新图像
             """
+
             if isinstance(image, str):
                 image = base64.b64decode(image)
 
-            open_image = Image.open(BytesIO(image)).convert("RGBA")
-            # 如果尺寸相同，直接返回
-            if open_image.width == width and open_image.height == height:
-                return base64.b64encode(image).decode("utf-8")
+            # Decode the image from the base64 string
+            npimg = np.frombuffer(image, np.uint8)
 
-            # 计算正确的缩放因子
-            width_ratio = width / open_image.width
-            height_ratio = height / open_image.height
+            # Read the image using OpenCV
+            open_image = cv2.imdecode(npimg, cv2.IMREAD_UNCHANGED)
+
+            # Calculate the ratio for scaling
+            width_ratio = width / open_image.shape[1]
+            height_ratio = height / open_image.shape[0]
             ratio = min(width_ratio, height_ratio)
 
-            new_image_size = (int(open_image.width * ratio), int(open_image.height * ratio))
-            open_image = open_image.resize(new_image_size, Image.Resampling.BICUBIC)
+            # Create new image size
+            new_image_size = (int(open_image.shape[1] * ratio), int(open_image.shape[0] * ratio))
 
-            # 创建一个黑色透明背景的新图像，颜色深度32位
-            new_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+            # Resize the image
+            open_image = cv2.resize(open_image, new_image_size, interpolation=cv2.INTER_LINEAR)
 
-            # 计算居中位置
-            position = ((width - open_image.width) // 2, (height - open_image.height) // 2)
+            # Create black background
+            if open_image.shape[2] == 3:  # no alpha channel, add one
+                open_image = cv2.cvtColor(open_image, cv2.COLOR_BGR2BGRA)
+            if transparency:
+                bg_color = [0, 0, 0, 0]
+            else:
+                bg_color = [0, 0, 0, 255]
+            new_image = np.full((height, width, 4), bg_color, dtype=np.uint8)
 
-            # 粘贴图像
-            new_image.paste(open_image, position)
+            # Compute coords to place image on black background
+            position = ((width - open_image.shape[1]) // 2, (height - open_image.shape[0]) // 2)
 
-            buffered = BytesIO()
-            new_image.save(buffered, format="PNG")
-            return base64.b64encode(buffered.getvalue()).decode("utf-8")
+            # Place the image on black background at the calculated position
+            new_image[position[1]:position[1] + open_image.shape[0],
+            position[0]:position[0] + open_image.shape[1]] = open_image
+
+            # Encode image to base64 string
+            _, buffer = cv2.imencode('.png', new_image)
+            return base64.b64encode(buffer).decode("utf-8")
 
         # Validators
         @model_validator(mode="after")
