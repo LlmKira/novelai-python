@@ -161,7 +161,7 @@ class GenerateImageInfer(ApiBaseModel):
                 image: Union[str, bytes],
                 width: int = 448,
                 height: int = 448,
-                transparency: bool = False
+                transparency: bool = True
         ):
 
             """
