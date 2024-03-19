@@ -40,7 +40,7 @@ async def generate(
         upscale = Upscale(image=data)  # Auto detect image size | base64
 
         _res = await upscale.request(
-            session=globe_s, remove_sign=True
+            session=globe_s
         )
     except APIError as e:
         print(e.response)
