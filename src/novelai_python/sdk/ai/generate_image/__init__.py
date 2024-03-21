@@ -9,7 +9,7 @@ import math
 import random
 from copy import deepcopy
 from io import BytesIO
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 from urllib.parse import urlparse
 from zipfile import ZipFile
 
@@ -159,7 +159,7 @@ class GenerateImageInfer(ApiBaseModel):
         @staticmethod
         def add_image_to_black_background(
                 image: Union[str, bytes],
-                target_size: tuple[int, int] = (448, 448),
+                target_size: Tuple[int, int] = (448, 448),
                 transparency: bool = False
         ):
 
