@@ -17,6 +17,7 @@ import curl_cffi
 import cv2
 import httpx
 import numpy as np
+from PIL import Image
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator, Field
@@ -30,7 +31,6 @@ from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, Sess
 from ...._response.ai.generate_image import ImageGenerateResp
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
-from PIL import Image, ImageEnhance
 
 
 class GenerateImageInfer(ApiBaseModel):
@@ -274,7 +274,7 @@ class GenerateImageInfer(ApiBaseModel):
                 "lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, "
                 "watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, "
                 "username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, "
-                "glowing eyes, nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, "
+                "glowing eyes, lowres, bad anatomy, bad hands, text, error, missing fingers, "
                 "extra digit, fewer digits, cropped, worst quality, low quality, normal quality, "
                 f"jpeg artifacts, signature, watermark, username, blurry "
                 f",{self.parameters.negative_prompt}"
