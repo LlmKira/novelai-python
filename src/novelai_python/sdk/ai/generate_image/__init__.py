@@ -9,7 +9,7 @@ import math
 import random
 from copy import deepcopy
 from io import BytesIO
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 from urllib.parse import urlparse
 from zipfile import ZipFile
 
@@ -17,6 +17,7 @@ import curl_cffi
 import cv2
 import httpx
 import numpy as np
+from PIL import Image
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator, Field
@@ -30,7 +31,6 @@ from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, Sess
 from ...._response.ai.generate_image import ImageGenerateResp
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
-from PIL import Image, ImageEnhance
 
 
 class GenerateImageInfer(ApiBaseModel):
@@ -159,58 +159,43 @@ class GenerateImageInfer(ApiBaseModel):
         @staticmethod
         def add_image_to_black_background(
                 image: Union[str, bytes],
-                width: int = 448,
-                height: int = 448,
-                transparency: bool = True
+                target_size: Tuple[int, int] = (448, 448),
+                transparency: bool = False
         ):
 
             """
             缩放图像到指定的黑色透明背景上，使其尽可能大且保持比例。
             :param transparency: 是否透明
             :param image: 图像
-            :param width: 宽
-            :param height: 高
+            :param target_size: 目标尺寸
             :return: 新图像
             """
 
             if isinstance(image, str):
                 image = base64.b64decode(image)
-
-            # Decode the image from the base64 string
+                # Decode the image from the base64 string
             npimg = np.frombuffer(image, np.uint8)
-
-            # Read the image using OpenCV
-            open_image = cv2.imdecode(npimg, cv2.IMREAD_UNCHANGED)
-
-            # Calculate the ratio for scaling
-            width_ratio = width / open_image.shape[1]
-            height_ratio = height / open_image.shape[0]
-            ratio = min(width_ratio, height_ratio)
-
-            # Create new image size
-            new_image_size = (int(open_image.shape[1] * ratio), int(open_image.shape[0] * ratio))
-
+            # Load the image with OpenCV
+            img = cv2.imdecode(npimg, cv2.IMREAD_UNCHANGED)
+            # Calculate the aspect ratio (keeping aspect ratio)
+            ratio = min(target_size[0] / img.shape[1], target_size[1] / img.shape[0])
+            new_image_size = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
             # Resize the image
-            open_image = cv2.resize(open_image, new_image_size, interpolation=cv2.INTER_LINEAR)
-
-            # Create black background
-            if open_image.shape[2] == 3:  # no alpha channel, add one
-                open_image = cv2.cvtColor(open_image, cv2.COLOR_BGR2BGRA)
-            if transparency:
-                bg_color = [0, 0, 0, 0]
-            else:
-                bg_color = [0, 0, 0, 255]
-            new_image = np.full((height, width, 4), bg_color, dtype=np.uint8)
-
-            # Compute coords to place image on black background
-            position = ((width - open_image.shape[1]) // 2, (height - open_image.shape[0]) // 2)
-
-            # Place the image on black background at the calculated position
-            new_image[position[1]:position[1] + open_image.shape[0],
-            position[0]:position[0] + open_image.shape[1]] = open_image
-
-            # Encode image to base64 string
-            _, buffer = cv2.imencode('.png', new_image)
+            img = cv2.resize(img, new_image_size, interpolation=cv2.INTER_LINEAR)
+            # Check if the image has alpha channel (transparency)
+            if img.shape[2] == 3:  # no alpha channel, add one
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+            # Create new image with black background
+            delta_w = target_size[0] - img.shape[1]
+            delta_h = target_size[1] - img.shape[0]
+            top, bottom = delta_h // 2, delta_h - (delta_h // 2)
+            left, right = delta_w // 2, delta_w - (delta_w // 2)
+            # If the transparency flag is set the background is transparent, otherwise it is black
+            color = [0, 0, 0, 0] if transparency else [0, 0, 0, 255]
+            # Add padding to the image
+            new_img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
+            # Convert the image to base64
+            _, buffer = cv2.imencode(".png", new_img)
             return base64.b64encode(buffer).decode("utf-8")
 
         # Validators
@@ -289,7 +274,7 @@ class GenerateImageInfer(ApiBaseModel):
                 "lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, "
                 "watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, "
                 "username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, "
-                "glowing eyes, nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, "
+                "glowing eyes, lowres, bad anatomy, bad hands, text, error, missing fingers, "
                 "extra digit, fewer digits, cropped, worst quality, low quality, normal quality, "
                 f"jpeg artifacts, signature, watermark, username, blurry "
                 f",{self.parameters.negative_prompt}"

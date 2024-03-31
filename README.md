@@ -20,11 +20,11 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 - [x] /user/information
 - [x] /ai/upscale
 - [x] /ai/generate-image/suggest-tags
+- [x] /ai/generate-voice
 - [ ] /ai/annotate-image
 - [ ] /ai/classify
 - [ ] /ai/generate-prompt
 - [ ] /ai/generate
-- [ ] /ai/generate-voice
 
 > GenerateImageInfer.calculate_cost is correct in most cases, but please request account information to get accurate
 > consumption information.
