@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 # @Author  : sudoskys
-import base64
-import json
-from io import BytesIO
 from typing import Optional, Union, Literal
 from urllib.parse import urlparse
-from zipfile import ZipFile
 
 import curl_cffi
 import httpx
@@ -15,12 +11,11 @@ from loguru import logger
 from pydantic import ConfigDict, PrivateAttr, Field, model_validator
 from tenacity import wait_random, retry, stop_after_attempt, retry_if_exception
 
-from ..schema import ApiBaseModel
-from ..._exceptions import APIError, AuthError, SessionHttpError
-from ..._response.ai.generate_voice import VoiceResponse
-from ...credential import CredentialBase
-from ...utils import try_jsonfy
 from ._enum import VoiceSpeakerV1, VoiceSpeakerV2
+from ...schema import ApiBaseModel
+from ...._exceptions import APIError, SessionHttpError
+from ...._response.ai.generate_voice import VoiceResponse
+from ....credential import CredentialBase
 
 
 class VoiceGenerate(ApiBaseModel):
