@@ -12,6 +12,7 @@ from ._exceptions import (
 )
 from .credential import JwtCredential, LoginCredential, ApiCredential
 from .sdk import GenerateImageInfer, ImageGenerateResp
+from .sdk import VoiceGenerate, VoiceResponse
 from .sdk import SuggestTags, SuggestTagsResp
 from .sdk import Information, InformationResp
 from .sdk import Login, LoginResp
@@ -21,6 +22,9 @@ from .sdk import Upscale, UpscaleResp
 __all__ = [
     "GenerateImageInfer",
     "ImageGenerateResp",
+
+    "VoiceGenerate",
+    "VoiceResponse",
 
     "Upscale",
     "UpscaleResp",
