@@ -6,6 +6,7 @@
 import io
 import sys
 import zipfile
+from typing import Optional, Literal, Union
 
 import uvicorn
 from fastapi import FastAPI, Depends, Security
@@ -17,6 +18,7 @@ from .credential import JwtCredential, SecretStr
 from .sdk.ai.generate_image import GenerateImageInfer
 from .sdk.ai.generate_image.suggest_tags import SuggestTags
 from .sdk.ai.upscale import Upscale
+from .sdk.ai.generate_voice import VoiceGenerate, VoiceResponse
 from .sdk.user.information import Information
 from .sdk.user.login import Login
 from .sdk.user.subscription import Subscription
@@ -159,6 +161,32 @@ async def generate_image(
         zip_file_bytes.seek(0)
         return StreamingResponse(zip_file_bytes, media_type='application/zip', headers={
             'Content-Disposition': 'attachment;filename=image.zip'
+        })
+    except Exception as e:
+        logger.exception(e)
+        return JSONResponse(status_code=500, content=e.__dict__)
+
+
+@app.get("/ai/generate-voice")
+async def generate_voice(
+        text: str,
+        voice: int = -1,
+        seed: Optional[str] = None,
+        opus: bool = False,
+        version: Union[Literal["v2", "v1"], str] = "v2",
+        current_token: str = Depends(get_current_token)
+):
+    """
+    生成图片
+    :param current_token: Authorization
+    :param req: GenerateImageInfer
+    :return:
+    """
+    try:
+        req = VoiceGenerate(text=text, voice=voice, seed=seed, opus=opus, version=version)
+        _result = await req.request(session=get_session(current_token))
+        return StreamingResponse(io.BytesIO(_result.audio), media_type='audio/mpeg', headers={
+            'Content-Disposition': 'attachment;filename=audio.mp3'
         })
     except Exception as e:
         logger.exception(e)

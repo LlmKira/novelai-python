@@ -98,7 +98,7 @@ print(s)
 
 ```shell
 pip install novelai_python
-python3 -m novelai_python.server -h '0.0.0.0' -p 7888
+python3 -m novelai_python.server -h '127.0.0.1' -p 7888
 ```
 
 ## Acknowledgements 🙏
