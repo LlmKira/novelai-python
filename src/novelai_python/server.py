@@ -15,7 +15,7 @@ from loguru import logger
 from starlette.responses import JSONResponse, StreamingResponse
 
 from .credential import JwtCredential, SecretStr
-from .sdk.ai.generate_image import GenerateImageInfer
+from .sdk.ai.generate_image import GenerateImageInfer, Model
 from .sdk.ai.generate_image.suggest_tags import SuggestTags
 from .sdk.ai.upscale import Upscale
 from .sdk.ai.generate_voice import VoiceGenerate, VoiceResponse
@@ -123,16 +123,19 @@ async def upscale(
 
 @app.get("/ai/generate_image/suggest_tags")
 async def suggest_tags(
-        req: SuggestTags,
+        model: Model,
+        prompt: str,
         current_token: str = Depends(get_current_token)
 ):
     """
     生成建议
     :param current_token: Authorization
-    :param req: SuggestTags
+    :param model: Model
+    :param prompt: str
     :return:
     """
     try:
+        req = SuggestTags(model=model, prompt=prompt)
         _result = await req.request(session=get_session(current_token))
         return _result.model_dump()
     except Exception as e:
