@@ -211,7 +211,7 @@ if __name__ == '__main__':
     except getopt.GetoptError:
         usage()
     opts = dict(opts)
-    server_host = opts.get("-h", "0.0.0.0")
+    server_host = opts.get("-h", "127.0.0.1")
     server_port = int(opts.get("-p", 10087))
     print(f"Docs: http://{server_host}:{server_port}/docs")
     uvicorn.run(app, host=server_host, port=server_port)
