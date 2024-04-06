@@ -9,7 +9,7 @@ import math
 import random
 from copy import deepcopy
 from io import BytesIO
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, List
 from urllib.parse import urlparse
 from zipfile import ZipFile
 
@@ -33,6 +33,265 @@ from ....credential import CredentialBase
 from ....utils import try_jsonfy
 
 
+def is_multiple_of_01(num, precision=1e-10):
+    remainder = num % 0.01
+    return abs(remainder) < precision or abs(0.01 - remainder) < precision
+
+
+class Params(BaseModel):
+    add_original_image: Optional[bool] = Field(True, description="Overlay Original Image")
+    """
+    Overlay Original Image.Prevents the existing image from changing,
+    but can introduce seams along the edge of the mask.
+    叠加原始图像
+    防止现有图像发生更改，但可能会沿蒙版边缘引入接缝。
+    """
+    mask: Optional[Union[str, bytes]] = None
+    """Mask for Inpainting"""
+    cfg_rescale: Optional[float] = Field(0, ge=0, le=1, multiple_of=0.02)
+    """Prompt Guidance Rescale"""
+    controlnet_strength: Optional[float] = Field(1.0, ge=0.1, le=2, multiple_of=0.1)
+    """ControlNet Strength"""
+    dynamic_thresholding: Optional[bool] = False
+    """Reduce artifacts caused by high prompt guidance values"""
+    height: Optional[int] = Field(1216, ge=64, le=49152)
+    """Height For Generate Image"""
+    image: Optional[Union[str, bytes]] = None
+    """Image for img2img"""
+    strength: Optional[float] = Field(default=0.5, ge=0.01, le=0.99, multiple_of=0.01)
+    """Strength for img2img"""
+    noise: Optional[float] = Field(default=0, ge=0, le=0.99, multiple_of=0.01)
+    """Noise for img2img"""
+    controlnet_condition: Optional[str] = None
+    """ControlNet Condition"""
+    controlnet_model: Optional[ControlNetModel] = None
+    """ControlNet Model"""
+    n_samples: Optional[int] = Field(1, ge=1, le=8)
+    """Number of samples"""
+    negative_prompt: Optional[str] = ''
+    """Negative Prompt"""
+    noise_schedule: Optional[NoiseSchedule] = NoiseSchedule.NATIVE
+    """Noise Schedule"""
+    # Misc
+    params_version: Optional[int] = 1
+    """Params Version For Request"""
+    reference_image_multiple: Optional[List[Union[str, bytes]]] = None
+    """Reference Image For Vibe Mode"""
+    reference_information_extracted_multiple: Optional[List[float]] = None
+    """Reference Information Extracted For Vibe Mode"""
+
+    @field_validator('reference_information_extracted_multiple')
+    def reference_information_extracted_multiple_validator(cls, v):
+        # List[Field(..., ge=0, le=1, multiple_of=0.01)]
+        if v is None:
+            return v
+        for i in v:
+            if not 0 <= i <= 1:
+                raise ValueError("Invalid reference_information_extracted_multiple, must be in [0, 1].")
+            if not is_multiple_of_01(i):
+                raise ValueError("Invalid reference_information_extracted_multiple, must be multiple of 0.01.")
+        return v
+
+    reference_strength_multiple: Optional[List[float]] = None
+
+    @field_validator('reference_strength_multiple')
+    def reference_strength_multiple_validator(cls, v):
+        # Field(0.6,ge=0,le=1,multiple_of=0.01,description="the stronger the AI will try to emulate visual cues.")
+        if v is None:
+            return v
+        for i in v:
+            if not 0 <= i <= 1:
+                raise ValueError("Invalid reference_strength_multiple, must be in [0, 1].")
+            if not is_multiple_of_01(i):
+                raise ValueError("Invalid reference_strength_multiple, must be multiple of 0.01.")
+        return v
+
+    """Reference Strength For Vibe Mode"""
+    legacy: Optional[bool] = False
+    # TODO: find out the usage
+    legacy_v3_extend: Optional[bool] = False
+    # TODO: find out the usage
+    qualityToggle: Optional[bool] = True
+    """Whether to add the quality prompt"""
+    sampler: Optional[Sampler] = Sampler.K_EULER
+    """Sampler For Generate Image"""
+    scale: Optional[float] = Field(6.0, ge=0, le=10, multiple_of=0.1)
+    """Prompt Guidance"""
+    # Seed
+    seed: Optional[int] = Field(
+        default_factory=lambda: random.randint(0, 4294967295 - 7),
+        gt=0,
+        le=4294967295 - 7,
+    )
+    """Seed"""
+    extra_noise_seed: Optional[int] = Field(
+        default_factory=lambda: random.randint(0, 4294967295 - 7),
+        gt=0,
+        le=4294967295 - 7,
+    )
+    """Extra Noise Seed"""
+    sm: Optional[bool] = False
+    # TODO: find out the usage
+    sm_dyn: Optional[bool] = False
+    # TODO: find out the usage
+    steps: Optional[int] = Field(28, ge=1, le=50)
+    """Steps"""
+    ucPreset: Optional[UCPreset] = 0
+    """The Negative Prompt Preset"""
+    uncond_scale: Optional[float] = Field(1.0, ge=0, le=1.5, multiple_of=0.05)
+    """Undesired Content Strength"""
+    width: Optional[int] = Field(832, ge=64, le=49152)
+    """Width For Image"""
+
+    @staticmethod
+    def resize_image(image: Union[str, bytes], width: int, height: int):
+        """
+        Resize the image to the specified size.
+        :param image: The image to be resized
+        :param width: The width of the image
+        :param height: The height of the image
+        :return: The resized image
+        """
+        if isinstance(image, str):
+            image = base64.b64decode(image)
+        open_image = Image.open(BytesIO(image)).convert("RGBA")
+        # 如果尺寸相同，直接返回
+        if open_image.width == width and open_image.height == height:
+            logger.debug("Image size is same, return directly.")
+            if isinstance(image, bytes):
+                return base64.b64encode(image).decode("utf-8")
+            return image
+        open_image = open_image.resize((width, height), Image.Resampling.BICUBIC)
+        buffered = BytesIO()
+        open_image.save(buffered, format="PNG")
+        return base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+    @staticmethod
+    def add_image_to_black_background(
+            image: Union[str, bytes],
+            target_size: Tuple[int, int] = (448, 448),
+            transparency: bool = False
+    ):
+
+        """
+        缩放图像到指定的黑色透明背景上，使其尽可能大且保持比例。
+        :param transparency: 是否透明
+        :param image: 图像
+        :param target_size: 目标尺寸
+        :return: 新图像
+        """
+
+        if isinstance(image, str):
+            image = base64.b64decode(image)
+            # Decode the image from the base64 string
+        npimg = np.frombuffer(image, np.uint8)
+        # Load the image with OpenCV
+        img = cv2.imdecode(npimg, cv2.IMREAD_UNCHANGED)
+        # Calculate the aspect ratio (keeping aspect ratio)
+        ratio = min(target_size[0] / img.shape[1], target_size[1] / img.shape[0])
+        new_image_size = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
+        # Resize the image
+        img = cv2.resize(img, new_image_size, interpolation=cv2.INTER_LINEAR)
+        # Check if the image has alpha channel (transparency)
+        if img.shape[2] == 3:  # no alpha channel, add one
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
+        # Create new image with black background
+        delta_w = target_size[0] - img.shape[1]
+        delta_h = target_size[1] - img.shape[0]
+        top, bottom = delta_h // 2, delta_h - (delta_h // 2)
+        left, right = delta_w // 2, delta_w - (delta_w // 2)
+        # If the transparency flag is set the background is transparent, otherwise it is black
+        color = [0, 0, 0, 0] if transparency else [0, 0, 0, 255]
+        # Add padding to the image
+        new_img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
+        # Convert the image to base64
+        _, buffer = cv2.imencode(".png", new_img)
+        # buffer here is a numpy array, convert it to bytes
+        image_bytes = buffer.tobytes()
+        return base64.b64encode(image_bytes).decode("utf-8")
+
+    # Validators
+    @model_validator(mode="after")
+    def image_validator(self):
+        if self.sampler:
+            if self.sampler in [Sampler.DDIM, Sampler.DDIM_V3]:
+                self.sm = False
+                self.sm_dyn = False
+                if self.sm_dyn or self.sm:
+                    logger.warning("sm and sm_dyn is disabled when using ddim sampler.")
+            if self.sampler in [Sampler.NAI_SMEA_DYN]:
+                self.sm = True
+                self.sm_dyn = True
+                if not self.sm_dyn:
+                    logger.warning("sm and sm_dyn is enabled when using nai_smea_dyn sampler.")
+        if isinstance(self.image, str) and self.image.startswith("data:"):
+            raise ValueError("Invalid `image` format, must be base64 encoded directly.")
+        if isinstance(self.mask, str) and self.mask.startswith("data:"):
+            raise ValueError("Invalid `mask` format, must be base64 encoded directly.")
+        if isinstance(self.image, bytes):
+            self.image = base64.b64encode(self.image).decode("utf-8")
+        # Resize the image to the specified size
+        if self.reference_image_multiple is not None:
+            new_images = []
+            for reference_image in self.reference_image_multiple:
+                if isinstance(reference_image, str):
+                    if reference_image.startswith("data:"):
+                        raise ValueError("Invalid `reference_image` format, must be base64 encoded directly.")
+                    new_images.append(reference_image)
+                elif isinstance(reference_image, bytes):
+                    new_image = self.add_image_to_black_background(reference_image,
+                                                                   target_size=(448, 448),
+                                                                   transparency=True)
+                    if isinstance(new_image, bytes):
+                        new_image = base64.b64encode(new_image).decode("utf-8")
+                    new_images.append(new_image)
+                else:
+                    raise ValueError("Invalid `reference_image` format, must be base64 encoded directly.")
+            self.reference_image_multiple = new_images
+        # 如果都不是 None 时，比较他们的长度
+        if all([self.reference_strength_multiple,
+                self.reference_image_multiple,
+                self.reference_information_extracted_multiple]):
+            if len(self.reference_strength_multiple) != len(self.reference_image_multiple) != len(
+                    self.reference_information_extracted_multiple):
+                raise ValueError("All three reference_* must be of equal length")
+
+        # 如果有一个存在，其他都必须存在
+        ref_items = [self.reference_strength_multiple,
+                     self.reference_image_multiple,
+                     self.reference_information_extracted_multiple]
+        if any(ref_items) and not all(ref_items):
+            raise ValueError("All fields must be present together or none should be present")
+
+        if isinstance(self.mask, bytes):
+            self.mask = base64.b64encode(self.mask).decode("utf-8")
+        if self.image is not None:
+            self.image = self.resize_image(self.image, self.width, self.height)
+        return self
+
+    @field_validator('width')
+    def width_validator(cls, v: int):
+        """
+        Must be multiple of 64
+        :param v:
+        :return: fixed value
+        """
+        if v % 64 != 0:
+            raise ValueError("Invalid width, must be multiple of 64.")
+        return v
+
+    @field_validator('height')
+    def height_validator(cls, v: int):
+        """
+        Must be multiple of 64
+        :param v:
+        :return: fixed value
+        """
+        if v % 64 != 0:
+            raise ValueError("Invalid height, must be multiple of 64.")
+        return v
+
+
 class GenerateImageInfer(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://image.novelai.net")
 
@@ -43,214 +302,6 @@ class GenerateImageInfer(ApiBaseModel):
     @endpoint.setter
     def endpoint(self, value):
         self._endpoint = value
-
-    class Params(BaseModel):
-        add_original_image: Optional[bool] = Field(True, description="Overlay Original Image")
-        """
-        Overlay Original Image.Prevents the existing image from changing,
-        but can introduce seams along the edge of the mask.
-        叠加原始图像
-        防止现有图像发生更改，但可能会沿蒙版边缘引入接缝。
-        """
-        mask: Optional[Union[str, bytes]] = None
-        """Mask for Inpainting"""
-        cfg_rescale: Optional[float] = Field(0, ge=0, le=1, multiple_of=0.02)
-        """Prompt Guidance Rescale"""
-        controlnet_strength: Optional[float] = Field(1.0, ge=0.1, le=2, multiple_of=0.1)
-        """ControlNet Strength"""
-        dynamic_thresholding: Optional[bool] = False
-        """Reduce artifacts caused by high prompt guidance values"""
-        height: Optional[int] = Field(1216, ge=64, le=49152)
-        """Height For Generate Image"""
-        image: Optional[Union[str, bytes]] = None
-        """Image for img2img"""
-        strength: Optional[float] = Field(default=0.5, ge=0.01, le=0.99, multiple_of=0.01)
-        """Strength for img2img"""
-        noise: Optional[float] = Field(default=0, ge=0, le=0.99, multiple_of=0.01)
-        """Noise for img2img"""
-        controlnet_condition: Optional[str] = None
-        """ControlNet Condition"""
-        controlnet_model: Optional[ControlNetModel] = None
-        """ControlNet Model"""
-        n_samples: Optional[int] = Field(1, ge=1, le=8)
-        """Number of samples"""
-        negative_prompt: Optional[str] = ''
-        """Negative Prompt"""
-        noise_schedule: Optional[NoiseSchedule] = NoiseSchedule.NATIVE
-        """Noise Schedule"""
-        # Misc
-        params_version: Optional[int] = 1
-        """Params Version For Request"""
-        reference_image: Optional[Union[str, bytes]] = None
-        """Reference Image For Vibe Mode"""
-        reference_information_extracted: Optional[float] = Field(1,
-                                                                 ge=0,
-                                                                 le=1,
-                                                                 multiple_of=0.01,
-                                                                 description="extracting concepts or features"
-                                                                 )
-        """Reference Information Extracted For Vibe Mode"""
-        reference_strength: Optional[float] = Field(0.6,
-                                                    ge=0,
-                                                    le=1,
-                                                    multiple_of=0.01,
-                                                    description="the stronger the AI will try to emulate visual cues."
-                                                    )
-        """Reference Strength For Vibe Mode"""
-        legacy: Optional[bool] = False
-        # TODO: find out the usage
-        legacy_v3_extend: Optional[bool] = False
-        # TODO: find out the usage
-        qualityToggle: Optional[bool] = True
-        """Whether to add the quality prompt"""
-        sampler: Optional[Sampler] = Sampler.K_EULER
-        """Sampler For Generate Image"""
-        scale: Optional[float] = Field(6.0, ge=0, le=10, multiple_of=0.1)
-        """Prompt Guidance"""
-        # Seed
-        seed: Optional[int] = Field(
-            default_factory=lambda: random.randint(0, 4294967295 - 7),
-            gt=0,
-            le=4294967295 - 7,
-        )
-        """Seed"""
-        extra_noise_seed: Optional[int] = Field(
-            default_factory=lambda: random.randint(0, 4294967295 - 7),
-            gt=0,
-            le=4294967295 - 7,
-        )
-        """Extra Noise Seed"""
-        sm: Optional[bool] = False
-        # TODO: find out the usage
-        sm_dyn: Optional[bool] = False
-        # TODO: find out the usage
-        steps: Optional[int] = Field(28, ge=1, le=50)
-        """Steps"""
-        ucPreset: Optional[UCPreset] = 0
-        """The Negative Prompt Preset"""
-        uncond_scale: Optional[float] = Field(1.0, ge=0, le=1.5, multiple_of=0.05)
-        """Undesired Content Strength"""
-        width: Optional[int] = Field(832, ge=64, le=49152)
-        """Width For Image"""
-
-        @staticmethod
-        def resize_image(image: Union[str, bytes], width: int, height: int):
-            """
-            Resize the image to the specified size.
-            :param image: The image to be resized
-            :param width: The width of the image
-            :param height: The height of the image
-            :return: The resized image
-            """
-            if isinstance(image, str):
-                image = base64.b64decode(image)
-            open_image = Image.open(BytesIO(image)).convert("RGBA")
-            # 如果尺寸相同，直接返回
-            if open_image.width == width and open_image.height == height:
-                logger.debug("Image size is same, return directly.")
-                if isinstance(image, bytes):
-                    return base64.b64encode(image).decode("utf-8")
-                return image
-            open_image = open_image.resize((width, height), Image.Resampling.BICUBIC)
-            buffered = BytesIO()
-            open_image.save(buffered, format="PNG")
-            return base64.b64encode(buffered.getvalue()).decode("utf-8")
-
-        @staticmethod
-        def add_image_to_black_background(
-                image: Union[str, bytes],
-                target_size: Tuple[int, int] = (448, 448),
-                transparency: bool = False
-        ):
-
-            """
-            缩放图像到指定的黑色透明背景上，使其尽可能大且保持比例。
-            :param transparency: 是否透明
-            :param image: 图像
-            :param target_size: 目标尺寸
-            :return: 新图像
-            """
-
-            if isinstance(image, str):
-                image = base64.b64decode(image)
-                # Decode the image from the base64 string
-            npimg = np.frombuffer(image, np.uint8)
-            # Load the image with OpenCV
-            img = cv2.imdecode(npimg, cv2.IMREAD_UNCHANGED)
-            # Calculate the aspect ratio (keeping aspect ratio)
-            ratio = min(target_size[0] / img.shape[1], target_size[1] / img.shape[0])
-            new_image_size = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
-            # Resize the image
-            img = cv2.resize(img, new_image_size, interpolation=cv2.INTER_LINEAR)
-            # Check if the image has alpha channel (transparency)
-            if img.shape[2] == 3:  # no alpha channel, add one
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
-            # Create new image with black background
-            delta_w = target_size[0] - img.shape[1]
-            delta_h = target_size[1] - img.shape[0]
-            top, bottom = delta_h // 2, delta_h - (delta_h // 2)
-            left, right = delta_w // 2, delta_w - (delta_w // 2)
-            # If the transparency flag is set the background is transparent, otherwise it is black
-            color = [0, 0, 0, 0] if transparency else [0, 0, 0, 255]
-            # Add padding to the image
-            new_img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
-            # Convert the image to base64
-            _, buffer = cv2.imencode(".png", new_img)
-            return base64.b64encode(buffer).decode("utf-8")
-
-        # Validators
-        @model_validator(mode="after")
-        def image_validator(self):
-            if self.sampler:
-                if self.sampler in [Sampler.DDIM, Sampler.DDIM_V3]:
-                    self.sm = False
-                    self.sm_dyn = False
-                    if self.sm_dyn or self.sm:
-                        logger.warning("sm and sm_dyn is disabled when using ddim sampler.")
-                if self.sampler in [Sampler.NAI_SMEA_DYN]:
-                    self.sm = True
-                    self.sm_dyn = True
-                    if not self.sm_dyn:
-                        logger.warning("sm and sm_dyn is enabled when using nai_smea_dyn sampler.")
-            if isinstance(self.image, str) and self.image.startswith("data:"):
-                raise ValueError("Invalid `image` format, must be base64 encoded directly.")
-            if isinstance(self.reference_image, str) and self.reference_image.startswith("data:"):
-                raise ValueError("Invalid `reference_image` format, must be base64 encoded directly.")
-            if isinstance(self.mask, str) and self.mask.startswith("data:"):
-                raise ValueError("Invalid `mask` format, must be base64 encoded directly.")
-            if isinstance(self.image, bytes):
-                self.image = base64.b64encode(self.image).decode("utf-8")
-            if isinstance(self.reference_image, bytes):
-                self.reference_image = base64.b64encode(self.reference_image).decode("utf-8")
-            if isinstance(self.mask, bytes):
-                self.mask = base64.b64encode(self.mask).decode("utf-8")
-            if self.image is not None:
-                self.image = self.resize_image(self.image, self.width, self.height)
-            if self.reference_image is not None:
-                self.reference_image = self.add_image_to_black_background(self.reference_image, width=448, height=448)
-            return self
-
-        @field_validator('width')
-        def width_validator(cls, v: int):
-            """
-            Must be multiple of 64
-            :param v:
-            :return: fixed value
-            """
-            if v % 64 != 0:
-                raise ValueError("Invalid width, must be multiple of 64.")
-            return v
-
-        @field_validator('height')
-        def height_validator(cls, v: int):
-            """
-            Must be multiple of 64
-            :param v:
-            :return: fixed value
-            """
-            if v % 64 != 0:
-                raise ValueError("Invalid height, must be multiple of 64.")
-            return v
 
     action: Union[str, Action] = Field(Action.GENERATE, description="Mode for img generate")
     input: str = "1girl, best quality, amazing quality, very aesthetic, absurdres"
@@ -419,6 +470,9 @@ class GenerateImageInfer(ApiBaseModel):
               qualityToggle: bool = None,
               image: Union[str, bytes] = None,
               noise: float = 0,
+              reference_image_multiple: List[Union[str, bytes]] = None,
+              reference_strength_multiple: List[float] = None,
+              reference_information_extracted_multiple: List[float] = None,
               reference_image: Union[str, bytes] = None,
               reference_strength: float = None,
               reference_information_extracted: float = None,
@@ -435,6 +489,12 @@ class GenerateImageInfer(ApiBaseModel):
         """
         The build function, more convenient to create a GenerateImageInfer instance.
         构建函数，更方便地创建一个GenerateImageInfer实例。
+        :param reference_information_extracted_multiple:  The reference information extracted for Vibe mode.
+                                                            Vibe模式的提取的参考信息。
+        :param reference_image_multiple: The reference image for Vibe mode.
+                                            Vibe模式的参考图像。
+        :param reference_strength_multiple: The strength of the reference image used in Vibe mode.
+                                            在Vibe模式中使用的参考图像的强度。
         :param ucPreset: 0: Heavy, 1: Light, 2: Character
                         0: 重量级, 1: 轻量级, 2: 角色
         :param qualityToggle: add the quality prompt or not.
@@ -465,12 +525,6 @@ class GenerateImageInfer(ApiBaseModel):
                       输入图像。
         :param noise: the noise to be added in the image.
                       要添加到图像中的噪声。
-        :param reference_image: the reference image for Vibe mode.
-                                Vibe模式的参考图像。
-        :param reference_strength: the strength of the reference image used in Vibe mode.
-                                   在Vibe模式中使用的参考图像的强度。
-        :param reference_information_extracted: whether to extract concept or features, for Vibe mode.
-                                                是否提取概念或特征，用于Vibe模式。
         :param add_original_image: Overlay Original Image. Prevents the existing image from changing, only for IMG2IMG mode.
                                    叠加原始图像。防止现有图像发生更改，仅适用于IMG2IMG模式。
         :param strength: the strength of IMG2IMG mode.
@@ -514,11 +568,47 @@ class GenerateImageInfer(ApiBaseModel):
             "sm": sm,
             "uncond_scale": uncond_scale,
         })
+
+        def _merge_param(v1, v2):
+            _list = []
+            if isinstance(v1, list):
+                _list.extend(v1)
+            else:
+                if v1 is not None:
+                    _list.append(v1)
+            if isinstance(v2, list):
+                _list.extend(v2)
+            else:
+                if v2 is not None:
+                    _list.append(v2)
+            return _list
+
+        if reference_image:
+            logger.warning(
+                "reference_image is deprecated, use reference_image_multiple instead."
+            )
+            reference_image_multiple = _merge_param(
+                reference_image, reference_image_multiple
+            )
+        if reference_strength:
+            logger.warning(
+                "reference_strength is deprecated, use reference_strength_multiple instead."
+            )
+            reference_strength_multiple = _merge_param(
+                reference_strength, reference_strength_multiple
+            )
+        if reference_information_extracted:
+            logger.warning(
+                "reference_information_extracted is deprecated, use reference_information_extracted_multiple instead."
+            )
+            reference_information_extracted_multiple = _merge_param(
+                reference_information_extracted, reference_information_extracted_multiple
+            )
         kwargs.update(
             {
-                "reference_image": reference_image,
-                "reference_strength": reference_strength,
-                "reference_information_extracted": reference_information_extracted,
+                "reference_image_multiple": reference_image_multiple,
+                "reference_strength_multiple": reference_strength_multiple,
+                "reference_information_extracted_multiple": reference_information_extracted_multiple,
             }
         )
         kwargs.update(
@@ -534,7 +624,7 @@ class GenerateImageInfer(ApiBaseModel):
             input=prompt,
             model=model,
             action=action,
-            parameters=cls.Params(**param)
+            parameters=Params(**param)
         )
 
     async def necessary_headers(self, request_data) -> dict:
@@ -592,7 +682,8 @@ class GenerateImageInfer(ApiBaseModel):
             _log_data.get("parameters", {}).update({
                 "image": "base64 data" if self.parameters.image else None,
                 "mask": "base64 data" if self.parameters.mask else None,
-                "reference_image": "base64 data" if self.parameters.reference_image else None,
+                "reference_image_multiple": ["base64 data"] * len(
+                    self.parameters.reference_image_multiple) if self.parameters.reference_image_multiple else None,
             })
             logger.debug(f"Request Data: {_log_data}")
             del _log_data

@@ -1,14 +1,15 @@
 {
-  "input": "1boy, leaf background, from behind, cowboy shot, purple eyes, big hair, blonde hair, long bangs, tiara, striped shirt, shorts, impossible clothes, prosthetic leg, back focus, best quality, amazing quality, very aesthetic, absurdres",
+  "input": "no humans, scenery, bamboo forest, alley, train interior, night, road sign, bed sheet, tulip, best quality, amazing quality, very aesthetic, absurdres",
   "model": "nai-diffusion-3",
   "action": "generate",
   "parameters": {
     "params_version": 1,
-    "width": 128,
-    "height": 128,
+    "width": 832,
+    "height": 1216,
     "scale": 5,
     "sampler": "k_euler",
     "steps": 28,
+    "seed": 248658061,
     "n_samples": 1,
     "ucPreset": 0,
     "qualityToggle": true,
@@ -17,15 +18,23 @@
     "dynamic_thresholding": false,
     "controlnet_strength": 1,
     "legacy": false,
-    "add_original_image": false,
+    "add_original_image": true,
     "uncond_scale": 1,
     "cfg_rescale": 0,
     "noise_schedule": "native",
     "legacy_v3_extend": false,
-    "reference_information_extracted": 0.53,
-    "reference_strength": 0.53,
-    "seed": 1160599050,
-    "reference_image": "Base64 Data",
-    "negative_prompt": "nsfw, lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]"
+    "negative_prompt": "nsfw, lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]",
+    "reference_image_multiple": [
+      "Base64 Data",
+      "Base64 Data"
+    ],
+    "reference_information_extracted_multiple": [
+      0.89,
+      0.9
+    ],
+    "reference_strength_multiple": [
+      0.6,
+      0.6
+    ]
   }
 }
