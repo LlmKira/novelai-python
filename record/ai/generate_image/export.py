@@ -1,9 +1,9 @@
+import base64
 import json
 import pathlib
-import base64
-from PIL import Image
 from io import BytesIO
 
+from PIL import Image
 from loguru import logger
 
 
@@ -16,6 +16,23 @@ def decode_base64_in_dict(data, current_path):
         for k, v in data.items():
             if isinstance(v, dict) or isinstance(v, list):
                 decode_base64_in_dict(v, current_path)
+            if isinstance(v, list):
+                _new_list = []
+                for index, item in enumerate(v):
+                    if isinstance(item, str) and len(item) > 100:
+                        try:
+                            # Base64解码
+                            image_bytes = base64.b64decode(item)
+                            image = Image.open(BytesIO(image_bytes))
+                        except Exception as e:
+                            ignore(e)
+                        else:
+                            logger.info(f"Decoding Base64 data in {k}")
+                            img_name = f"{current_path}/{index}-{k}.png"
+                            image.save(img_name)
+                        _new_list.append('Base64 Data')
+                if _new_list:
+                    data[k] = _new_list
             if isinstance(v, str) and len(v) > 100:
                 try:
                     # Base64解码
@@ -44,6 +61,11 @@ def handle_file(filename):
     if 'headers' in json_data:
         if 'Authorization' in json_data['headers']:
             json_data['headers']['Authorization'] = 'Secret'
+            # 写回原文件
+            with open(filename, 'w') as file:
+                json.dump(json_data, file, indent=2)
+        if 'authorization' in json_data['headers']:
+            json_data['headers']['authorization'] = 'Secret'
             # 写回原文件
             with open(filename, 'w') as file:
                 json.dump(json_data, file, indent=2)

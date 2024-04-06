@@ -2,6 +2,7 @@
 import asyncio
 import os
 import pathlib
+
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
@@ -50,7 +51,8 @@ async def generate(
         print(f"Error: {e.message}")
         return None
     else:
-        print(f"Meta: {result.meta}")
+        pass
+        # print(f"Meta: {result.meta}")
     _res: ImageGenerateResp
     file = result.files[0]
     with open(f"{pathlib.Path(__file__).stem}.png", "wb") as f:
