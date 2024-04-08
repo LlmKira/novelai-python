@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 # @Author  : sudoskys
 import json
-from collections.abc import AsyncIterable
-from typing import Optional, Union, List
+from typing import Optional, Union, List, AsyncIterable
 
 import curl_cffi
 import httpx
