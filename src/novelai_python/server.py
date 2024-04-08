@@ -14,11 +14,13 @@ from fastapi.security import APIKeyHeader
 from loguru import logger
 from starlette.responses import JSONResponse, StreamingResponse
 
+from novelai_python import LLMStream, LLMStreamResp
 from .credential import JwtCredential, SecretStr
+from .sdk.ai.generate import LLM
 from .sdk.ai.generate_image import GenerateImageInfer, Model
 from .sdk.ai.generate_image.suggest_tags import SuggestTags
+from .sdk.ai.generate_voice import VoiceGenerate
 from .sdk.ai.upscale import Upscale
-from .sdk.ai.generate_voice import VoiceGenerate, VoiceResponse
 from .sdk.user.information import Information
 from .sdk.user.login import Login
 from .sdk.user.subscription import Subscription
@@ -165,6 +167,49 @@ async def generate_image(
         return StreamingResponse(zip_file_bytes, media_type='application/zip', headers={
             'Content-Disposition': 'attachment;filename=image.zip'
         })
+    except Exception as e:
+        logger.exception(e)
+        return JSONResponse(status_code=500, content=e.__dict__)
+
+
+@app.post("/ai/generate-stream")
+async def generate(
+        req: LLMStream,
+        current_token: str = Depends(get_current_token)
+):
+    """
+    流式生成
+    :param current_token: Authorization
+    :param req: LLMStream
+    :return:
+    """
+
+    async def generator():
+        agent = req
+        session = await get_session(current_token)  # Assume 'get_session()' is a function to get session by token
+        generator = agent.request(session=session)
+        async for data in generator:
+            data: LLMStreamResp
+            print(data)  # 或者做其他需要的处理
+            yield data.text  # Yield data for streaming response
+
+    return StreamingResponse(generator())
+
+
+@app.post("/ai/generate")
+async def generate(
+        req: LLM,
+        current_token: str = Depends(get_current_token)
+):
+    """
+    对话生成
+    :param current_token: Authorization
+    :param req: LLM
+    :return:
+    """
+    try:
+        _result = await req.request(session=get_session(current_token))
+        return _result.model_dump()
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)

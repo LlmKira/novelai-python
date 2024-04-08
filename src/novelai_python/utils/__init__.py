@@ -3,10 +3,11 @@
 # @Author  : sudoskys
 # @File    : __init__.py.py
 # @Software: PyCharm
-import io
 import json
 from typing import Union
+
 from loguru import logger
+
 from .encode import encode_access_key  # noqa 401
 
 
