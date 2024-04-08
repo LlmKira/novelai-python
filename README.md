@@ -48,34 +48,20 @@ import os
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
-from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential, LoginCredential, ApiCredential
+from novelai_python import GenerateImageInfer, ImageGenerateResp, ApiCredential
 
 load_dotenv()
-
 enhance = "year 2023,dynamic angle,  best quality, amazing quality, very aesthetic, absurdres"
+session = ApiCredential(api_token=SecretStr(os.getenv("NOVELAI_JWT")))  # pst-***
 
 
 async def main():
-    globe_s = JwtCredential(
-        jwt_token=SecretStr(os.getenv("NOVELAI_JWT"))  # ey****
-    )
-    globe_s1 = ApiCredential(
-        api_token=SecretStr(os.getenv("NOVELAI_JWT"))  # pst-***
-    )
-    globe_s2 = LoginCredential(
-        username=os.getenv("NOVELAI_USERNAME"),
-        password=SecretStr(os.getenv("NOVELAI_PASSWORD"))
-    )
-
-    gen = await GenerateImageInfer.build(
-        prompt=f"1girl,{enhance}")
+    gen = await GenerateImageInfer.build(prompt=f"1girl,{enhance}")
     cost = gen.calculate_cost(is_opus=True)
     print(f"charge: {cost} if you are vip3")
-
-    resp = gen.request(session=globe_s)
+    resp = gen.request(session=session)
     resp: ImageGenerateResp
     print(resp.meta)
-
     file = resp.files[0]
     with open(file[0], "wb") as f:
         f.write(file[1])
@@ -86,13 +72,47 @@ loop.run_until_complete(main())
 
 ```
 
+#### LLM
+
+```python
+import asyncio
+import os
+
+from dotenv import load_dotenv
+
+from novelai_python import APIError, Login
+from novelai_python.sdk.ai.generate import TextLLMModel, LLM
+
+load_dotenv()
+username = os.getenv("NOVELAI_USER", None)
+assert username is not None
+# credential = JwtCredential(jwt_token=SecretStr(jwt))
+login_credential = Login.build(
+    user_name=os.getenv("NOVELAI_USER"),
+    password=os.getenv("NOVELAI_PASS")
+)
+
+
+async def chat(prompt: str):
+    try:
+        agent = LLM.build(prompt=prompt, model=TextLLMModel.Kayra)
+        result = await agent.request(session=login_credential)
+    except APIError as e:
+        raise Exception(f"Error: {e.message}")
+    print(f"Result: \n{result.text}")
+
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(chat("Hello"))
+```
+
 #### Random Prompt
 
 ```python
 from novelai_python.tool.random_prompt import RandomPromptGenerator
 
-s = RandomPromptGenerator(nsfw_enabled=False).random_prompt()
-print(s)
+prompt = RandomPromptGenerator(nsfw_enabled=False).random_prompt()
+print(prompt)
 ```
 
 #### Run A Server
