@@ -16,6 +16,13 @@ if jwt is None:
 credential = JwtCredential(jwt_token=SecretStr(jwt))
 
 
+def loop_connect(resp: list):
+    b = []
+    for i in resp:
+        b.append(i.text)
+    return ''.join(b)
+
+
 async def stream(prompt="Hello"):
     """Or you can use the login credential to get the renewable jwt token"""
     _login_credential = Login.build(
@@ -34,16 +41,15 @@ async def stream(prompt="Hello"):
         generator = agent.request(session=credential)
         async for data in generator:
             data: LLMStreamResp
-            print(data)  # 或者做其他需要的处理
+            print(data.text)  # 或者做其他需要的处理
             _data.append(data)
-        print(LLMStreamResp.dispatch_stream(_data, model=TextLLMModel.Kayra))
     except APIError as e:
         print(f"Error: {e.message}")
         return None
     except Exception as e:
         logger.exception(e)
     else:
-        print(f"Meta: {_data}")
+        print(f"Meta: {loop_connect(_data)}")
 
 
 loop = asyncio.get_event_loop()
