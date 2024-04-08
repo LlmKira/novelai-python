@@ -626,11 +626,13 @@ class GenerateImageInfer(ApiBaseModel):
         )
         # 清理空值
         param = {k: v for k, v in kwargs.items() if v is not None}
+        _build_prop = Params(**param)
+        assert _build_prop, "Params validate failed"
         return cls(
             input=prompt,
             model=model,
             action=action,
-            parameters=Params(**param)
+            parameters=_build_prop
         )
 
     async def necessary_headers(self, request_data) -> dict:
