@@ -156,6 +156,7 @@ class LLMStream(LLM):
                         event_type, content = event
                         if event_type == 'data':
                             llm_stream_resp = LLMStreamResp.model_validate(json.loads(content))
+                            llm_stream_resp.text = LLMStreamResp.decode(llm_stream_resp.token, self.model)
                             yield llm_stream_resp
                             if llm_stream_resp.final:  # Stop returning when final is True
                                 break

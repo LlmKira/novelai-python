@@ -1,4 +1,4 @@
-from typing import Optional, Any, List
+from typing import Optional, Any
 
 from pydantic import BaseModel, ConfigDict
 
@@ -15,11 +15,9 @@ class LLMStreamResp(BaseModel):
     ptr: int
     final: bool
     logprobs: Optional[Any]
+    text: Optional[str] = None
     model_config = ConfigDict(extra="ignore", arbitrary_types_allowed=False)
 
-    def text(self, model: TextLLMModel) -> str:
-        return LLMTokenizer.decode(b64_to_tokens(self.token), tokenizer_name=TOKENIZER.get(model))
-
     @staticmethod
-    def dispatch_stream(llm_response: List["LLMStreamResp"], model: TextLLMModel) -> List[str]:
-        return [resp.text(model) for resp in llm_response]
+    def decode(token_str, model: TextLLMModel) -> str:
+        return LLMTokenizer.decode(b64_to_tokens(token_str), tokenizer_name=TOKENIZER.get(model))
