@@ -254,8 +254,14 @@ class Params(BaseModel):
                 self.reference_information_extracted_multiple]):
             if len(self.reference_strength_multiple) != len(self.reference_image_multiple) != len(
                     self.reference_information_extracted_multiple):
-                raise ValueError("All three reference_* must be of equal length")
-
+                raise ValueError(
+                    f"All three reference_* must be of equal length, "
+                    f"strength:{len(self.reference_strength_multiple)}, "
+                    f"image:{len(self.reference_image_multiple)}, "
+                    f"information:{len(self.reference_information_extracted_multiple)}"
+                )
+            if len(self.reference_image_multiple) > 16:
+                raise ValueError("The maximum number of reference images is 16")
         # 如果有一个存在，其他都必须存在
         ref_items = [self.reference_strength_multiple,
                      self.reference_image_multiple,
