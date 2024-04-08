@@ -5,6 +5,7 @@
 # @Software: PyCharm
 from base64 import urlsafe_b64encode
 from hashlib import blake2b
+from typing import Iterable, List
 
 import argon2
 
@@ -40,15 +41,6 @@ def encode_access_key(username: str, password: str) -> str:
 import base64
 import hashlib
 import hmac
-import json
-from io import BytesIO
-from typing import Union
-
-import numpy as np
-from PIL import Image
-from PIL.PngImagePlugin import PngInfo
-from loguru import logger
-from pydantic import BaseModel
 
 
 def sign_message(message, key):
@@ -69,3 +61,23 @@ def decode_base64(encoded_data):
     byte_data = encoded_data.encode('UTF-8')
     decoded_data = base64.b64decode(byte_data)
     return decoded_data.decode("UTF-8")
+
+
+# MIT: https://github.com/Aedial/novelai-api/blob/794c4f3d89cc86df3c7d2c401b320f1822822ac0/novelai_api/utils.py
+def tokens_to_b64(tokens: Iterable[int]) -> str:
+    """
+    Encode a list of tokens into a base64 string that can be sent to the API
+    """
+
+    return base64.b64encode(b"".join(t.to_bytes(2, "little") for t in tokens)).decode()
+
+
+# MIT:https://github.com/Aedial/novelai-api/blob/794c4f3d89cc86df3c7d2c401b320f1822822ac0/novelai_api/utils.py#L332
+def b64_to_tokens(b64: str) -> List[int]:
+    """
+    Decode a base64 string returned by the API into a list of tokens
+    """
+
+    b = base64.b64decode(b64)
+
+    return [int.from_bytes(b[i: i + 2], "little") for i in range(0, len(b), 2)]
