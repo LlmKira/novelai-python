@@ -3,7 +3,7 @@ import base64
 import json
 from io import BytesIO
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional, List
 
 import numpy as np
 from PIL import Image
@@ -36,8 +36,10 @@ class ImageMetadata(BaseModel):
         hide_debug_overlay: bool = None
         noise_schedule: str = None
         legacy_v3_extend: bool = None
-        reference_information_extracted: float = None
-        reference_strength: float = None
+        reference_information_extracted: Optional[float] = None
+        reference_strength: Optional[float] = None
+        reference_strength_multiple: Optional[List[float]] = None
+        reference_information_extracted_multiple: Optional[List[float]] = None
         sampler: str = None
         controlnet_strength: float = None
         controlnet_model: Union[None, str] = None
@@ -57,6 +59,26 @@ class ImageMetadata(BaseModel):
         @property
         def negative_prompt(self):
             return self.uc
+
+        @property
+        def vibe_transfer_strength(self) -> List[float]:
+            """
+            Get the vibe transfer strength totally
+            :return: List[float]
+            """
+            if self.reference_strength:
+                return [self.reference_strength]
+            return self.reference_strength_multiple
+
+        @property
+        def vibe_transfer_information(self) -> List[float]:
+            """
+            Get the vibe transfer information totally
+            :return: List[float]
+            """
+            if self.reference_information_extracted:
+                return [self.reference_information_extracted]
+            return self.reference_information_extracted_multiple
 
     Title: str = "AI generated image"
     Software: str = "NovelAI"
