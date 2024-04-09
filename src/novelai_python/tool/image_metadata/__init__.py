@@ -66,9 +66,10 @@ class ImageMetadata(BaseModel):
             Get the vibe transfer strength totally
             :return: List[float]
             """
-            if self.reference_strength:
-                return [self.reference_strength]
-            return self.reference_strength_multiple
+            if self.reference_strength_multiple:
+                return self.reference_strength_multiple
+            reference_strength = [] if self.reference_strength is None else [self.reference_strength]
+            return reference_strength
 
         @property
         def vibe_transfer_information(self) -> List[float]:
@@ -76,9 +77,11 @@ class ImageMetadata(BaseModel):
             Get the vibe transfer information totally
             :return: List[float]
             """
-            if self.reference_information_extracted:
-                return [self.reference_information_extracted]
-            return self.reference_information_extracted_multiple
+            if self.reference_information_extracted_multiple:
+                return self.reference_information_extracted_multiple
+            reference_information = [] if self.reference_information_extracted is None else [
+                self.reference_information_extracted]
+            return reference_information
 
     Title: str = "AI generated image"
     Software: str = "NovelAI"
