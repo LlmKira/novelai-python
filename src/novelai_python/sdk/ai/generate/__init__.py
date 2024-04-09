@@ -24,7 +24,7 @@ from ....utils.encode import tokens_to_b64
 
 class LLM(ApiBaseModel):
     """
-    LLM Stream for /ai/generate-stream
+    LLM for /ai/generate
     """
     _endpoint: str = PrivateAttr("https://api.novelai.net")
     input: str = Field(..., description="Base64 encoded token text")

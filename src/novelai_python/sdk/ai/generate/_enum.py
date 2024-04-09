@@ -71,7 +71,7 @@ def generate_order(request_body: dict) -> List[int]:
     order_list = []
     for member in Order:
         key, order = member.value
-        if key in request_body and request_body[key]:
+        if key in request_body and request_body[key] is None:
             order_list.append(order)
     order_list.sort()  # ensures the order list is properly sorted according to the true order
     return order_list
