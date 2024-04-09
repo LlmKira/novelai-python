@@ -184,28 +184,28 @@ class LLM(ApiBaseModel):
                 message = _msg.get("message", "Unknown error")
                 if status_code == 400:
                     raise APIError(
-                        "A validation error occured.",
+                        f"A validation error occured. {message}",
                         request=request_data, code=status_code, response=_msg
                     )
 
                 elif status_code == 401:
                     raise APIError(
-                        "Access Token is incorrect.",
+                        f"Access Token is incorrect. {message}",
                         request=request_data, code=status_code, response=_msg
                     )
                 elif status_code == 402:
                     raise APIError(
-                        "An active subscription is required to access this endpoint.",
+                        f"An active subscription is required to access this endpoint. {message}",
                         request=request_data, code=status_code, response=_msg
                     )
                 elif status_code == 409:
                     raise APIError(
-                        "A conflict error occured.",
+                        f"A conflict error occured. {message}",
                         request=request_data, code=status_code, response=_msg
                     )
                 else:
                     raise APIError(
-                        f"An unknown error occured.{response.status_code}",
+                        f"An unknown error occured. {response.status_code} {message}",
                         request=request_data, code=status_code, response=_msg
                     )
             else:
