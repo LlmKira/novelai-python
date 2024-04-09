@@ -190,7 +190,6 @@ async def generate(
         generator = agent.request(session=session)
         async for data in generator:
             data: LLMStreamResp
-            print(data)  # 或者做其他需要的处理
             yield data.text  # Yield data for streaming response
 
     return StreamingResponse(generator())
