@@ -77,19 +77,19 @@ loop.run_until_complete(main())
 ```python
 import asyncio
 import os
-
+from pydantic import SecretStr
 from dotenv import load_dotenv
 
-from novelai_python import APIError, Login
+from novelai_python import APIError, LoginCredential
 from novelai_python.sdk.ai.generate import TextLLMModel, LLM
 
 load_dotenv()
 username = os.getenv("NOVELAI_USER", None)
 assert username is not None
 # credential = JwtCredential(jwt_token=SecretStr(jwt))
-login_credential = Login.build(
-    user_name=os.getenv("NOVELAI_USER"),
-    password=os.getenv("NOVELAI_PASS")
+login_credential = LoginCredential(
+    username=os.getenv("NOVELAI_USER"),
+    password=SecretStr(os.getenv("NOVELAI_PASS"))
 )
 
 
