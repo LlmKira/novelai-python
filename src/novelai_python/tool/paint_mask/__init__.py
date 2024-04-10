@@ -2,12 +2,13 @@ import cv2 as cv
 import numpy as np
 
 
-def create_mask_from_sketch(original_img_bytes: bytes,
-                            sketch_img_bytes: bytes,
-                            min_block_size: int = 15,
-                            jagged_edges: bool = True,
-                            output_format: str = '.png'
-                            ) -> bytes:
+def create_mask_from_sketch(
+        original_img_bytes: bytes,
+        sketch_img_bytes: bytes,
+        min_block_size: int = 15,
+        jagged_edges: bool = True,
+        output_format: str = '.png'
+) -> bytes:
     """
     Function to create a mask from original and sketch images input as bytes. Returns BytesIO object.
 
