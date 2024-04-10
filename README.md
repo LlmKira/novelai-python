@@ -88,7 +88,7 @@ username = os.getenv("NOVELAI_USER", None)
 assert username is not None
 # credential = JwtCredential(jwt_token=SecretStr(jwt))
 login_credential = LoginCredential(
-    user_name=os.getenv("NOVELAI_USER"),
+    username=os.getenv("NOVELAI_USER"),
     password=os.getenv("NOVELAI_PASS")
 )
 
