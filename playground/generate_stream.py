@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from pydantic import SecretStr
 
-from novelai_python import APIError, Login
+from novelai_python import APIError, Login, LoginCredential
 from novelai_python import JwtCredential
 from novelai_python.sdk.ai.generate_stream import TextLLMModel, LLMStream, LLMStreamResp
 
@@ -25,9 +25,9 @@ def loop_connect(resp: list):
 
 async def stream(prompt="Hello"):
     """Or you can use the login credential to get the renewable jwt token"""
-    _login_credential = Login.build(
-        user_name=os.getenv("NOVELAI_USER"),
-        password=os.getenv("NOVELAI_PASS")
+    _login_credential = LoginCredential(
+        username=os.getenv("NOVELAI_USER"),
+        password=SecretStr(os.getenv("NOVELAI_PASS"))
     )
     # await _login_credential.request()
     # print(f"Model List:{enum_to_list(TextLLMModel)}")

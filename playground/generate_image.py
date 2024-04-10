@@ -6,10 +6,11 @@
 import asyncio
 import os
 import pathlib
+
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
-from novelai_python import APIError, Login
+from novelai_python import APIError, LoginCredential
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
 from novelai_python.sdk.ai.generate_image import Action, Sampler, Model
 from novelai_python.utils.useful import enum_to_list
@@ -21,9 +22,9 @@ async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazin
         raise ValueError("NOVELAI_JWT is not set in `.env` file, please create one and set it")
     credential = JwtCredential(jwt_token=SecretStr(jwt))
     """Or you can use the login credential to get the renewable jwt token"""
-    _login_credential = Login.build(
-        user_name=os.getenv("NOVELAI_USER"),
-        password=os.getenv("NOVELAI_PASS")
+    _login_credential = LoginCredential(
+        username=os.getenv("NOVELAI_USER"),
+        password=SecretStr(os.getenv("NOVELAI_PASS"))
     )
     # await _login_credential.request()
     print(f"Action List:{enum_to_list(Action)}")

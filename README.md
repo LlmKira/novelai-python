@@ -77,8 +77,9 @@ loop.run_until_complete(main())
 ```python
 import asyncio
 import os
-from pydantic import SecretStr
+
 from dotenv import load_dotenv
+from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
 from novelai_python.sdk.ai.generate import TextLLMModel, LLM
