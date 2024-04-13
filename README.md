@@ -9,6 +9,8 @@
 
 The goal of this repository is to use Pydantic to build legitimate requests to access the NovelAI API service.
 
+> Python 3.8+ is required. Because `numpy` is not supported in Python 3.12, the library is not supported in Python 3.12.
+
 ### Roadmap 🚧
 
 - [x] tool.random_prompt
