@@ -1,6 +1,6 @@
 [project]
 name = "novelai-python"
-version = "0.4.7"
+version = "0.4.8"
 description = "NovelAI Python Binding With Pydantic"
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
@@ -27,7 +27,7 @@ dependencies = [
     "regex>=2023.12.25",
     "tokenizers>=0.15.2",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 readme = "README.md"
 license = { text = "Apache License 2.0" }
 
