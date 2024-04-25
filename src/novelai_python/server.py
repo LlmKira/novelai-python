@@ -226,7 +226,11 @@ async def generate_voice(
     """
     生成图片
     :param current_token: Authorization
-    :param req: GenerateImageInfer
+    :param text: str
+    :param voice: int
+    :param seed: Optional[str]
+    :param opus: bool
+    :param version: Union[Literal["v2", "v1"], str]
     :return:
     """
     try:

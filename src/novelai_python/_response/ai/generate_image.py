@@ -10,11 +10,12 @@ from pydantic import BaseModel
 from ..schema import RespBase
 
 
-class ImageGenerateResp(RespBase):
-    class RequestParams(BaseModel):
-        endpoint: str
-        raw_request: dict = None
+class RequestParams(BaseModel):
+    endpoint: str
+    raw_request: dict = None
 
+
+class ImageGenerateResp(RespBase):
     meta: RequestParams
     files: List[Tuple[str, bytes]] = None
 
