@@ -1,6 +1,6 @@
 # Description: Enum class for TextLLMModel
 from enum import Enum
-from typing import List, Dict
+from typing import List
 
 
 class TextLLMModel(Enum):

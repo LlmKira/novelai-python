@@ -28,7 +28,7 @@ from ._const import len_values, tempmin_value, sm_value, dyn_value, map_value
 from ._enum import Model, Sampler, NoiseSchedule, ControlNetModel, Action, UCPreset, INPAINTING_MODEL_LIST
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
-from ...._response.ai.generate_image import ImageGenerateResp
+from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
 
@@ -453,7 +453,7 @@ class GenerateImageInfer(ApiBaseModel):
                 )
         per_sample = max(math.ceil(per_sample * strength), 2)
 
-        if uncond_scale != 1.0:
+        if int(uncond_scale) != 1:
             per_sample = math.ceil(per_sample * 1.3)
 
         return per_sample * n_samples
@@ -755,7 +755,7 @@ class GenerateImageInfer(ApiBaseModel):
                     data = zip_file.read(filename)
                     unzip_content.append((filename, data))
             return ImageGenerateResp(
-                meta=ImageGenerateResp.RequestParams(
+                meta=RequestParams(
                     endpoint=self.base_url,
                     raw_request=request_data,
                 ),
