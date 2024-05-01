@@ -117,68 +117,66 @@ class SentencePiece(sentencepiece.SentencePieceProcessor):
         return "".join((decoded_parts[0], *itertools.chain.from_iterable(zip(junctions, decoded_parts[1:]))))
 
 
+def singleton(cls):
+    instances = {}
+
+    def wrapper(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+
+    return wrapper
+
+
 # MIT: https://github.com/Aedial/novelai-api/blob/794c4f3d89cc86df3c7d2c401b320f1822822ac0/novelai_api/Tokenizer.py#L118
+@singleton
 class LLMTokenizer:
     """
     Abstraction of the tokenizer behind each Model
     """
 
-    _GPT2_PATH = tokenizers_path / "gpt2_tokenizer.json"
-    _GPT2_TOKENIZER = tokenizers.Tokenizer.from_file(str(_GPT2_PATH))
-
-    _GENJI_PATH = tokenizers_path / "gpt2-genji_tokenizer.json"
-    _GENJI_TOKENIZER = tokenizers.Tokenizer.from_file(str(_GENJI_PATH))
-
-    _PILE_PATH = tokenizers_path / "pile_tokenizer.json"
-    _PILE_TOKENIZER = tokenizers.Tokenizer.from_file(str(_PILE_PATH))
-
+    _GPT2_PATH = "gpt2_tokenizer.json"
+    _GENJI_PATH = "gpt2-genji_tokenizer.json"
+    _PILE_PATH = "pile_tokenizer.json"
     # ORIGIN TODO: check differences from NAI tokenizer (from my limited testing, there is None)
-    _CLIP_TOKENIZER = SimpleTokenizer()
+    _NERDSTASH_TOKENIZER_v1_PATH = "nerdstash_v1.model"
+    _NERDSTASH_TOKENIZER_v2_PATH = "nerdstash_v2.model"
 
-    _NERDSTASH_TOKENIZER_v1_PATH = str(tokenizers_path / "nerdstash_v1.model")
-    _NERDSTASH_TOKENIZER_v1 = SentencePiece(_NERDSTASH_TOKENIZER_v1_PATH)
+    def __init__(self, tokenizer_path=tokenizers_path):
+        self._GPT2_TOKENIZER = tokenizers.Tokenizer.from_file(str(tokenizer_path / self._GPT2_PATH))
+        self._GENJI_TOKENIZER = tokenizers.Tokenizer.from_file(str(tokenizer_path / self._GENJI_PATH))
+        self._PILE_TOKENIZER = tokenizers.Tokenizer.from_file(str(tokenizer_path / self._PILE_PATH))
+        self._CLIP_TOKENIZER = SimpleTokenizer()
+        try:
+            self._NERDSTASH_TOKENIZER_v1 = SentencePiece(str(tokenizer_path / self._NERDSTASH_TOKENIZER_v1_PATH))
+            self._NERDSTASH_TOKENIZER_v2 = SentencePiece(str(tokenizer_path / self._NERDSTASH_TOKENIZER_v2_PATH))
+        except FileNotFoundError as exc:
+            logger.warning(
+                "Nerdstash tokenizers not found, please check model path or "
+                "there cannot be special text such as foreign languages, spaces, etc. in your model path."
+            )
+            raise exc
+        self._tokenizers = {
+            "gpt2": self._GPT2_TOKENIZER,
+            "gpt2-genji": self._GENJI_TOKENIZER,
+            "pile": self._PILE_TOKENIZER,
+            "clip": self._CLIP_TOKENIZER,
+            "nerdstash_v1": self._NERDSTASH_TOKENIZER_v1,
+            "nerdstash_v2": self._NERDSTASH_TOKENIZER_v2,
+        }
 
-    _NERDSTASH_TOKENIZER_v2_PATH = str(tokenizers_path / "nerdstash_v2.model")
-    _NERDSTASH_TOKENIZER_v2 = SentencePiece(_NERDSTASH_TOKENIZER_v2_PATH)
-
-    _tokenizers = {
-        "gpt2": _GPT2_TOKENIZER,
-        "gpt2-genji": _GENJI_TOKENIZER,
-        "pile": _PILE_TOKENIZER,
-        "clip": _CLIP_TOKENIZER,
-        "nerdstash_v1": _NERDSTASH_TOKENIZER_v1,
-        "nerdstash_v2": _NERDSTASH_TOKENIZER_v2,
-    }
-
-    @classmethod
-    def decode(cls, o: List[int], tokenizer_name: str) -> str:
-        """
-        Decode the provided tokens using the chosen tokenizer
-        :param tokenizer_name: Name of the tokenizer to use
-        :param o: List of tokens to decode
-
-        :return: Text the provided tokens decode into
-        """
-        if tokenizer_name not in cls._tokenizers:
+    def decode(self, o: List[int], tokenizer_name: str) -> str:
+        if tokenizer_name not in self._tokenizers:
             raise NotImplementedError(f"Tokenizer {tokenizer_name} not recognized")
-        tokenizer = cls._tokenizers[tokenizer_name]
+        tokenizer = self._tokenizers[tokenizer_name]
 
         return tokenizer.decode(o)
 
-    @classmethod
-    def encode(cls, o: str, tokenizer_name: str) -> List[int]:
-        """
-        Encode the provided text using the chosen tokenizer
-
-        :param tokenizer_name: Name of the tokenizer to use
-        :param o: Text to encode
-
-        :return: List of tokens the provided text encodes into
-        """
-        if tokenizer_name not in cls._tokenizers:
+    def encode(self, o: str, tokenizer_name: str) -> List[int]:
+        if tokenizer_name not in self._tokenizers:
             raise NotImplementedError(f"Tokenizer {tokenizer_name} not recognized")
 
-        tokenizer = cls._tokenizers[tokenizer_name]
+        tokenizer = self._tokenizers[tokenizer_name]
         if isinstance(tokenizer, tokenizers.Tokenizer):
             return tokenizer.encode(o).ids
         if isinstance(tokenizer, (SimpleTokenizer, sentencepiece.SentencePieceProcessor)):

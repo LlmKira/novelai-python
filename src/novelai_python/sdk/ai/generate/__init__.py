@@ -64,8 +64,9 @@ class LLM(ApiBaseModel):
 
     @model_validator(mode="after")
     def validate_model(self):
+        tokenizer = LLMTokenizer()
         if isinstance(self.input, str):
-            prompt = LLMTokenizer.encode(self.input, tokenizer_name=TOKENIZER.get(self.model))
+            prompt = tokenizer.encode(self.input, tokenizer_name=TOKENIZER.get(self.model))
             self.input = tokens_to_b64(prompt)
         if self.parameters.stop_sequences:
             if not isinstance(self.parameters.stop_sequences, list):
@@ -73,7 +74,7 @@ class LLM(ApiBaseModel):
             stop_sequences = []
             for i, obj in enumerate(self.parameters.stop_sequences):
                 if isinstance(obj, str):
-                    stop_sequences.append(LLMTokenizer.encode(obj, tokenizer_name=TOKENIZER.get(self.model)))
+                    stop_sequences.append(tokenizer.encode(obj, tokenizer_name=TOKENIZER.get(self.model)))
                 elif not isinstance(obj, list):
                     raise ValueError(
                         f"Expected type 'str' or 'list' for item #{i} of 'stop_sequences', " f"but got '{type(obj)}'"
