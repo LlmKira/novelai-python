@@ -20,4 +20,4 @@ class LLMStreamResp(BaseModel):
 
     @staticmethod
     def decode(token_str, model: TextLLMModel) -> str:
-        return LLMTokenizer.decode(b64_to_tokens(token_str), tokenizer_name=TOKENIZER.get(model))
+        return LLMTokenizer().decode(b64_to_tokens(token_str), tokenizer_name=TOKENIZER.get(model))
