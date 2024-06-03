@@ -452,8 +452,8 @@ class GenerateImageInfer(ApiBaseModel):
                         * smea_factor
                 )
         per_sample = max(math.ceil(per_sample * strength), 2)
-
-        if int(uncond_scale) != 1:
+        # uncond_scale is not 1.0
+        if not math.isclose(uncond_scale, 1.0, rel_tol=1e-5):
             per_sample = math.ceil(per_sample * 1.3)
 
         return per_sample * n_samples
