@@ -170,8 +170,8 @@ class ImageMetadata(BaseModel):
             title = img.info.get("Title", None)
             prompt = img.info.get("Description", None)
             comment = img.info.get("Comment", None)
-            assert isinstance(comment, str), ValueError("Comment Empty")
             try:
+                assert isinstance(comment, str), ValueError("Comment Empty")
                 comment = json.loads(comment)
             except Exception as e:
                 logger.debug(f"Error loading comment: {e}")
