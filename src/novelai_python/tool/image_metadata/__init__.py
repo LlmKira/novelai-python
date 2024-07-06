@@ -163,7 +163,7 @@ class ImageMetadata(BaseModel):
             image_data = ImageLsbDataExtractor().extract_data(image_io)
             model = cls.model_validate(image_data)
         except Exception as e:
-            logger.debug(f"Error trying extracting data in LSB: {e}")
+            logger.trace(f"Error trying extracting data in LSB: {e}")
         else:
             return model
         with Image.open(image_io) as img:
@@ -174,7 +174,7 @@ class ImageMetadata(BaseModel):
                 assert isinstance(comment, str), ValueError("Comment Empty")
                 comment = json.loads(comment)
             except Exception as e:
-                logger.debug(f"Error loading comment: {e}")
+                logger.trace(f"Error loading comment: {e}")
                 comment = {}
         if comment.get("prompt", None) is None:
             comment["prompt"] = prompt

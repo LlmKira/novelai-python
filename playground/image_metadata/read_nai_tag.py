@@ -23,12 +23,11 @@ print(meta.Comment)
 
 try:
     meta = ImageMetadata.load_image(image_clear)
+    print(meta.Title)
+    print(meta.Description)
+    print(meta.Comment)
 except ValueError:
-    raise LookupError("Cant find a MetaData")
-
-print(meta.Title)
-print(meta.Description)
-print(meta.Comment)
+    print("Cant find a MetaData")
 
 image = Path(__file__).parent.joinpath("sample-0317.png")
 try:
