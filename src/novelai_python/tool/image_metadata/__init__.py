@@ -155,15 +155,15 @@ class ImageMetadata(BaseModel):
         Load image and extract metadata using LSB/Metadata
         :param image_io: str, bytes, Path, BytesIO
         :return: ImageMetadata
-        :raises ValidationError:  Data extraction failed
+        :raises ValueError:  Data extraction failed
         """
         if isinstance(image_io, BytesIO):
             image_io.seek(0)
         try:
             image_data = ImageLsbDataExtractor().extract_data(image_io)
-            model = cls(**image_data)
+            model = cls.model_validate(image_data)
         except Exception as e:
-            logger.debug(f"Error trying extracting data in LSB: {e}")
+            logger.trace(f"Error trying extracting data in LSB: {e}")
         else:
             return model
         with Image.open(image_io) as img:
@@ -174,9 +174,16 @@ class ImageMetadata(BaseModel):
                 assert isinstance(comment, str), ValueError("Comment Empty")
                 comment = json.loads(comment)
             except Exception as e:
-                logger.debug(f"Error loading comment: {e}")
+                logger.trace(f"Error loading comment: {e}")
                 comment = {}
-        return cls(Title=title, Description=prompt, Comment=cls.CommentModel(**comment))
+        if comment.get("prompt", None) is None:
+            comment["prompt"] = prompt
+        try:
+            comment_model = cls.CommentModel.model_validate(comment)
+            return cls(Title=title, Description=prompt, Comment=comment_model)
+        except Exception as e:
+            logger.debug(f"Error loading comment: {e}")
+            raise ValueError("Data extraction failed")
 
     @staticmethod
     def verify_image_is_novelai(
