@@ -45,7 +45,9 @@ class AugmentImageInfer(ApiBaseModel):
     height: int = Field(..., description="Height of the image")
     image: Union[str, bytes] = Field(..., description="Base64 encoded image")
     prompt: Optional[str] = None
+    """For mood based generation, prompt should be in the format of `mood;;prompt`"""
     defry: Optional[int] = Field(0, ge=0, le=5, multiple_of=1)
+    """The larger the value, the weaker the defry effect"""
     model_config = ConfigDict(extra="ignore")
 
     @model_validator(mode="after")
@@ -66,7 +68,7 @@ class AugmentImageInfer(ApiBaseModel):
         raise NotImplementedError("This method is not implemented yet")
 
     @staticmethod
-    def _to_bytes_io(image: Union[bytes, IO, pathlib.Path]) -> io.BytesIO:
+    def _to_bytes_io(image: Union[bytes, IO, pathlib.Path]) -> BytesIO | IO:
         if isinstance(image, bytes):
             return io.BytesIO(image)
         elif isinstance(image, IO):
