@@ -12,7 +12,7 @@ from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential, JwtCredential, ImageGenerateResp
 from novelai_python import AugmentImageInfer
-from novelai_python.sdk.ai.augment_image import ReqType
+from novelai_python.sdk.ai.augment_image import ReqType, Moods
 
 
 async def generate(
@@ -32,7 +32,8 @@ async def generate(
         agent = AugmentImageInfer.build(
             req_type=request_type,
             image=image,
-            prompt="A beautiful image",
+            mood=Moods.Shy,
+            prompt="",
             defry=0,
         )
         # print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")

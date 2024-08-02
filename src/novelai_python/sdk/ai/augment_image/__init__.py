@@ -126,14 +126,16 @@ class AugmentImageInfer(ApiBaseModel):
                 image_data = image_io.read()
         except Exception as e:
             raise ValueError("Error when opening image") from e
-
+        if mood and prompt is None:
+            prompt = ""
+        prompt = f"{mood.value};;{prompt}" if mood else prompt
         return cls(
             req_type=req_type,
             defry=defry,
             image=image_data,
             width=width,
             height=height,
-            prompt=f"{mood.value};;{prompt}" if mood else prompt,
+            prompt=prompt,
         )
 
     async def necessary_headers(self, request_data) -> dict:
