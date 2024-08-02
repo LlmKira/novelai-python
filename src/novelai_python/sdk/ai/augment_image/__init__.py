@@ -9,7 +9,7 @@ import json
 import pathlib
 from copy import deepcopy
 from io import BytesIO
-from typing import Optional, Union, IO
+from typing import Optional, Union, IO, Any
 from urllib.parse import urlparse
 from zipfile import ZipFile
 
@@ -77,16 +77,23 @@ class AugmentImageInfer(ApiBaseModel):
         return 0.0
 
     @staticmethod
-    def _to_bytes_io(image: Union[bytes, IO, pathlib.Path]) -> Union[IO, BytesIO]:
+    def _to_bytes_io(image: Union[bytes, IO, pathlib.Path, Any]) -> io.BytesIO:
+        """
+        将输入图像转换为 BytesIO 对象。
+
+        :param image: 可以是 bytes、IO、pathlib.Path 或任何拥有 read() 方法的对象
+        :return: BytesIO 对象
+        :raises ValueError: 输入类型无效时抛出
+        """
         if isinstance(image, bytes):
             return io.BytesIO(image)
-        elif isinstance(image, IO):
-            return image
         elif isinstance(image, pathlib.Path):
             with open(image, 'rb') as f:
                 return io.BytesIO(f.read())
+        elif hasattr(image, 'read') and callable(image.read):
+            return io.BytesIO(image.read())
         else:
-            raise ValueError("Invalid image input type. Expected bytes, IO, or pathlib.Path.")
+            raise ValueError("Invalid image input type. Expected bytes, IO, pathlib.Path, or any readable object.")
 
     @classmethod
     def build(cls,
