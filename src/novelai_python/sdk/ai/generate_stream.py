@@ -93,81 +93,78 @@ class LLMStream(LLM):
         request_data = self.model_dump(mode="json", exclude_none=True)
         request_data["order"] = generate_order(request_data) or []
         assert request_data.get("parameters"), "Parameters is required"
-        # Header
-        if isinstance(session, AsyncSession):
-            session.headers.update(await self.necessary_headers(request_data))
-        elif isinstance(session, CredentialBase):
-            update_header = await self.necessary_headers(request_data)
-            session = await session.get_session(update_headers=update_header)
-        if override_headers:
-            session.headers.clear()
-            session.headers.update(override_headers)
-        # Log
-        logger.debug(f"StreamLLM request data: {request_data}")
-        # Request
-        try:
-            assert hasattr(session, "post"), "session must have post method."
-            response = await session.post(
-                self.base_url,
-                json=request_data,
-                stream=True  # 使用 stream=True 参数
-            )
-            header_type = response.headers.get('Content-Type')
-            # 检查 'Content-Type' 是否为 'text/event-stream'
-            if header_type not in ['text/event-stream']:
-                try:
-                    _msg = response.json()
-                except Exception as e:
-                    _msg = {"statusCode": response.status_code, "message": response.content}
-                status_code = _msg.get("statusCode", response.status_code)
-                message = _msg.get("message", "Unknown error")
-                if status_code == 400:
-                    raise APIError(
-                        "A validation error occured.",
-                        request=request_data, code=status_code, response=_msg
-                    )
+        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+            # Header
+            sess.headers.update(await self.necessary_headers(request_data))
+            if override_headers:
+                sess.headers.clear()
+                sess.headers.update(override_headers)
+            # Log
+            logger.debug(f"StreamLLM request data: {request_data}")
+            # Request
+            try:
+                assert hasattr(sess, "post"), "session must have post method."
+                response = await sess.post(
+                    self.base_url,
+                    json=request_data,
+                    stream=True  # 使用 stream=True 参数
+                )
+                header_type = response.headers.get('Content-Type')
+                # 检查 'Content-Type' 是否为 'text/event-stream'
+                if header_type not in ['text/event-stream']:
+                    try:
+                        _msg = response.json()
+                    except Exception as e:
+                        _msg = {"statusCode": response.status_code, "message": response.content}
+                    status_code = _msg.get("statusCode", response.status_code)
+                    message = _msg.get("message", "Unknown error")
+                    if status_code == 400:
+                        raise APIError(
+                            "A validation error occured.",
+                            request=request_data, code=status_code, response=_msg
+                        )
 
-                elif status_code == 401:
-                    raise APIError(
-                        "Access Token is incorrect.",
-                        request=request_data, code=status_code, response=_msg
-                    )
-                elif status_code == 402:
-                    raise APIError(
-                        "An active subscription is required to access this endpoint.",
-                        request=request_data, code=status_code, response=_msg
-                    )
-                elif status_code == 409:
-                    raise APIError(
-                        "A conflict error occured.",
-                        request=request_data, code=status_code, response=_msg
-                    )
+                    elif status_code == 401:
+                        raise APIError(
+                            "Access Token is incorrect.",
+                            request=request_data, code=status_code, response=_msg
+                        )
+                    elif status_code == 402:
+                        raise APIError(
+                            "An active subscription is required to access this endpoint.",
+                            request=request_data, code=status_code, response=_msg
+                        )
+                    elif status_code == 409:
+                        raise APIError(
+                            "A conflict error occured.",
+                            request=request_data, code=status_code, response=_msg
+                        )
+                    else:
+                        raise APIError(
+                            "An unknown error occured.",
+                            request=request_data, code=status_code, response=_msg
+                        )
                 else:
-                    raise APIError(
-                        "An unknown error occured.",
-                        request=request_data, code=status_code, response=_msg
-                    )
-            else:
-                # Streaming data processing
-                async for line in response.aiter_lines():
-                    event = line.decode().strip().split(":", 1)
-                    if len(event) == 2:
-                        event_type, content = event
-                        if event_type == 'data':
-                            llm_stream_resp = LLMStreamResp.model_validate(json.loads(content))
-                            llm_stream_resp.text = LLMStreamResp.decode(llm_stream_resp.token, self.model)
-                            yield llm_stream_resp
-                            if llm_stream_resp.final:  # Stop returning when final is True
-                                break
-        except curl_cffi.requests.errors.RequestsError as exc:
-            logger.exception(exc)
-            raise SessionHttpError(
-                "An AsyncSession RequestsError occurred, perhaps it's an SSL error. Please try again later!")
-        except httpx.HTTPError as exc:
-            logger.exception(exc)
-            raise SessionHttpError("An HTTPError occurred, perhaps it's an SSL error. Please try again later!")
-        except APIError as e:
-            raise e
-        except Exception as e:
-            logger.opt(exception=e).exception("An unexpected error occurred")
-            raise e
+                    # Streaming data processing
+                    async for line in response.aiter_lines():
+                        event = line.decode().strip().split(":", 1)
+                        if len(event) == 2:
+                            event_type, content = event
+                            if event_type == 'data':
+                                llm_stream_resp = LLMStreamResp.model_validate(json.loads(content))
+                                llm_stream_resp.text = LLMStreamResp.decode(llm_stream_resp.token, self.model)
+                                yield llm_stream_resp
+                                if llm_stream_resp.final:  # Stop returning when final is True
+                                    break
+            except curl_cffi.requests.errors.RequestsError as exc:
+                logger.exception(exc)
+                raise SessionHttpError(
+                    "An AsyncSession RequestsError occurred, perhaps it's an SSL error. Please try again later!")
+            except httpx.HTTPError as exc:
+                logger.exception(exc)
+                raise SessionHttpError("An HTTPError occurred, perhaps it's an SSL error. Please try again later!")
+            except APIError as e:
+                raise e
+            except Exception as e:
+                logger.opt(exception=e).exception("An unexpected error occurred")
+                raise e
