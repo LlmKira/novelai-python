@@ -58,6 +58,10 @@ class AugmentImageInfer(ApiBaseModel):
             raise ValueError("Invalid `image` format, must be base64 encoded directly.")
         if isinstance(self.image, str) and self.image.startswith("+vv"):
             raise ValueError("Invalid `image` format, must be encoded correctly.")
+        if self.prompt and self.req_type == ReqType.EMOTION:
+            valid_starts = [enum.value for enum in Moods]
+            if not any(self.prompt.startswith(f"{valid_start};;") for valid_start in valid_starts):
+                raise ValueError(f"Invalid `prompt` format, must start with one of {valid_starts}.")
         return self
 
     @property

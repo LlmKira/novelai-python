@@ -31,7 +31,9 @@ async def generate(
     try:
         agent = AugmentImageInfer.build(
             req_type=request_type,
-            image=image
+            image=image,
+            prompt="A beautiful image",
+            defry=0,
         )
         # print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         # print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
