@@ -71,7 +71,7 @@ class AugmentImageInfer(ApiBaseModel):
         return 0.0
 
     @staticmethod
-    def _to_bytes_io(image: Union[bytes, IO, pathlib.Path]) -> BytesIO | IO:
+    def _to_bytes_io(image: Union[bytes, IO, pathlib.Path]) -> Union[IO, BytesIO]:
         if isinstance(image, bytes):
             return io.BytesIO(image)
         elif isinstance(image, IO):
