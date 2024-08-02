@@ -38,7 +38,7 @@ class Subscription(ApiBaseModel):
         return {
             "Host": urlparse(self.endpoint).netloc,
             "Accept": "*/*",
-            "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
+
             "Accept-Encoding": "gzip, deflate, br",
             "Referer": "https://novelai.net/",
             "Content-Type": "application/json",
@@ -65,58 +65,56 @@ class Subscription(ApiBaseModel):
         """
         # Data Build
         request_data = {}
-        if isinstance(session, AsyncSession):
-            session.headers.update(await self.necessary_headers(request_data))
-        elif isinstance(session, CredentialBase):
-            session = await session.get_session(update_headers=await self.necessary_headers(request_data))
-        # Header
-        if override_headers:
-            session.headers.clear()
-            session.headers.update(override_headers)
-        logger.debug("Subscription")
-        try:
-            assert hasattr(session, "get"), "session must have get method."
-            response = await session.get(
-                url=self.base_url,
-            )
-            if "application/json" not in response.headers.get('Content-Type') or response.status_code != 200:
-                logger.warning(
-                    f"Error with content type: {response.headers.get('Content-Type')} and code: {response.status_code}"
+        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+            # Header
+            sess.headers.update(await self.necessary_headers(request_data))
+            if override_headers:
+                sess.headers.clear()
+                sess.headers.update(override_headers)
+            logger.debug("Subscription")
+            try:
+                assert hasattr(sess, "get"), "session must have get method."
+                response = await sess.get(
+                    url=self.base_url,
                 )
-                try:
-                    _msg = response.json()
-                except Exception as e:
-                    logger.warning(e)
-                    if not isinstance(response.content, str) and len(response.content) < 50:
-                        raise APIError(
-                            message=f"Unexpected content type: {response.headers.get('Content-Type')}",
-                            request=request_data,
-                            code=response.status_code,
-                            response=try_jsonfy(response.content)
-                        )
-                    else:
-                        _msg = {"statusCode": response.status_code, "message": response.content}
-                status_code = _msg.get("statusCode", response.status_code)
-                message = _msg.get("message", "Unknown error")
-                if status_code in [400, 401, 402]:
-                    # 400 : validation error
-                    # 401 : unauthorized
-                    # 402 : payment required
-                    # 409 : conflict
-                    raise AuthError(message, request=request_data, code=status_code, response=_msg)
-                if status_code in [500]:
-                    # An unknown error occured.
+                if "application/json" not in response.headers.get('Content-Type') or response.status_code != 200:
+                    logger.warning(
+                        f"Error with content type: {response.headers.get('Content-Type')} and code: {response.status_code}"
+                    )
+                    try:
+                        _msg = response.json()
+                    except Exception as e:
+                        logger.warning(e)
+                        if not isinstance(response.content, str) and len(response.content) < 50:
+                            raise APIError(
+                                message=f"Unexpected content type: {response.headers.get('Content-Type')}",
+                                request=request_data,
+                                code=response.status_code,
+                                response=try_jsonfy(response.content)
+                            )
+                        else:
+                            _msg = {"statusCode": response.status_code, "message": response.content}
+                    status_code = _msg.get("statusCode", response.status_code)
+                    message = _msg.get("message", "Unknown error")
+                    if status_code in [400, 401, 402]:
+                        # 400 : validation error
+                        # 401 : unauthorized
+                        # 402 : payment required
+                        # 409 : conflict
+                        raise AuthError(message, request=request_data, code=status_code, response=_msg)
+                    if status_code in [500]:
+                        # An unknown error occured.
+                        raise APIError(message, request=request_data, code=status_code, response=_msg)
                     raise APIError(message, request=request_data, code=status_code, response=_msg)
-                raise APIError(message, request=request_data, code=status_code, response=_msg)
-            return SubscriptionResp.model_validate(response.json())
-        except curl_cffi.requests.errors.RequestsError as exc:
-            logger.exception(exc)
-            raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
-        except httpx.HTTPError as exc:
-            logger.exception(exc)
-            raise SessionHttpError("An HTTPError occurred, maybe SSL error. Try again later!")
-        except APIError as e:
-            raise e
-        except Exception as e:
-            logger.opt(exception=e).exception("An Unexpected error occurred")
-            raise e
+                return SubscriptionResp.model_validate(response.json())
+            except curl_cffi.requests.errors.RequestsError as exc:
+                logger.exception(exc)
+                raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
+            except httpx.HTTPError as exc:
+                logger.exception(exc)
+                raise SessionHttpError("An HTTPError occurred, maybe SSL error. Try again later!")
+            except APIError as e:
+                raise e
+            except Exception as e:
+                logger.opt(exception=e).exception("An Unexpected error occurred")
+                raise e
