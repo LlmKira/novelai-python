@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from pydantic import SecretStr
 
-from novelai_python import APIError, Login, LoginCredential
+from novelai_python import APIError, LoginCredential
 from novelai_python import JwtCredential
 from novelai_python.sdk.ai.generate_stream import TextLLMModel, LLMStream, LLMStreamResp
 
@@ -52,5 +52,5 @@ async def stream(prompt="Hello"):
         print(f"Meta: {loop_connect(_data)}")
 
 
-loop = asyncio.get_event_loop()
+loop = asyncio.new_event_loop()
 loop.run_until_complete(stream())
