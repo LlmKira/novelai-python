@@ -65,7 +65,10 @@ class AugmentImageInfer(ApiBaseModel):
         return f"{self.endpoint.strip('/')}/ai/augment-image"
 
     def calculate_cost(self, is_opus: bool = False) -> float:
-        raise NotImplementedError("This method is not implemented yet")
+        # NOTE: its unclear how the cost is calculated
+        if self.req_type == ReqType.BG_REMOVAL:
+            return 65.0
+        return 0.0
 
     @staticmethod
     def _to_bytes_io(image: Union[bytes, IO, pathlib.Path]) -> BytesIO | IO:
