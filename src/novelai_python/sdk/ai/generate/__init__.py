@@ -156,80 +156,77 @@ class LLM(ApiBaseModel):
         request_data = self.model_dump(mode="json", exclude_none=True)
         request_data["order"] = generate_order(request_data) or []
         assert request_data.get("parameters"), "Parameters is required"
-        # Header
-        if isinstance(session, AsyncSession):
-            session.headers.update(await self.necessary_headers(request_data))
-        elif isinstance(session, CredentialBase):
-            update_header = await self.necessary_headers(request_data)
-            session = await session.get_session(update_headers=update_header)
-        if override_headers:
-            session.headers.clear()
-            session.headers.update(override_headers)
-        # Log
-        logger.debug(f"LLM request data: {request_data}")
-        # Request
-        try:
-            assert hasattr(session, "post"), "session must have post method."
-            response = await session.post(
-                self.base_url,
-                json=request_data,
-                stream=False
-            )
-            header_type = response.headers.get('Content-Type')
-            if "application/json" not in header_type:
-                try:
-                    _msg = response.json()
-                except Exception as e:
-                    _msg = {"statusCode": response.status_code, "message": response.content}
-                status_code = _msg.get("statusCode", response.status_code)
-                message = _msg.get("message", "Unknown error")
-                if status_code == 400:
-                    raise APIError(
-                        f"A validation error occured. {message}",
-                        request=request_data, code=status_code, response=_msg
-                    )
-
-                elif status_code == 401:
-                    raise APIError(
-                        f"Access Token is incorrect. {message}",
-                        request=request_data, code=status_code, response=_msg
-                    )
-                elif status_code == 402:
-                    raise APIError(
-                        f"An active subscription is required to access this endpoint. {message}",
-                        request=request_data, code=status_code, response=_msg
-                    )
-                elif status_code == 409:
-                    raise APIError(
-                        f"A conflict error occured. {message}",
-                        request=request_data, code=status_code, response=_msg
-                    )
-                else:
-                    raise APIError(
-                        f"An unknown error occured. {response.status_code} {message}",
-                        request=request_data, code=status_code, response=_msg
-                    )
-            else:
-                output = response.json().get("output", None)
-                assert output, APIError("No Content Returned",
-                                        request=request_data, code=response.status_code, response=response.content
-                                        )
-                return LLMResp(
-                    output=output,
-                    text=LLMResp.decode_token(model=self.model, token_str=output)
+        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+            # Header
+            sess.headers.update(await self.necessary_headers(request_data))
+            if override_headers:
+                sess.headers.clear()
+                sess.headers.update(override_headers)
+            # Log
+            logger.debug(f"LLM request data: {request_data}")
+            # Request
+            try:
+                assert hasattr(sess, "post"), "session must have post method."
+                response = await sess.post(
+                    self.base_url,
+                    json=request_data,
+                    stream=False
                 )
-        except curl_cffi.requests.errors.RequestsError as exc:
-            logger.exception(exc)
-            raise SessionHttpError(
-                "An AsyncSession RequestsError occurred, perhaps it's an SSL error. Please try again later!"
-            )
-        except httpx.HTTPError as exc:
-            logger.exception(exc)
-            raise SessionHttpError(
-                "An HTTPError occurred, perhaps it's an SSL error. Please try again later!"
-            )
-        except APIError as e:
-            raise e
-        except Exception as e:
-            logger.opt(exception=e).exception("An unexpected error occurred")
-            raise e
+                header_type = response.headers.get('Content-Type')
+                if "application/json" not in header_type:
+                    try:
+                        _msg = response.json()
+                    except Exception as e:
+                        _msg = {"statusCode": response.status_code, "message": response.content}
+                    status_code = _msg.get("statusCode", response.status_code)
+                    message = _msg.get("message", "Unknown error")
+                    if status_code == 400:
+                        raise APIError(
+                            f"A validation error occured. {message}",
+                            request=request_data, code=status_code, response=_msg
+                        )
+
+                    elif status_code == 401:
+                        raise APIError(
+                            f"Access Token is incorrect. {message}",
+                            request=request_data, code=status_code, response=_msg
+                        )
+                    elif status_code == 402:
+                        raise APIError(
+                            f"An active subscription is required to access this endpoint. {message}",
+                            request=request_data, code=status_code, response=_msg
+                        )
+                    elif status_code == 409:
+                        raise APIError(
+                            f"A conflict error occured. {message}",
+                            request=request_data, code=status_code, response=_msg
+                        )
+                    else:
+                        raise APIError(
+                            f"An unknown error occured. {response.status_code} {message}",
+                            request=request_data, code=status_code, response=_msg
+                        )
+                else:
+                    output = response.json().get("output", None)
+                    assert output, APIError("No Content Returned",
+                                            request=request_data, code=response.status_code, response=response.content
+                                            )
+                    return LLMResp(
+                        output=output,
+                        text=LLMResp.decode_token(model=self.model, token_str=output)
+                    )
+            except curl_cffi.requests.errors.RequestsError as exc:
+                logger.exception(exc)
+                raise SessionHttpError(
+                    "An AsyncSession RequestsError occurred, perhaps it's an SSL error. Please try again later!"
+                )
+            except httpx.HTTPError as exc:
+                logger.exception(exc)
+                raise SessionHttpError(
+                    "An HTTPError occurred, perhaps it's an SSL error. Please try again later!"
+                )
+            except APIError as e:
+                raise e
+            except Exception as e:
+                logger.opt(exception=e).exception("An unexpected error occurred")
+                raise e

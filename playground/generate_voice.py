@@ -1,6 +1,7 @@
 import asyncio
 import os
 import pathlib
+
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
@@ -39,7 +40,7 @@ async def generate_voice(text: str):
         f.write(file)
 
 
-loop = asyncio.get_event_loop()
+loop = asyncio.new_event_loop()
 loop.run_until_complete(
     generate_voice("Hello, I am a test voice, limit 1000 characters")
 )

@@ -10,13 +10,15 @@ import pathlib
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
-from novelai_python import APIError, LoginCredential
-from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
-from novelai_python.sdk.ai.generate_image import Action, Sampler, Model
-from novelai_python.utils.useful import enum_to_list
+from novelai_python import APIError, LoginCredential, JwtCredential, ImageGenerateResp
+from novelai_python import AugmentImageInfer
+from novelai_python.sdk.ai.augment_image import ReqType
 
 
-async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazing quality, very aesthetic, absurdres"):
+async def generate(
+        image,
+        request_type: ReqType = ReqType.SKETCH,
+):
     jwt = os.getenv("NOVELAI_JWT", None)
     if jwt is None:
         raise ValueError("NOVELAI_JWT is not set in `.env` file, please create one and set it")
@@ -26,18 +28,13 @@ async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazin
         username=os.getenv("NOVELAI_USER"),
         password=SecretStr(os.getenv("NOVELAI_PASS"))
     )
-    # await _login_credential.request()
-    print(f"Action List:{enum_to_list(Action)}")
     try:
-        agent = GenerateImageInfer.build(
-            prompt=prompt,
-            model=Model.NAI_DIFFUSION_3,
-            action=Action.GENERATE,
-            sampler=Sampler.DDIM,
-            qualityToggle=True,
+        agent = AugmentImageInfer.build(
+            req_type=request_type,
+            image=image
         )
-        print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
-        print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
+        # print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
+        # print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
         result = await agent.request(
             session=credential
         )
@@ -54,4 +51,9 @@ async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazin
 
 load_dotenv()
 loop = asyncio.new_event_loop()
-loop.run_until_complete(generate())
+loop.run_until_complete(
+    generate(
+        image=pathlib.Path(__file__).parent / "static_image.png",
+        request_type=ReqType.SKETCH
+    )
+)

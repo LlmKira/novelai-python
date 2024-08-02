@@ -4,6 +4,7 @@
 # @File    : __init__.py.py
 # @Software: PyCharm
 
+from .ai.augment_image import AugmentImageInfer  # noqa 401
 from .ai.generate import LLM, LLMResp  # noqa 401
 from .ai.generate_image import GenerateImageInfer, ImageGenerateResp  # noqa 401
 from .ai.generate_image.suggest_tags import SuggestTags, SuggestTagsResp  # noqa 401

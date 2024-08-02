@@ -137,60 +137,57 @@ class VoiceGenerate(ApiBaseModel):
         """
         # Data Build
         request_data = self.model_dump(mode="json", exclude_none=True)
-        # Header
-        if isinstance(session, AsyncSession):
-            session.headers.update(await self.necessary_headers(request_data))
-        elif isinstance(session, CredentialBase):
-            update_header = await self.necessary_headers(request_data)
-            session = await session.get_session(update_headers=update_header)
-        if override_headers:
-            session.headers.clear()
-            session.headers.update(override_headers)
-        # Log
-        logger.debug(f"Voice request data: {request_data}")
-        # Request
-        try:
-            assert hasattr(session, "get"), "session must have get method."
-            response = await session.get(
-                self.base_url,
-                params=request_data
-            )
-            header_type = response.headers.get('Content-Type')
-            if header_type not in ['audio/mpeg', 'audio/ogg', 'audio/opus']:
-                logger.warning(
-                    f"Error with content type: {header_type} and code: {response.status_code}"
+        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+            # Header
+            sess.headers.update(await self.necessary_headers(request_data))
+            if override_headers:
+                sess.headers.clear()
+                sess.headers.update(override_headers)
+            # Log
+            logger.debug(f"Voice request data: {request_data}")
+            # Request
+            try:
+                assert hasattr(sess, "get"), "session must have get method."
+                response = await sess.get(
+                    self.base_url,
+                    params=request_data
                 )
-                try:
-                    _msg = response.json()
-                except Exception as e:
-                    logger.warning(e)
-                    if not isinstance(response.content, str) and len(response.content) < 50:
-                        raise APIError(
-                            message=f"Unexpected content: {header_type} with code: {response.status_code}",
-                            request=request_data,
-                            code=response.status_code,
-                            response="UnJsoned content"
-                        )
-                    else:
-                        _msg = {"statusCode": response.status_code, "message": response.content}
-                status_code = _msg.get("statusCode", response.status_code)
-                message = _msg.get("message", "Unknown error")
-                if status_code in [400]:
-                    # Validation tts version error
+                header_type = response.headers.get('Content-Type')
+                if header_type not in ['audio/mpeg', 'audio/ogg', 'audio/opus']:
+                    logger.warning(
+                        f"Error with content type: {header_type} and code: {response.status_code}"
+                    )
+                    try:
+                        _msg = response.json()
+                    except Exception as e:
+                        logger.warning(e)
+                        if not isinstance(response.content, str) and len(response.content) < 50:
+                            raise APIError(
+                                message=f"Unexpected content: {header_type} with code: {response.status_code}",
+                                request=request_data,
+                                code=response.status_code,
+                                response="UnJsoned content"
+                            )
+                        else:
+                            _msg = {"statusCode": response.status_code, "message": response.content}
+                    status_code = _msg.get("statusCode", response.status_code)
+                    message = _msg.get("message", "Unknown error")
+                    if status_code in [400]:
+                        # Validation tts version error
+                        raise APIError(message, request=request_data, code=status_code, response=_msg)
                     raise APIError(message, request=request_data, code=status_code, response=_msg)
-                raise APIError(message, request=request_data, code=status_code, response=_msg)
-            return VoiceResponse(
-                meta=request_data,
-                audio=response.content,
-            )
-        except curl_cffi.requests.errors.RequestsError as exc:
-            logger.exception(exc)
-            raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
-        except httpx.HTTPError as exc:
-            logger.exception(exc)
-            raise SessionHttpError("An HTTPError occurred, maybe SSL error. Try again later!")
-        except APIError as e:
-            raise e
-        except Exception as e:
-            logger.opt(exception=e).exception("An Unexpected error occurred")
-            raise e
+                return VoiceResponse(
+                    meta=request_data,
+                    audio=response.content,
+                )
+            except curl_cffi.requests.errors.RequestsError as exc:
+                logger.exception(exc)
+                raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
+            except httpx.HTTPError as exc:
+                logger.exception(exc)
+                raise SessionHttpError("An HTTPError occurred, maybe SSL error. Try again later!")
+            except APIError as e:
+                raise e
+            except Exception as e:
+                logger.opt(exception=e).exception("An Unexpected error occurred")
+                raise e

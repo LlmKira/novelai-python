@@ -1,0 +1,8 @@
+{
+  "req_type": "emotion",
+  "prompt": "neutral;;",
+  "defry": 0,
+  "width": 1024,
+  "height": 1024,
+  "image": "Base64 Data"
+}

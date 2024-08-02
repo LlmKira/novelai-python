@@ -16,7 +16,7 @@ async def test_successful_subscription_request():
     successful_response = mock.Mock()
     successful_response.headers = {"Content-Type": "application/json"}
     successful_response.status_code = 200
-    successful_response.json.return_value = {
+    successful_response.json = mock.Mock(return_value={
         "tier": 3,
         "active": True,
         "expiresAt": 1708646400,
@@ -47,9 +47,13 @@ async def test_successful_subscription_request():
         },
         "accountType": 0
     }
+    )
     session = mock.MagicMock(spec=AsyncSession)
     session.get = mock.AsyncMock(return_value=successful_response)
     session.headers = {}
+
+    session.__aenter__ = mock.AsyncMock(return_value=session)
+    session.__aexit__ = mock.AsyncMock(return_value=None)
 
     subscription = Subscription()
     resp = await subscription.request(session)
@@ -61,13 +65,17 @@ async def test_incorrect_access_token_subscription_request():
     incorrect_token_response = mock.Mock()
     incorrect_token_response.headers = {"Content-Type": "application/json"}
     incorrect_token_response.status_code = 401
-    incorrect_token_response.json.return_value = {
+    incorrect_token_response.json = mock.Mock(return_value={
         "statusCode": 401,
         "message": "Access Token is incorrect."
     }
+    )
     session = mock.MagicMock(spec=AsyncSession)
     session.get = mock.AsyncMock(return_value=incorrect_token_response)
     session.headers = {}
+
+    session.__aenter__ = mock.AsyncMock(return_value=session)
+    session.__aexit__ = mock.AsyncMock(return_value=None)
 
     subscription = Subscription()
     with pytest.raises(AuthError) as e:
@@ -82,13 +90,17 @@ async def test_unknown_error_subscription_request():
     unknown_error_response = mock.Mock()
     unknown_error_response.headers = {"Content-Type": "application/json"}
     unknown_error_response.status_code = 500
-    unknown_error_response.json.return_value = {
+    unknown_error_response.json = mock.Mock(return_value={
         "statusCode": 500,
         "message": "An unknown error occurred."
     }
+    )
     session = mock.MagicMock(spec=AsyncSession)
     session.get = mock.AsyncMock(return_value=unknown_error_response)
     session.headers = {}
+
+    session.__aenter__ = mock.AsyncMock(return_value=session)
+    session.__aexit__ = mock.AsyncMock(return_value=None)
 
     subscription = Subscription()
     with pytest.raises(APIError) as e:

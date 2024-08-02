@@ -643,7 +643,7 @@ class GenerateImageInfer(ApiBaseModel):
         return {
             "Host": urlparse(self.endpoint).netloc,
             "Accept": "*/*",
-            "Accept-Language": "zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2",
+
             "Accept-Encoding": "gzip, deflate, br",
             "Referer": "https://novelai.net/",
             "Content-Type": "application/json",
@@ -676,99 +676,96 @@ class GenerateImageInfer(ApiBaseModel):
         """
         # Data Build
         request_data = self.model_dump(mode="json", exclude_none=True)
-        # Header
-        if isinstance(session, AsyncSession):
-            session.headers.update(await self.necessary_headers(request_data))
-        elif isinstance(session, CredentialBase):
-            update_header = await self.necessary_headers(request_data)
-            session = await session.get_session(update_headers=update_header)
-        if override_headers:
-            session.headers.clear()
-            session.headers.update(override_headers)
-        try:
-            _log_data = deepcopy(request_data)
-            _log_data.get("parameters", {}).update({
-                "image": "base64 data" if self.parameters.image else None,
-                "mask": "base64 data" if self.parameters.mask else None,
-                "reference_image_multiple": ["base64 data"] * len(
-                    self.parameters.reference_image_multiple) if self.parameters.reference_image_multiple else None,
-            })
-            logger.debug(f"Request Data: {_log_data}")
-            del _log_data
-        except Exception as e:
-            logger.warning(f"Error when print log data: {e}")
-        try:
-            assert hasattr(session, "post"), "session must have post method."
-            response = await session.post(
-                self.base_url,
-                data=json.dumps(request_data).encode("utf-8")
-            )
-            if response.headers.get('Content-Type') not in ['binary/octet-stream', 'application/x-zip-compressed']:
-                logger.warning(
-                    f"Error with content type: {response.headers.get('Content-Type')} and code: {response.status_code}"
+        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+            # Header
+            sess.headers.update(await self.necessary_headers(request_data))
+            if override_headers:
+                sess.headers.clear()
+                sess.headers.update(override_headers)
+            try:
+                _log_data = deepcopy(request_data)
+                _log_data.get("parameters", {}).update({
+                    "image": "base64 data" if self.parameters.image else None,
+                    "mask": "base64 data" if self.parameters.mask else None,
+                    "reference_image_multiple": ["base64 data"] * len(
+                        self.parameters.reference_image_multiple) if self.parameters.reference_image_multiple else None,
+                })
+                logger.debug(f"Request Data: {_log_data}")
+                del _log_data
+            except Exception as e:
+                logger.warning(f"Error when print log data: {e}")
+            try:
+                assert hasattr(sess, "post"), "session must have post method."
+                response = await sess.post(
+                    self.base_url,
+                    data=json.dumps(request_data).encode("utf-8")
                 )
-                try:
-                    _msg = response.json()
-                except Exception as e:
-                    logger.warning(e)
-                    if not isinstance(response.content, str) and len(response.content) < 50:
+                if response.headers.get('Content-Type') not in ['binary/octet-stream', 'application/x-zip-compressed']:
+                    logger.warning(
+                        f"Error with content type: {response.headers.get('Content-Type')} and code: {response.status_code}"
+                    )
+                    try:
+                        _msg = response.json()
+                    except Exception as e:
+                        logger.warning(e)
+                        if not isinstance(response.content, str) and len(response.content) < 50:
+                            raise APIError(
+                                message=f"Unexpected content type: {response.headers.get('Content-Type')}",
+                                request=request_data,
+                                code=response.status_code,
+                                response=try_jsonfy(response.content)
+                            )
+                        else:
+                            _msg = {"statusCode": response.status_code, "message": response.content}
+                    status_code = _msg.get("statusCode", response.status_code)
+                    message = _msg.get("message", "Unknown error")
+                    if status_code in [400, 401, 402]:
+                        # 400 : validation error
+                        # 401 : unauthorized
+                        # 402 : payment required
+                        # 409 : conflict
+                        raise AuthError(message, request=request_data, code=status_code, response=_msg)
+                    if status_code in [409]:
+                        # conflict error
+                        raise APIError(message, request=request_data, code=status_code, response=_msg)
+                    if status_code in [429]:
+                        # concurrent error
+                        raise ConcurrentGenerationError(
+                            message=message,
+                            request=request_data,
+                            code=status_code,
+                            response=_msg
+                        )
+                    raise APIError(message, request=request_data, code=status_code, response=_msg)
+                zip_file = ZipFile(BytesIO(response.content))
+                unzip_content = []
+                with zip_file as zf:
+                    file_list = zf.namelist()
+                    if not file_list:
                         raise APIError(
-                            message=f"Unexpected content type: {response.headers.get('Content-Type')}",
+                            message="No file in zip",
                             request=request_data,
                             code=response.status_code,
                             response=try_jsonfy(response.content)
                         )
-                    else:
-                        _msg = {"statusCode": response.status_code, "message": response.content}
-                status_code = _msg.get("statusCode", response.status_code)
-                message = _msg.get("message", "Unknown error")
-                if status_code in [400, 401, 402]:
-                    # 400 : validation error
-                    # 401 : unauthorized
-                    # 402 : payment required
-                    # 409 : conflict
-                    raise AuthError(message, request=request_data, code=status_code, response=_msg)
-                if status_code in [409]:
-                    # conflict error
-                    raise APIError(message, request=request_data, code=status_code, response=_msg)
-                if status_code in [429]:
-                    # concurrent error
-                    raise ConcurrentGenerationError(
-                        message=message,
-                        request=request_data,
-                        code=status_code,
-                        response=_msg
-                    )
-                raise APIError(message, request=request_data, code=status_code, response=_msg)
-            zip_file = ZipFile(BytesIO(response.content))
-            unzip_content = []
-            with zip_file as zf:
-                file_list = zf.namelist()
-                if not file_list:
-                    raise APIError(
-                        message="No file in zip",
-                        request=request_data,
-                        code=response.status_code,
-                        response=try_jsonfy(response.content)
-                    )
-                for filename in file_list:
-                    data = zip_file.read(filename)
-                    unzip_content.append((filename, data))
-            return ImageGenerateResp(
-                meta=RequestParams(
-                    endpoint=self.base_url,
-                    raw_request=request_data,
-                ),
-                files=unzip_content
-            )
-        except curl_cffi.requests.errors.RequestsError as exc:
-            logger.exception(exc)
-            raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
-        except httpx.HTTPError as exc:
-            logger.exception(exc)
-            raise SessionHttpError("An HTTPError occurred, maybe SSL error. Try again later!")
-        except APIError as e:
-            raise e
-        except Exception as e:
-            logger.opt(exception=e).exception("An Unexpected error occurred")
-            raise e
+                    for filename in file_list:
+                        data = zip_file.read(filename)
+                        unzip_content.append((filename, data))
+                return ImageGenerateResp(
+                    meta=RequestParams(
+                        endpoint=self.base_url,
+                        raw_request=request_data,
+                    ),
+                    files=unzip_content
+                )
+            except curl_cffi.requests.errors.RequestsError as exc:
+                logger.exception(exc)
+                raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
+            except httpx.HTTPError as exc:
+                logger.exception(exc)
+                raise SessionHttpError("An HTTPError occurred, maybe SSL error. Try again later!")
+            except APIError as e:
+                raise e
+            except Exception as e:
+                logger.opt(exception=e).exception("An Unexpected error occurred")
+                raise e

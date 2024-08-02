@@ -1,62 +1,36 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2024/2/13 上午10:48
+# @Time    : 2024/2/13 下午8:08
 # @Author  : sudoskys
-# @File    : upscale.py
+# @File    : __init__.py.py
 # @Software: PyCharm
 import base64
+import io
 import json
+import pathlib
+from copy import deepcopy
 from io import BytesIO
-from typing import Optional, Union
+from typing import Optional, Union, IO
 from urllib.parse import urlparse
 from zipfile import ZipFile
 
 import curl_cffi
 import httpx
+from PIL import Image
 from curl_cffi.requests import AsyncSession
 from loguru import logger
-from pydantic import ConfigDict, PrivateAttr, model_validator
-from tenacity import wait_random, retry, stop_after_attempt, retry_if_exception
+from pydantic import ConfigDict, PrivateAttr, model_validator, Field
+from tenacity import retry, stop_after_attempt, wait_random, retry_if_exception
 
-from ..schema import ApiBaseModel
-from ..._exceptions import APIError, AuthError, SessionHttpError
-from ..._response.ai.upscale import UpscaleResp
-from ...credential import CredentialBase
-from ...utils import try_jsonfy
+from ._enum import ReqType, Moods
+from ...schema import ApiBaseModel
+from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
+from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
+from ....credential import CredentialBase
+from ....utils import try_jsonfy
 
 
-class Upscale(ApiBaseModel):
-    _endpoint: str = PrivateAttr("https://api.novelai.net")
-    image: Union[str, bytes]  # base64
-    width: Optional[int] = None
-    height: Optional[int] = None
-    scale: float = 4
-    model_config = ConfigDict(extra="ignore")
-
-    @model_validator(mode="after")
-    def validate_model(self):
-        if isinstance(self.image, str) and self.image.startswith("data:image/"):
-            raise ValueError("Invalid image format, must be base64 encoded.")
-        if isinstance(self.image, bytes):
-            self.image = base64.b64encode(self.image).decode("utf-8")
-        # Auto detect image size
-        try:
-            from PIL import Image
-            with Image.open(BytesIO(base64.b64decode(self.image))) as img:
-                width, height = img.size
-        except Exception as e:
-            logger.warning(f"Error when validate image size: {e}")
-            if self.width is None or self.height is None:
-                raise ValueError("Invalid image size and cant auto detect, must be set width and height.")
-        else:
-            if self.width is None:
-                self.width = width
-            if self.height is None:
-                self.height = height
-        return self
-
-    @property
-    def base_url(self):
-        return f"{self.endpoint.strip('/')}/ai/upscale"
+class AugmentImageInfer(ApiBaseModel):
+    _endpoint: str = PrivateAttr("https://image.novelai.net")
 
     @property
     def endpoint(self):
@@ -66,6 +40,80 @@ class Upscale(ApiBaseModel):
     def endpoint(self, value):
         self._endpoint = value
 
+    req_type: ReqType = Field(..., description="Type of augmentation")
+    width: int = Field(..., description="Width of the image")
+    height: int = Field(..., description="Height of the image")
+    image: Union[str, bytes] = Field(..., description="Base64 encoded image")
+    prompt: Optional[str] = None
+    defry: Optional[int] = Field(0, ge=0, le=5, multiple_of=1)
+    model_config = ConfigDict(extra="ignore")
+
+    @model_validator(mode="after")
+    def image_validator(self):
+        if isinstance(self.image, bytes):
+            self.image = base64.b64encode(self.image).decode("utf-8")
+        if isinstance(self.image, str) and self.image.startswith("data:"):
+            raise ValueError("Invalid `image` format, must be base64 encoded directly.")
+        if isinstance(self.image, str) and self.image.startswith("+vv"):
+            raise ValueError("Invalid `image` format, must be encoded correctly.")
+        return self
+
+    @property
+    def base_url(self):
+        return f"{self.endpoint.strip('/')}/ai/augment-image"
+
+    def calculate_cost(self, is_opus: bool = False) -> float:
+        raise NotImplementedError("This method is not implemented yet")
+
+    @staticmethod
+    def _to_bytes_io(image: Union[bytes, IO, pathlib.Path]) -> io.BytesIO:
+        if isinstance(image, bytes):
+            return io.BytesIO(image)
+        elif isinstance(image, IO):
+            return image
+        elif isinstance(image, pathlib.Path):
+            with open(image, 'rb') as f:
+                return io.BytesIO(f.read())
+        else:
+            raise ValueError("Invalid image input type. Expected bytes, IO, or pathlib.Path.")
+
+    @classmethod
+    def build(cls,
+              image: Union[bytes, IO, pathlib.Path],
+              req_type: ReqType = ReqType.SKETCH,
+              *,
+              defry: Optional[int] = None,
+              prompt: Optional[str] = None,
+              mood: Optional[Moods] = None,
+              ):
+        """
+        Build the request data
+        :param req_type: Request type
+        :param image: Image data
+        :param defry: Defry level
+        :param prompt: Prompt
+        :param mood: Mood
+        :raises ValueError: When image is not valid
+        :return: AugmentImageInfer
+        """
+        try:
+            image_io = cls._to_bytes_io(image)
+            with Image.open(image_io) as img:
+                width, height = img.size
+                image_io.seek(0)
+                image_data = image_io.read()
+        except Exception as e:
+            raise ValueError("Error when opening image") from e
+
+        return cls(
+            req_type=req_type,
+            defry=defry,
+            image=image_data,
+            width=width,
+            height=height,
+            prompt=f"{mood.value};;{prompt}" if mood else prompt,
+        )
+
     async def necessary_headers(self, request_data) -> dict:
         """
         :param request_data:
@@ -74,7 +122,6 @@ class Upscale(ApiBaseModel):
         return {
             "Host": urlparse(self.endpoint).netloc,
             "Accept": "*/*",
-
             "Accept-Encoding": "gzip, deflate, br",
             "Referer": "https://novelai.net/",
             "Content-Type": "application/json",
@@ -86,6 +133,7 @@ class Upscale(ApiBaseModel):
             "Sec-Fetch-Site": "same-site",
             "Pragma": "no-cache",
             "Cache-Control": "no-cache",
+            'priority': "u=1, i"
         }
 
     @retry(
@@ -97,11 +145,11 @@ class Upscale(ApiBaseModel):
     async def request(self,
                       session: Union[AsyncSession, "CredentialBase"],
                       *,
-                      override_headers: Optional[dict] = None
-                      ) -> UpscaleResp:
+                      override_headers: Optional[dict] = None,
+                      ) -> ImageGenerateResp:
         """
         生成图片
-        :param override_headers:
+        :param override_headers: the headers to override
         :param session:  session
         :return:
         """
@@ -114,9 +162,12 @@ class Upscale(ApiBaseModel):
                 sess.headers.clear()
                 sess.headers.update(override_headers)
             try:
-                _log_data = request_data.copy()
-                _log_data.update({"image": "base64 data"}) if isinstance(_log_data.get("image"), str) else None
-                logger.info(f"Upscale request data: {_log_data}")
+                _log_data = deepcopy(request_data)
+                _log_data.update({
+                    "image": "base64 data"
+                })
+                logger.debug(f"Request Data: {_log_data}")
+                del _log_data
             except Exception as e:
                 logger.warning(f"Error when print log data: {e}")
             try:
@@ -153,7 +204,6 @@ class Upscale(ApiBaseModel):
                     if status_code in [409]:
                         # conflict error
                         raise APIError(message, request=request_data, code=status_code, response=_msg)
-                    """
                     if status_code in [429]:
                         # concurrent error
                         raise ConcurrentGenerationError(
@@ -162,7 +212,6 @@ class Upscale(ApiBaseModel):
                             code=status_code,
                             response=_msg
                         )
-                    """
                     raise APIError(message, request=request_data, code=status_code, response=_msg)
                 zip_file = ZipFile(BytesIO(response.content))
                 unzip_content = []
@@ -178,19 +227,20 @@ class Upscale(ApiBaseModel):
                     for filename in file_list:
                         data = zip_file.read(filename)
                         unzip_content.append((filename, data))
-                return UpscaleResp(
-                    meta=UpscaleResp.RequestParams(
+                return ImageGenerateResp(
+                    meta=RequestParams(
                         endpoint=self.base_url,
                         raw_request=request_data,
                     ),
-                    files=unzip_content[0]
+                    files=unzip_content
                 )
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
-                raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
+                raise SessionHttpError(
+                    "An AsyncSession RequestsError occurred, maybe SSL error. Try again later!") from exc
             except httpx.HTTPError as exc:
                 logger.exception(exc)
-                raise SessionHttpError("An HTTPError occurred, maybe SSL error. Try again later!")
+                raise SessionHttpError("An HTTPError occurred, maybe SSL error. Try again later!") from exc
             except APIError as e:
                 raise e
             except Exception as e:
