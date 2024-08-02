@@ -24,8 +24,9 @@ async def test_successful_user_login():
     session.headers = {}
 
     login = Login(key="encoded_key")
-    login.session = session
-    resp = await login.request()
+    resp = await login.request(
+        session=session
+    )
     assert isinstance(resp, LoginResp)
     assert resp.accessToken == "string"
 
