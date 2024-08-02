@@ -9,6 +9,7 @@
 # @File    : test_upscale.py
 # @Software: PyCharm
 from unittest import mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from curl_cffi.requests import AsyncSession
@@ -21,13 +22,16 @@ async def test_validation_error_during_upscale():
     validation_error_response = mock.Mock()
     validation_error_response.headers = {"Content-Type": "application/json"}
     validation_error_response.status_code = 400
-    validation_error_response.json.return_value = {
+    validation_error_response.json = Mock(return_value={
         "statusCode": 400,
         "message": "A validation error occurred."
-    }
+    })
     session = mock.MagicMock(spec=AsyncSession)
     session.post = mock.AsyncMock(return_value=validation_error_response)
     session.headers = {}
+
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=None)
 
     upscale = Upscale(image="base64_encoded_image", height=100, width=100)
     with pytest.raises(AuthError) as e:
@@ -42,13 +46,16 @@ async def test_unauthorized_error_during_upscale():
     unauthorized_error_response = mock.Mock()
     unauthorized_error_response.headers = {"Content-Type": "application/json"}
     unauthorized_error_response.status_code = 401
-    unauthorized_error_response.json.return_value = {
+    unauthorized_error_response.json = Mock(return_value={
         "statusCode": 401,
         "message": "Unauthorized."
     }
+    )
     session = mock.MagicMock(spec=AsyncSession)
     session.post = mock.AsyncMock(return_value=unauthorized_error_response)
     session.headers = {}
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=None)
 
     upscale = Upscale(image="base64_encoded_image", height=100, width=100)
     with pytest.raises(APIError) as e:
@@ -63,13 +70,16 @@ async def test_unknown_error_during_upscale():
     unknown_error_response = mock.Mock()
     unknown_error_response.headers = {"Content-Type": "application/json"}
     unknown_error_response.status_code = 500
-    unknown_error_response.json.return_value = {
+    unknown_error_response.json = Mock(return_value={
         "statusCode": 500,
         "message": "Unknown error occurred."
     }
+    )
     session = mock.MagicMock(spec=AsyncSession)
     session.post = mock.AsyncMock(return_value=unknown_error_response)
     session.headers = {}
+    session.__aenter__ = AsyncMock(return_value=session)
+    session.__aexit__ = AsyncMock(return_value=None)
 
     upscale = Upscale(image="base64_encoded_image", height=100, width=100)
     with pytest.raises(APIError) as e:
