@@ -11,6 +11,7 @@ from ._exceptions import (
     SessionHttpError
 )
 from .credential import JwtCredential, LoginCredential, ApiCredential
+from .sdk import AugmentImageInfer
 from .sdk import GenerateImageInfer, ImageGenerateResp
 from .sdk import Information, InformationResp
 from .sdk import LLM, LLMResp
@@ -30,6 +31,8 @@ __all__ = [
 
     "GenerateImageInfer",
     "ImageGenerateResp",
+
+    "AugmentImageInfer",
 
     "VoiceGenerate",
     "VoiceResponse",
