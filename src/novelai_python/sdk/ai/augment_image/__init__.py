@@ -65,9 +65,15 @@ class AugmentImageInfer(ApiBaseModel):
         return f"{self.endpoint.strip('/')}/ai/augment-image"
 
     def calculate_cost(self, is_opus: bool = False) -> float:
+        """
+        Calculate the cost of the request
+        :param is_opus: Whether the user is a VIP3 user
+        :return: The cost of the request
+        :raises NotImplementedError: When the request type is BG_REMOVAL
+        """
         # NOTE: its unclear how the cost is calculated
         if self.req_type == ReqType.BG_REMOVAL:
-            return 65.0
+            raise NotImplementedError("BG_REMOVAL cost calculation is not implemented")
         return 0.0
 
     @staticmethod
