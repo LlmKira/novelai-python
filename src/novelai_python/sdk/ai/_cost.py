@@ -28,11 +28,6 @@ def generate_random_seed() -> int:
 
 
 class CostCalculator:
-    map: List[int] = map
-    newN: List[int] = newN
-    initialN: List[int] = initialN
-    step: List[int] = step
-    initial_n: List[int] = initial_n
 
     @staticmethod
     def calculate(
@@ -119,7 +114,7 @@ class CostCalculator:
 
             def prepare_array() -> List[int]:
                 result_array: List[int] = []
-                map_iterator = enumerate(CostCalculator.map)
+                map_iterator = enumerate(map)
                 try:
                     for key, value in map_iterator:
                         # 确保 result_array 的大小足够大
