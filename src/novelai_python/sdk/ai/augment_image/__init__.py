@@ -21,9 +21,9 @@ from loguru import logger
 from pydantic import ConfigDict, PrivateAttr, model_validator, Field
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_exception
 
-from ._enum import ReqType, Moods
 from novelai_python.sdk.ai._cost import CostCalculator
 from novelai_python.sdk.ai._enum import Model
+from ._enum import ReqType, Moods
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
@@ -93,6 +93,7 @@ class AugmentImageInfer(ApiBaseModel):
                     is_sm_enabled=False,
                     is_sm_dynamic=False,
                     is_account_active=True,
+                    tool=self.req_type.value,
                 ) * 3 + 5
             return CostCalculator.calculate(
                 width=self.width,
@@ -107,6 +108,7 @@ class AugmentImageInfer(ApiBaseModel):
                 is_sm_enabled=False,
                 is_sm_dynamic=False,
                 is_account_active=True,
+                tool=self.req_type.value,
             )
         except Exception as e:
             raise ValueError(f"Error when calculating cost") from e
