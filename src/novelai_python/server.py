@@ -15,6 +15,7 @@ from loguru import logger
 from starlette.responses import JSONResponse, StreamingResponse
 
 from novelai_python import LLMStream, LLMStreamResp
+from novelai_python.sdk.ai.augment_image import ReqType, Moods, AugmentImageInfer
 from .credential import JwtCredential, SecretStr
 from .sdk.ai.generate import LLM
 from .sdk.ai.generate_image import GenerateImageInfer, Model
@@ -123,7 +124,7 @@ async def upscale(
         return JSONResponse(status_code=500, content=e.__dict__)
 
 
-@app.get("/ai/generate_image/suggest_tags")
+@app.get("/ai/generate-image/suggest_tags")
 async def suggest_tags(
         model: Model,
         prompt: str,
@@ -145,7 +146,7 @@ async def suggest_tags(
         return JSONResponse(status_code=500, content=e.__dict__)
 
 
-@app.post("/ai/generate_image")
+@app.post("/ai/generate-image")
 async def generate_image(
         req: GenerateImageInfer,
         current_token: str = Depends(get_current_token)
@@ -238,6 +239,48 @@ async def generate_voice(
         _result = await req.request(session=get_session(current_token))
         return StreamingResponse(io.BytesIO(_result.audio), media_type='audio/mpeg', headers={
             'Content-Disposition': 'attachment;filename=audio.mp3'
+        })
+    except Exception as e:
+        logger.exception(e)
+        return JSONResponse(status_code=500, content=e.__dict__)
+
+
+@app.post("/ai/augment-image")
+async def augment_image(
+        req_type: ReqType,
+        image: bytes,
+        mood: Optional[Moods] = None,
+        prompt: Optional[str] = None,
+        defry: Optional[int] = None,
+        current_token: str = Depends(get_current_token)
+):
+    """
+    生成图片
+    :param current_token: Authorization
+    :param req_type: ReqType
+    :param image: bytes
+    :param mood: Optional[Moods]
+    :param prompt: Optional[str]
+    :param defry: Optional[int]
+    :return:
+    """
+    try:
+        req = AugmentImageInfer.build(
+            req_type=req_type,
+            image=image,
+            mood=mood,
+            prompt=prompt,
+            defry=defry,
+        )
+        _result = await req.request(session=get_session(current_token))
+        zip_file_bytes = io.BytesIO()
+        with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+            for file in _result.files:
+                zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
+        # return the zip file
+        zip_file_bytes.seek(0)
+        return StreamingResponse(zip_file_bytes, media_type='application/zip', headers={
+            'Content-Disposition': 'attachment;filename=image.zip'
         })
     except Exception as e:
         logger.exception(e)
