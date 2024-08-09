@@ -36,7 +36,7 @@ async def generate(
             prompt="",
             defry=0,
         )
-        # print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
+        print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         # print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
         result = await agent.request(
             session=credential
