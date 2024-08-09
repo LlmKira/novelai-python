@@ -119,7 +119,7 @@ class CostCalculator:
 
             def prepare_array() -> List[int]:
                 result_array: List[int] = []
-                map_iterator = enumerate(map)
+                map_iterator = enumerate(CostCalculator.map)
                 try:
                     for key, value in map_iterator:
                         # 确保 result_array 的大小足够大
