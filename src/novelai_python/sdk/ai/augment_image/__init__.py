@@ -22,6 +22,8 @@ from pydantic import ConfigDict, PrivateAttr, model_validator, Field
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_exception
 
 from ._enum import ReqType, Moods
+from novelai_python.sdk.ai._cost import CostCalculator
+from novelai_python.sdk.ai._enum import Model
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
@@ -76,9 +78,38 @@ class AugmentImageInfer(ApiBaseModel):
         :raises NotImplementedError: When the request type is BG_REMOVAL
         """
         # NOTE: its unclear how the cost is calculated
-        if self.req_type == ReqType.BG_REMOVAL:
-            raise NotImplementedError("BG_REMOVAL cost calculation is not implemented")
-        return 0.0
+        try:
+            if self.req_type == ReqType.BG_REMOVAL:
+                return CostCalculator.calculate(
+                    width=self.width,
+                    height=self.height,
+                    steps=28,
+                    model=Model.NAI_DIFFUSION_3,
+                    image=self.image,
+                    n_samples=1,
+                    account_tier=1,
+                    strength=1,
+                    sampler=None,
+                    is_sm_enabled=False,
+                    is_sm_dynamic=False,
+                    is_account_active=True,
+                ) * 3 + 5
+            return CostCalculator.calculate(
+                width=self.width,
+                height=self.height,
+                steps=28,
+                model=Model.NAI_DIFFUSION_3,
+                image=self.image,
+                n_samples=1,
+                account_tier=3 if is_opus else 1,
+                strength=1,
+                sampler=None,
+                is_sm_enabled=False,
+                is_sm_dynamic=False,
+                is_account_active=True,
+            )
+        except Exception as e:
+            raise ValueError(f"Error when calculating cost") from e
 
     @staticmethod
     def _to_bytes_io(image: Union[bytes, IO, pathlib.Path, Any]) -> io.BytesIO:
