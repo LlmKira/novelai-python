@@ -12,7 +12,7 @@ from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import PrivateAttr
 
-from ._enum import Model
+from novelai_python.sdk.ai._enum import Model
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, SessionHttpError
 from ...._response.ai.generate_image import SuggestTagsResp

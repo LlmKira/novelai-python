@@ -9,7 +9,7 @@ import json
 import pathlib
 from copy import deepcopy
 from io import BytesIO
-from typing import Optional, Union, IO
+from typing import Optional, Union, IO, Any
 from urllib.parse import urlparse
 from zipfile import ZipFile
 
@@ -21,6 +21,8 @@ from loguru import logger
 from pydantic import ConfigDict, PrivateAttr, model_validator, Field
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_exception
 
+from novelai_python.sdk.ai._cost import CostCalculator
+from novelai_python.sdk.ai._enum import Model
 from ._enum import ReqType, Moods
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
@@ -45,7 +47,9 @@ class AugmentImageInfer(ApiBaseModel):
     height: int = Field(..., description="Height of the image")
     image: Union[str, bytes] = Field(..., description="Base64 encoded image")
     prompt: Optional[str] = None
+    """For mood based generation, prompt should be in the format of `mood;;prompt`"""
     defry: Optional[int] = Field(0, ge=0, le=5, multiple_of=1)
+    """The larger the value, the weaker the defry effect"""
     model_config = ConfigDict(extra="ignore")
 
     @model_validator(mode="after")
@@ -56,6 +60,10 @@ class AugmentImageInfer(ApiBaseModel):
             raise ValueError("Invalid `image` format, must be base64 encoded directly.")
         if isinstance(self.image, str) and self.image.startswith("+vv"):
             raise ValueError("Invalid `image` format, must be encoded correctly.")
+        if self.prompt and self.req_type == ReqType.EMOTION:
+            valid_starts = [enum.value for enum in Moods]
+            if not any(self.prompt.startswith(f"{valid_start};;") for valid_start in valid_starts):
+                raise ValueError(f"Invalid `prompt` format, must start with one of {valid_starts}.")
         return self
 
     @property
@@ -63,19 +71,66 @@ class AugmentImageInfer(ApiBaseModel):
         return f"{self.endpoint.strip('/')}/ai/augment-image"
 
     def calculate_cost(self, is_opus: bool = False) -> float:
-        raise NotImplementedError("This method is not implemented yet")
+        """
+        Calculate the cost of the request
+        :param is_opus: Whether the user is a VIP3 user
+        :return: The cost of the request
+        :raises NotImplementedError: When the request type is BG_REMOVAL
+        """
+        # NOTE: its unclear how the cost is calculated
+        try:
+            if self.req_type == ReqType.BG_REMOVAL:
+                return CostCalculator.calculate(
+                    width=self.width,
+                    height=self.height,
+                    steps=28,
+                    model=Model.NAI_DIFFUSION_3,
+                    image=self.image,
+                    n_samples=1,
+                    account_tier=1,
+                    strength=1,
+                    sampler=None,
+                    is_sm_enabled=False,
+                    is_sm_dynamic=False,
+                    is_account_active=True,
+                    tool=self.req_type.value,
+                ) * 3 + 5
+            return CostCalculator.calculate(
+                width=self.width,
+                height=self.height,
+                steps=28,
+                model=Model.NAI_DIFFUSION_3,
+                image=self.image,
+                n_samples=1,
+                account_tier=3 if is_opus else 1,
+                strength=1,
+                sampler=None,
+                is_sm_enabled=False,
+                is_sm_dynamic=False,
+                is_account_active=True,
+                tool=self.req_type.value,
+            )
+        except Exception as e:
+            raise ValueError(f"Error when calculating cost") from e
 
     @staticmethod
-    def _to_bytes_io(image: Union[bytes, IO, pathlib.Path]) -> io.BytesIO:
+    def _to_bytes_io(image: Union[bytes, IO, pathlib.Path, Any]) -> io.BytesIO:
+        """
+        将输入图像转换为 BytesIO 对象。
+
+        :param image: 可以是 bytes、IO、pathlib.Path 或任何拥有 read() 方法的对象
+        :return: BytesIO 对象
+        :raises ValueError: 输入类型无效时抛出
+        """
         if isinstance(image, bytes):
             return io.BytesIO(image)
-        elif isinstance(image, IO):
-            return image
         elif isinstance(image, pathlib.Path):
             with open(image, 'rb') as f:
                 return io.BytesIO(f.read())
+        elif hasattr(image, 'read') and callable(image.read):
+            return io.BytesIO(image.read())
         else:
-            raise ValueError("Invalid image input type. Expected bytes, IO, or pathlib.Path.")
+            raise ValueError("Invalid image input type. Expected bytes, IO, pathlib.Path, or any readable object.")
 
     @classmethod
     def build(cls,
@@ -104,14 +159,16 @@ class AugmentImageInfer(ApiBaseModel):
                 image_data = image_io.read()
         except Exception as e:
             raise ValueError("Error when opening image") from e
-
+        if mood and prompt is None:
+            prompt = ""
+        prompt = f"{mood.value};;{prompt}" if mood else prompt
         return cls(
             req_type=req_type,
             defry=defry,
             image=image_data,
             width=width,
             height=height,
-            prompt=f"{mood.value};;{prompt}" if mood else prompt,
+            prompt=prompt,
         )
 
     async def necessary_headers(self, request_data) -> dict:

@@ -92,10 +92,8 @@ class Resolution(Enum):
 class Model(Enum):
     NAI_DIFFUSION_3 = "nai-diffusion-3"
     NAI_DIFFUSION_3_INPAINTING = "nai-diffusion-3-inpainting"
-
     NAI_DIFFUSION_FURRY_3 = "nai-diffusion-furry-3"
     NAI_DIFFUSION_FURRY_3_INPAINTING = "nai-diffusion-furry-3-inpainting"
-
     NAI_DIFFUSION = "nai-diffusion"
     NAI_DIFFUSION_2 = "nai-diffusion-2"
     NAI_DIFFUSION_INPAINTING = "nai-diffusion-inpainting"
@@ -104,10 +102,43 @@ class Model(Enum):
     SAFE_DIFFUSION_INPAINTING = "safe-diffusion-inpainting"
 
     NAI_DIFFUSION_FURRY = "nai-diffusion-furry"
-    # NAI_DIFFUSION_FURRY2 = "nai-diffusion-furry2"
+
     FURRY_DIFFUSION_INPAINTING = "furry-diffusion-inpainting"
 
     CUSTOM = "custom"
+    STABLE_DIFFUSION = "stable-diffusion"
+    WAIFU_DIFFUSION = "waifu-diffusion"
+    CURATED_DIFFUSION_TEST = "curated-diffusion-test"
+    NAI_DIFFUSION_XL = "nai-diffusion-xl"
+
+
+class ModelGroups(Enum):
+    STABLE_DIFFUSION = "stable_diffusion"
+    STABLE_DIFFUSION_GROUP_2 = "stable_diffusion_group2"
+    STABLE_DIFFUSION_XL = "stable_diffusion_xl"
+    STABLE_DIFFUSION_XL_FURRY = "stable_diffusion_xl_furry"
+
+
+def get_model_group(model: str) -> ModelGroups:
+    mapping = {
+        "stable-diffusion": ModelGroups.STABLE_DIFFUSION,
+        "nai-diffusion": ModelGroups.STABLE_DIFFUSION,
+        "safe-diffusion": ModelGroups.STABLE_DIFFUSION,
+        "waifu-diffusion": ModelGroups.STABLE_DIFFUSION,
+        "nai-diffusion-furry": ModelGroups.STABLE_DIFFUSION,
+        "curated-diffusion-test": ModelGroups.STABLE_DIFFUSION,
+        "nai-diffusion-inpainting": ModelGroups.STABLE_DIFFUSION,
+        "safe-diffusion-inpainting": ModelGroups.STABLE_DIFFUSION,
+        "furry-diffusion-inpainting": ModelGroups.STABLE_DIFFUSION,
+        "nai-diffusion-2": ModelGroups.STABLE_DIFFUSION_GROUP_2,
+        "nai-diffusion-xl": ModelGroups.STABLE_DIFFUSION_XL,
+        "nai-diffusion-3": ModelGroups.STABLE_DIFFUSION_XL,
+        "nai-diffusion-3-inpainting": ModelGroups.STABLE_DIFFUSION_XL,
+        "custom": ModelGroups.STABLE_DIFFUSION_XL,
+        "nai-diffusion-furry-3": ModelGroups.STABLE_DIFFUSION_XL_FURRY,
+        "nai-diffusion-furry-3-inpainting": ModelGroups.STABLE_DIFFUSION_XL_FURRY,
+    }
+    return mapping.get(model, ModelGroups.STABLE_DIFFUSION)
 
 
 INPAINTING_MODEL_LIST = [

@@ -25,6 +25,7 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 - [x] /ai/generate-voice
 - [x] /ai/generate-stream
 - [x] /ai/generate
+- [x] /ai/augment-image
 - [ ] /ai/annotate-image
 - [ ] /ai/classify
 - [ ] /ai/generate-prompt

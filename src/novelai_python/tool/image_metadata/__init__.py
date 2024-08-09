@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict
 
 from .lsb_extractor import ImageLsbDataExtractor
 from .lsb_injector import inject_data
-from ...sdk.ai.generate_image._enum import PROMOTION, Model
+from novelai_python.sdk.ai._enum import PROMOTION, Model
 
 
 class ImageMetadata(BaseModel):
