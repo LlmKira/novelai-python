@@ -3,6 +3,9 @@
 # @Author  : sudoskys
 # @File    : JwtToken.py
 # @Software: PyCharm
+import datetime
+
+import shortuuid
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import SecretStr, Field, field_validator
@@ -15,6 +18,7 @@ class JwtCredential(CredentialBase):
     JwtCredential is the base class for all credential.
     """
     jwt_token: SecretStr = Field(None, description="jwt token")
+    _x_correlation_id: str = shortuuid.uuid()[0:6]
 
     async def get_session(self, timeout: int = 180, update_headers: dict = None):
         headers = {
@@ -25,6 +29,8 @@ class JwtCredential(CredentialBase):
             "Content-Type": "application/json",
             "Origin": "https://novelai.net",
             "Referer": "https://novelai.net/",
+            "x-correlation-id": self._x_correlation_id,
+            "x-initiated-at": f"{datetime.datetime.now(datetime.UTC).isoformat()}Z",
         }
 
         if update_headers:

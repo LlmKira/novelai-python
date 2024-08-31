@@ -2,9 +2,11 @@
 # @Time    : 2024/2/7 下午12:14
 # @Author  : sudoskys
 # @File    : UserAuth.py
+import datetime
 import time
 from typing import Optional
 
+import shortuuid
 from curl_cffi.requests import AsyncSession
 from pydantic import SecretStr, Field
 
@@ -19,6 +21,7 @@ class LoginCredential(CredentialBase):
     password: SecretStr = Field(None, description="password")
     _session_headers: dict = {}
     _update_at: Optional[int] = None
+    _x_correlation_id: str = shortuuid.uuid()[0:6]
 
     async def get_session(self, timeout: int = 180, update_headers: dict = None):
         headers = {
@@ -29,6 +32,8 @@ class LoginCredential(CredentialBase):
             "Content-Type": "application/json",
             "Origin": "https://novelai.net",
             "Referer": "https://novelai.net/",
+            "x-correlation-id": self._x_correlation_id,
+            "x-initiated-at": f"{datetime.datetime.now(datetime.UTC).isoformat()}Z",
         }
 
         # 30 天有效期
