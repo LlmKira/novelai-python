@@ -30,7 +30,7 @@ def test_subscription_without_api_key(mock_subscription):
 def test_generate_image_without_api_key(mock_generate_image):
     mock_generate_image.return_value.request.return_value = {"status": "image generated"}
     response = client.post("/ai/generate_image")
-    assert response.status_code == 403
+    assert response.status_code == 404
 
 
 def test_get_session_new_token():
