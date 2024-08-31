@@ -12,7 +12,8 @@ from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
-from novelai_python.sdk.ai.generate_image import Action, Sampler, Model
+from novelai_python.sdk.ai._enum import Sampler
+from novelai_python.sdk.ai.generate_image import Action, Model
 from novelai_python.utils.useful import enum_to_list
 
 
@@ -33,8 +34,10 @@ async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazin
             prompt=prompt,
             model=Model.NAI_DIFFUSION_3,
             action=Action.GENERATE,
-            sampler=Sampler.DDIM,
+            sampler=Sampler.K_DPMPP_2M,
             qualityToggle=True,
+            decrisp_mode=False,
+            variety_boost=True
         )
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
