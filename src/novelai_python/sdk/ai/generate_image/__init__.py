@@ -23,8 +23,9 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_exception
 from typing_extensions import override
 
-from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, ControlNetModel, Action, UCPreset, INPAINTING_MODEL_LIST
 from novelai_python.sdk.ai._cost import CostCalculator
+from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, ControlNetModel, Action, UCPreset, \
+    INPAINTING_MODEL_LIST, get_default_noise_schedule, get_supported_noise_schedule
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
@@ -52,7 +53,7 @@ class Params(BaseModel):
     controlnet_strength: Optional[float] = Field(1.0, ge=0.1, le=2, multiple_of=0.1)
     """ControlNet Strength"""
     dynamic_thresholding: Optional[bool] = False
-    """Reduce artifacts caused by high prompt guidance values"""
+    """Decrisp:Reduce artifacts caused by high prompt guidance values"""
     height: Optional[int] = Field(1216, ge=64, le=49152)
     """Height For Generate Image"""
     image: Optional[Union[str, bytes]] = None
@@ -69,7 +70,7 @@ class Params(BaseModel):
     """Number of samples"""
     negative_prompt: Optional[str] = ''
     """Negative Prompt"""
-    noise_schedule: Optional[NoiseSchedule] = NoiseSchedule.NATIVE
+    noise_schedule: Optional[NoiseSchedule] = None
     """Noise Schedule"""
     # Misc
     params_version: Optional[int] = 1
@@ -112,7 +113,7 @@ class Params(BaseModel):
     # TODO: find out the usage
     qualityToggle: Optional[bool] = True
     """Whether to add the quality prompt"""
-    sampler: Optional[Sampler] = Sampler.K_EULER
+    sampler: Optional[Sampler] = Sampler.K_EULER_ANCESTRAL
     """Sampler For Generate Image"""
     scale: Optional[float] = Field(6.0, ge=0, le=10, multiple_of=0.1)
     """Prompt Guidance"""
@@ -123,6 +124,8 @@ class Params(BaseModel):
         le=4294967295 - 7,
     )
     """Seed"""
+    skip_cfg_above_sigma: Optional[int] = None
+    """Variety Boost, a new feature to improve the diversity of samples."""
     extra_noise_seed: Optional[int] = Field(
         default_factory=lambda: random.randint(0, 4294967295 - 7),
         gt=0,
@@ -133,7 +136,7 @@ class Params(BaseModel):
     # TODO: find out the usage
     sm_dyn: Optional[bool] = False
     # TODO: find out the usage
-    steps: Optional[int] = Field(28, ge=1, le=50)
+    steps: Optional[int] = Field(23, ge=1, le=50)
     """Steps"""
     ucPreset: Optional[UCPreset] = 0
     """The Negative Prompt Preset"""
@@ -212,6 +215,16 @@ class Params(BaseModel):
     # Validators
     @model_validator(mode="after")
     def image_validator(self):
+        # Noise schedule check
+        if self.noise_schedule is None:
+            self.noise_schedule = get_default_noise_schedule(self.sampler)
+        supported_noise_schedule = get_supported_noise_schedule(self.sampler)
+        if supported_noise_schedule:
+            if self.noise_schedule not in supported_noise_schedule:
+                raise ValueError(f"Invalid noise_schedule, must be one of {supported_noise_schedule}")
+        else:
+            logger.warning(f"Inactive sampler {self.sampler} does not support noise_schedule.")
+        # Check the noise value
         if self.sampler:
             if self.sampler in [Sampler.DDIM, Sampler.DDIM_V3]:
                 self.sm = False
@@ -223,6 +236,7 @@ class Params(BaseModel):
                 self.sm_dyn = True
                 if not self.sm_dyn:
                     logger.warning("sm and sm_dyn is enabled when using nai_smea_dyn sampler.")
+        # Make sure the image is base64 encoded
         if isinstance(self.image, str) and self.image.startswith("data:"):
             raise ValueError("Invalid `image` format, must be base64 encoded directly.")
         if isinstance(self.mask, str) and self.mask.startswith("data:"):
@@ -430,7 +444,10 @@ class GenerateImageInfer(ApiBaseModel):
               height: int = 1216,
               qualityToggle: bool = None,
               image: Union[str, bytes] = None,
+              decrisp_mode: bool = False,
+              variety_boost: bool = False,
               noise: float = 0,
+              noise_schedule: Union[NoiseSchedule, str] = None,
               reference_image_multiple: List[Union[str, bytes]] = None,
               reference_strength_multiple: List[float] = None,
               reference_information_extracted_multiple: List[float] = None,
@@ -450,6 +467,10 @@ class GenerateImageInfer(ApiBaseModel):
         """
         The build function, more convenient to create a GenerateImageInfer instance.
         构建函数，更方便地创建一个GenerateImageInfer实例。
+        :param decrisp_mode: Reduce artifacts caused by high prompt guidance values.
+                            减少由高提示引导值引起的伪影。
+        :param variety_boost: A new feature to improve the diversity of samples.
+                            一项新功能，用于提高样本的多样性。
         :param reference_information_extracted_multiple:  The reference information extracted for Vibe mode.
                                                             Vibe模式的提取的参考信息。
         :param reference_image_multiple: The reference image for Vibe mode.
@@ -459,52 +480,53 @@ class GenerateImageInfer(ApiBaseModel):
         :param ucPreset: 0: Heavy, 1: Light, 2: Character
                         0: 重量级, 1: 轻量级, 2: 角色
         :param qualityToggle: add the quality prompt or not.
-                              是否添加质量提示。
+                            是否添加质量提示。
         :param prompt: input prompt for generation.
-                       生成的输入提示。
+                    生成的输入提示。
         :param model: select a model.
-                      选择一个模型。
+                    选择一个模型。
         :param action: mode for image generation [generate, img2img, infill].
-                       图像生成模式 [生成, 图像到图像, 填充]。
+                    图像生成模式 [生成, 图像到图像, 填充]。
         :param negative_prompt: the content of negative prompt.
                                 负面提示的内容。
         :param seed: the seed for generate image.
-                     生成图像的种子。
+                    生成图像的种子。
         :param steps: the steps for generate image.
-                      生成图像的步骤。
+                    生成图像的步骤。
         :param scale: the scale for generate image.
-                      生成图像的比例。
+                    生成图像的比例。
         :param cfg_rescale: prompt guidance rescale 0-1 lower is more creative.
                             提示引导的重新缩放0-1，越低则越富有创造性。
         :param sampler: the sampler for generate image.
                         生成图像的采样器。
         :param width: the width of the image.
-                      图像的宽度。
+                    图像的宽度。
         :param height: the height of the image.
-                       图像的高度。
+                    图像的高度。
         :param image: the input image.
-                      输入图像。
+                    输入图像。
         :param noise: the noise to be added in the image.
-                      要添加到图像中的噪声。
+                    要添加到图像中的噪声。
+        :param noise_schedule: the noise schedule for generate image.
+                    生成图像的噪声计划。
         :param add_original_image: Overlay Original Image. Prevents the existing image from changing, only for IMG2IMG mode.
-                                   叠加原始图像。防止现有图像发生更改，仅适用于IMG2IMG模式。
+                                叠加原始图像。防止现有图像发生更改，仅适用于IMG2IMG模式。
         :param strength: the strength of IMG2IMG mode.
-                         IMG2IMG模式的强度。
+                        IMG2IMG模式的强度。
         :param mask: the inpainting mask.
-                     纹理绘制掩码。
+                    纹理绘制掩码。
         :param controlnet_model: the model used for the control network.
-                                 用于控制网络的模型。
+                                用于控制网络的模型。
         :param controlnet_condition: the condition used for the control network.
-                                     用于控制网络的条件。
+                                    用于控制网络的条件。
         :param sm: whether to use sm.
-                    是否使用sm。
+                是否使用sm。
         :param sm_dyn: whether to use dynamic sm.
-                       是否使用动态sm。
+                    是否使用动态sm。
         :param uncond_scale: the strength of the unrelated content.
-                             无关内容的强度。
+                            无关内容的强度。
         :param kwargs: any additional parameters.
-                       其他任何参数。
-
+                    其他任何参数。
         :return: self
         返回：自身
         """
@@ -528,6 +550,7 @@ class GenerateImageInfer(ApiBaseModel):
             "sm_dyn": sm_dyn,
             "sm": sm,
             "uncond_scale": uncond_scale,
+            "noise_schedule": noise_schedule,
         })
 
         def _merge_param(v1, v2):
@@ -579,6 +602,10 @@ class GenerateImageInfer(ApiBaseModel):
                 "noise": noise,
             }
         )
+        if decrisp_mode:
+            kwargs.update({"dynamic_thresholding": True})
+        if variety_boost:
+            kwargs.update({"skip_cfg_above_sigma": 19})
         # 清理空值
         param = {k: v for k, v in kwargs.items() if v is not None}
         _build_prop = Params(**param)
