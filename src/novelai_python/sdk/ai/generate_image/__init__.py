@@ -470,7 +470,8 @@ class GenerateImageInfer(ApiBaseModel):
         :param decrisp_mode: Reduce artifacts caused by high prompt guidance values.
                             减少由高提示引导值引起的伪影。
         :param variety_boost: A new feature to improve the diversity of samples.
-                            一项新功能，用于提高样本的多样性。
+                            Variety Boost means your negative prompt will only be used after the body shape has been decided.
+                            一项新功能，用于提高样本的多样性。但是，这意味着您的负面提示只会在身体形状确定后使用。
         :param reference_information_extracted_multiple:  The reference information extracted for Vibe mode.
                                                             Vibe模式的提取的参考信息。
         :param reference_image_multiple: The reference image for Vibe mode.
