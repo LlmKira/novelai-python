@@ -4,25 +4,25 @@
 # @File    : _enum.py
 # @Software: PyCharm
 from enum import Enum, IntEnum
+from typing import List
 
 
 class Sampler(Enum):
+    PLMS = "plms"
+    DDIM = "ddim"
     K_EULER = "k_euler"
     K_EULER_ANCESTRAL = "k_euler_ancestral"
-    K_DPMPP_2S_ANCESTRAL = "k_dpmpp_2s_ancestral"
-    K_DPMPP_2M = "k_dpmpp_2m"
-    K_DPMPP_SDE = "k_dpmpp_sde"
-    DDIM_V3 = "ddim_v3"
-
-    DDIM = "ddim"
-    PLMS = "plms"
     K_DPM_2 = "k_dpm_2"
     K_DPM_2_ANCESTRAL = "k_dpm_2_ancestral"
     K_LMS = "k_lms"
+    K_DPMPP_2S_ANCESTRAL = "k_dpmpp_2s_ancestral"
+    K_DPMPP_SDE = "k_dpmpp_sde"
+    K_DPMPP_2M = "k_dpmpp_2m"
     K_DPM_ADAPTIVE = "k_dpm_adaptive"
     K_DPM_FAST = "k_dpm_fast"
     K_DPMPP_2M_SDE = "k_dpmpp_2m_sde"
     K_DPMPP_3M_SDE = "k_dpmpp_3m_sde"
+    DDIM_V3 = "ddim_v3"
     NAI_SMEA = "nai_smea"
     NAI_SMEA_DYN = "nai_smea_dyn"
 
@@ -32,6 +32,56 @@ class NoiseSchedule(Enum):
     KARRAS = "karras"
     EXPONENTIAL = "exponential"
     POLYEXPONENTIAL = "polyexponential"
+
+
+def get_supported_noise_schedule(sample_type: Sampler) -> List[NoiseSchedule]:
+    """
+    Get supported noise schedule for a given sample type
+    :param sample_type: Sampler
+    :return: List[NoiseSchedule]
+    """
+    if sample_type in [
+        Sampler.K_EULER_ANCESTRAL,
+        Sampler.K_DPMPP_2S_ANCESTRAL,
+        Sampler.K_DPMPP_2M,
+        Sampler.K_DPMPP_2M_SDE,
+        Sampler.K_DPMPP_SDE,
+        Sampler.K_EULER
+    ]:
+        return [
+            NoiseSchedule.NATIVE,
+            NoiseSchedule.KARRAS,
+            NoiseSchedule.EXPONENTIAL,
+            NoiseSchedule.POLYEXPONENTIAL
+        ]
+    elif sample_type in [Sampler.K_DPM_2]:
+        return [
+            NoiseSchedule.EXPONENTIAL,
+            NoiseSchedule.POLYEXPONENTIAL
+        ]
+    else:
+        return []
+
+
+def get_default_noise_schedule(sample_type: Sampler) -> NoiseSchedule:
+    """
+    Get default noise schedule for a given sample type
+    :param sample_type: Sampler
+    :return: NoiseSchedule
+    """
+    if sample_type in [
+        Sampler.K_EULER_ANCESTRAL,
+        Sampler.K_DPMPP_2S_ANCESTRAL,
+        Sampler.K_DPMPP_2M,
+        Sampler.K_DPMPP_2M_SDE,
+        Sampler.K_DPMPP_SDE,
+        Sampler.K_EULER
+    ]:
+        return NoiseSchedule.KARRAS
+    elif sample_type in [Sampler.K_DPM_2]:
+        return NoiseSchedule.EXPONENTIAL
+    else:
+        return NoiseSchedule.NATIVE
 
 
 class UCPreset(IntEnum):
