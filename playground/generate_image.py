@@ -12,8 +12,8 @@ from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
-from novelai_python.sdk.ai._enum import Sampler
-from novelai_python.sdk.ai.generate_image import Action, Model
+from novelai_python.sdk.ai._enum import UCPreset
+from novelai_python.sdk.ai.generate_image import Action, Model, Sampler
 from novelai_python.utils.useful import enum_to_list
 
 
@@ -35,9 +35,10 @@ async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazin
             model=Model.NAI_DIFFUSION_3,
             action=Action.GENERATE,
             sampler=Sampler.K_DPMPP_2M,
+            ucPreset=UCPreset.TYPE0,  # Recommended, using preset negative_prompt depends on selected model
             qualityToggle=True,
             decrisp_mode=False,
-            variety_boost=True
+            variety_boost=True,  # Checkbox in website
         )
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")

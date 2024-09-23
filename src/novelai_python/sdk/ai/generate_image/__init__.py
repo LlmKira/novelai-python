@@ -138,7 +138,7 @@ class Params(BaseModel):
     # TODO: find out the usage
     steps: Optional[int] = Field(23, ge=1, le=50)
     """Steps"""
-    ucPreset: Optional[UCPreset] = 0
+    ucPreset: Optional[UCPreset] = None
     """The Negative Prompt Preset"""
     uncond_scale: Optional[float] = Field(1.0, ge=0, le=1.5, multiple_of=0.05)
     """Undesired Content Strength"""
@@ -420,7 +420,7 @@ class GenerateImageInfer(ApiBaseModel):
               model: Union[Model, str] = "nai-diffusion-3",
               action: Union[Action, str] = 'generate',
               negative_prompt: str = "",
-              ucPreset: Union[UCPreset, int] = UCPreset.TYPE0,
+              ucPreset: Optional[Union[UCPreset, int]] = UCPreset.TYPE0,
               steps: int = 28,
               seed: int = None,
               scale: float = 5.0,
