@@ -138,8 +138,8 @@ class Params(BaseModel):
     # TODO: find out the usage
     steps: Optional[int] = Field(23, ge=1, le=50)
     """Steps"""
-    ucPreset: Optional[UCPreset] = None
-    """The Negative Prompt Preset"""
+    ucPreset: Optional[Union[UCPreset, int]] = Field(None, ge=0)
+    """The Negative Prompt Preset, Bigger or equal to 0"""
     uncond_scale: Optional[float] = Field(1.0, ge=0, le=1.5, multiple_of=0.05)
     """Undesired Content Strength"""
     width: Optional[int] = Field(832, ge=64, le=49152)
