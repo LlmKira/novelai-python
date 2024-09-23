@@ -7,11 +7,12 @@ import asyncio
 import base64
 import os
 import pathlib
+
 from dotenv import load_dotenv
 from loguru import logger
 from pydantic import SecretStr
 
-from novelai_python import APIError, Login, LoginCredential
+from novelai_python import APIError, LoginCredential
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
 from novelai_python.sdk.ai.generate_image import Action, Sampler
 from novelai_python.utils.useful import enum_to_list
@@ -53,8 +54,9 @@ async def generate(
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
         result = await agent.request(
-            session=credential
+            session=_login_credential
         )
+        logger.info("Using login credential")
     except APIError as e:
         print(f"Error: {e.message}")
         return None
@@ -68,5 +70,5 @@ async def generate(
 
 
 load_dotenv()
-loop = asyncio.get_event_loop()
+loop = asyncio.new_event_loop()
 loop.run_until_complete(generate(image_path="static_refer.png"))

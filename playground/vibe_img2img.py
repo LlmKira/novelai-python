@@ -55,7 +55,7 @@ async def generate(
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
         result = await agent.request(
-            session=credential
+            session=_login_credential
         )
     except APIError as e:
         print(f"Error: {e.message}")
@@ -69,5 +69,5 @@ async def generate(
 
 
 load_dotenv()
-loop = asyncio.get_event_loop()
+loop = asyncio.new_event_loop()
 loop.run_until_complete(generate())
