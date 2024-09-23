@@ -336,13 +336,18 @@ class GenerateImageInfer(ApiBaseModel):
         :param args: Any
         :return: None
         """
+        # Must be a string
         if self.parameters.negative_prompt is None:
             self.parameters.negative_prompt = ""
+
+        # Add negative prompt based on ucPreset
         if self.parameters.ucPreset is not None:
             default_negative_prompt = get_default_uc_preset(self.model, self.parameters.ucPreset)
             self.parameters.negative_prompt = ", ".join(
                 filter(None, [default_negative_prompt, self.parameters.negative_prompt])
             )
+
+        # Add quality prompt
         if self.parameters.qualityToggle:
             self.input += ", best quality, amazing quality, very aesthetic, absurdres"
 
