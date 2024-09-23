@@ -25,7 +25,8 @@ from typing_extensions import override
 
 from novelai_python.sdk.ai._cost import CostCalculator
 from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, ControlNetModel, Action, UCPreset, \
-    INPAINTING_MODEL_LIST, get_default_noise_schedule, get_supported_noise_schedule, get_default_uc_preset
+    INPAINTING_MODEL_LIST, get_default_noise_schedule, get_supported_noise_schedule, get_default_uc_preset, \
+    ModelTypeAlias, ImageBytesTypeAlias, UCPresetTypeAlias
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
@@ -46,7 +47,7 @@ class Params(BaseModel):
     叠加原始图像
     防止现有图像发生更改，但可能会沿蒙版边缘引入接缝。
     """
-    mask: Optional[Union[str, bytes]] = None
+    mask: ImageBytesTypeAlias = None
     """Mask for Inpainting"""
     cfg_rescale: Optional[float] = Field(0, ge=0, le=1, multiple_of=0.02)
     """Prompt Guidance Rescale"""
@@ -56,7 +57,7 @@ class Params(BaseModel):
     """Decrisp:Reduce artifacts caused by high prompt guidance values"""
     height: Optional[int] = Field(1216, ge=64, le=49152)
     """Height For Generate Image"""
-    image: Optional[Union[str, bytes]] = None
+    image: ImageBytesTypeAlias = None
     """Image for img2img"""
     strength: Optional[float] = Field(default=0.5, ge=0.01, le=0.99, multiple_of=0.01)
     """Strength for img2img"""
@@ -138,7 +139,7 @@ class Params(BaseModel):
     # TODO: find out the usage
     steps: Optional[int] = Field(23, ge=1, le=50)
     """Steps"""
-    ucPreset: Optional[Union[UCPreset, int]] = Field(None, ge=0)
+    ucPreset: UCPresetTypeAlias = Field(None, ge=0)
     """The Negative Prompt Preset, Bigger or equal to 0"""
     uncond_scale: Optional[float] = Field(1.0, ge=0, le=1.5, multiple_of=0.05)
     """Undesired Content Strength"""
@@ -324,7 +325,7 @@ class GenerateImageInfer(ApiBaseModel):
 
     action: Union[str, Action] = Field(Action.GENERATE, description="Mode for img generate")
     input: str = "1girl, best quality, amazing quality, very aesthetic, absurdres"
-    model: Optional[Union[Model, str]] = "nai-diffusion-3"
+    model: ModelTypeAlias = "nai-diffusion-3"
     parameters: Params = Params()
     model_config = ConfigDict(extra="ignore")
 
@@ -420,7 +421,7 @@ class GenerateImageInfer(ApiBaseModel):
               model: Union[Model, str] = "nai-diffusion-3",
               action: Union[Action, str] = 'generate',
               negative_prompt: str = "",
-              ucPreset: Optional[Union[UCPreset, int]] = UCPreset.TYPE0,
+              ucPreset: UCPresetTypeAlias = UCPreset.TYPE0,
               steps: int = 28,
               seed: int = None,
               scale: float = 5.0,

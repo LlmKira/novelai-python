@@ -4,7 +4,7 @@
 # @File    : _enum.py
 # @Software: PyCharm
 from enum import Enum, IntEnum
-from typing import List
+from typing import List, Optional, Union
 
 from pydantic.dataclasses import dataclass
 
@@ -34,56 +34,6 @@ class NoiseSchedule(Enum):
     KARRAS = "karras"
     EXPONENTIAL = "exponential"
     POLYEXPONENTIAL = "polyexponential"
-
-
-def get_supported_noise_schedule(sample_type: Sampler) -> List[NoiseSchedule]:
-    """
-    Get supported noise schedule for a given sample type
-    :param sample_type: Sampler
-    :return: List[NoiseSchedule]
-    """
-    if sample_type in [
-        Sampler.K_EULER_ANCESTRAL,
-        Sampler.K_DPMPP_2S_ANCESTRAL,
-        Sampler.K_DPMPP_2M,
-        Sampler.K_DPMPP_2M_SDE,
-        Sampler.K_DPMPP_SDE,
-        Sampler.K_EULER
-    ]:
-        return [
-            NoiseSchedule.NATIVE,
-            NoiseSchedule.KARRAS,
-            NoiseSchedule.EXPONENTIAL,
-            NoiseSchedule.POLYEXPONENTIAL
-        ]
-    elif sample_type in [Sampler.K_DPM_2]:
-        return [
-            NoiseSchedule.EXPONENTIAL,
-            NoiseSchedule.POLYEXPONENTIAL
-        ]
-    else:
-        return []
-
-
-def get_default_noise_schedule(sample_type: Sampler) -> NoiseSchedule:
-    """
-    Get default noise schedule for a given sample type
-    :param sample_type: Sampler
-    :return: NoiseSchedule
-    """
-    if sample_type in [
-        Sampler.K_EULER_ANCESTRAL,
-        Sampler.K_DPMPP_2S_ANCESTRAL,
-        Sampler.K_DPMPP_2M,
-        Sampler.K_DPMPP_2M_SDE,
-        Sampler.K_DPMPP_SDE,
-        Sampler.K_EULER
-    ]:
-        return NoiseSchedule.KARRAS
-    elif sample_type in [Sampler.K_DPM_2]:
-        return NoiseSchedule.EXPONENTIAL
-    else:
-        return NoiseSchedule.NATIVE
 
 
 class UCPreset(IntEnum):
@@ -171,30 +121,6 @@ class ModelGroups(Enum):
     STABLE_DIFFUSION_XL_FURRY = "stable_diffusion_xl_furry"
 
 
-def get_model_group(model: str) -> ModelGroups:
-    if isinstance(model, Enum):
-        model = model.value
-    mapping = {
-        "stable-diffusion": ModelGroups.STABLE_DIFFUSION,
-        "nai-diffusion": ModelGroups.STABLE_DIFFUSION,
-        "safe-diffusion": ModelGroups.STABLE_DIFFUSION,
-        "waifu-diffusion": ModelGroups.STABLE_DIFFUSION,
-        "nai-diffusion-furry": ModelGroups.STABLE_DIFFUSION,
-        "curated-diffusion-test": ModelGroups.STABLE_DIFFUSION,
-        "nai-diffusion-inpainting": ModelGroups.STABLE_DIFFUSION,
-        "safe-diffusion-inpainting": ModelGroups.STABLE_DIFFUSION,
-        "furry-diffusion-inpainting": ModelGroups.STABLE_DIFFUSION,
-        "nai-diffusion-2": ModelGroups.STABLE_DIFFUSION_GROUP_2,
-        "nai-diffusion-xl": ModelGroups.STABLE_DIFFUSION_XL,
-        "nai-diffusion-3": ModelGroups.STABLE_DIFFUSION_XL,
-        "nai-diffusion-3-inpainting": ModelGroups.STABLE_DIFFUSION_XL,
-        "custom": ModelGroups.STABLE_DIFFUSION_XL,
-        "nai-diffusion-furry-3": ModelGroups.STABLE_DIFFUSION_XL_FURRY,
-        "nai-diffusion-furry-3-inpainting": ModelGroups.STABLE_DIFFUSION_XL_FURRY,
-    }
-    return mapping.get(model, ModelGroups.STABLE_DIFFUSION)
-
-
 INPAINTING_MODEL_LIST = [
     Model.NAI_DIFFUSION_3_INPAINTING,
     Model.NAI_DIFFUSION_INPAINTING,
@@ -224,8 +150,88 @@ PROMOTION = {
     "Stable Diffusion XL 9CC2F394": Model.NAI_DIFFUSION_FURRY_3,
 }
 
+ModelTypeAlias = Optional[Union[Model, str]]
+ImageBytesTypeAlias = Optional[Union[str, bytes]]
+UCPresetTypeAlias = Optional[Union[UCPreset, int]]
 
-def get_default_uc_preset(model: str, uc_preset: int) -> str:
+
+def get_supported_noise_schedule(sample_type: Sampler) -> List[NoiseSchedule]:
+    """
+    Get supported noise schedule for a given sample type
+    :param sample_type: Sampler
+    :return: List[NoiseSchedule]
+    """
+    if sample_type in [
+        Sampler.K_EULER_ANCESTRAL,
+        Sampler.K_DPMPP_2S_ANCESTRAL,
+        Sampler.K_DPMPP_2M,
+        Sampler.K_DPMPP_2M_SDE,
+        Sampler.K_DPMPP_SDE,
+        Sampler.K_EULER
+    ]:
+        return [
+            NoiseSchedule.NATIVE,
+            NoiseSchedule.KARRAS,
+            NoiseSchedule.EXPONENTIAL,
+            NoiseSchedule.POLYEXPONENTIAL
+        ]
+    elif sample_type in [Sampler.K_DPM_2]:
+        return [
+            NoiseSchedule.EXPONENTIAL,
+            NoiseSchedule.POLYEXPONENTIAL
+        ]
+    else:
+        return []
+
+
+def get_default_noise_schedule(sample_type: Sampler) -> NoiseSchedule:
+    """
+    Get default noise schedule for a given sample type
+    :param sample_type: Sampler
+    :return: NoiseSchedule
+    """
+    if sample_type in [
+        Sampler.K_EULER_ANCESTRAL,
+        Sampler.K_DPMPP_2S_ANCESTRAL,
+        Sampler.K_DPMPP_2M,
+        Sampler.K_DPMPP_2M_SDE,
+        Sampler.K_DPMPP_SDE,
+        Sampler.K_EULER
+    ]:
+        return NoiseSchedule.KARRAS
+    elif sample_type in [Sampler.K_DPM_2]:
+        return NoiseSchedule.EXPONENTIAL
+    else:
+        return NoiseSchedule.NATIVE
+
+
+def get_model_group(model: ModelTypeAlias) -> ModelGroups:
+    if isinstance(model, Enum):
+        model = model.value
+    else:
+        model = str(model)
+    mapping = {
+        "stable-diffusion": ModelGroups.STABLE_DIFFUSION,
+        "nai-diffusion": ModelGroups.STABLE_DIFFUSION,
+        "safe-diffusion": ModelGroups.STABLE_DIFFUSION,
+        "waifu-diffusion": ModelGroups.STABLE_DIFFUSION,
+        "nai-diffusion-furry": ModelGroups.STABLE_DIFFUSION,
+        "curated-diffusion-test": ModelGroups.STABLE_DIFFUSION,
+        "nai-diffusion-inpainting": ModelGroups.STABLE_DIFFUSION,
+        "safe-diffusion-inpainting": ModelGroups.STABLE_DIFFUSION,
+        "furry-diffusion-inpainting": ModelGroups.STABLE_DIFFUSION,
+        "nai-diffusion-2": ModelGroups.STABLE_DIFFUSION_GROUP_2,
+        "nai-diffusion-xl": ModelGroups.STABLE_DIFFUSION_XL,
+        "nai-diffusion-3": ModelGroups.STABLE_DIFFUSION_XL,
+        "nai-diffusion-3-inpainting": ModelGroups.STABLE_DIFFUSION_XL,
+        "custom": ModelGroups.STABLE_DIFFUSION_XL,
+        "nai-diffusion-furry-3": ModelGroups.STABLE_DIFFUSION_XL_FURRY,
+        "nai-diffusion-furry-3-inpainting": ModelGroups.STABLE_DIFFUSION_XL_FURRY,
+    }
+    return mapping.get(model, ModelGroups.STABLE_DIFFUSION)
+
+
+def get_default_uc_preset(model: ModelTypeAlias, uc_preset: int) -> str:
     if isinstance(model, Enum):
         model = model.value
     if isinstance(uc_preset, Enum):

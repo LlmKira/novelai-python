@@ -1,11 +1,11 @@
 import math
 import random
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
 from novelai_python.sdk.ai._const import map, initialN, initial_n, step, newN
-from novelai_python.sdk.ai._enum import Sampler, Model, ModelGroups, get_model_group
+from novelai_python.sdk.ai._enum import Sampler, Model, ModelGroups, get_model_group, ModelTypeAlias
 
 
 class Args(BaseModel):
@@ -43,9 +43,10 @@ class CostCalculator:
             is_sm_dynamic: bool,
             is_account_active: bool,
             sampler: Optional[Sampler],
-            model: Optional[Model],
+            model: ModelTypeAlias,
             tool: str = None,
-            is_tool_active: bool = False) -> int:
+            is_tool_active: bool = False
+    ) -> int:
         return CostCalculator.calculate_cost(
             Args(
                 height=height,
@@ -59,7 +60,7 @@ class CostCalculator:
                 sampler=sampler,
                 tool=tool
             ),
-            model_group=get_model_group(model.value) if model else None,
+            model_group=get_model_group(model) if model else None,
             is_account_active=is_account_active,
             account_tier=account_tier,
             is_tool_active=is_tool_active

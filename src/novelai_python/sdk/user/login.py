@@ -74,7 +74,7 @@ class Login(ApiBaseModel):
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
-            logger.debug("Login")
+            logger.debug("Fetching login-credential")
             try:
                 assert hasattr(sess, "post"), "session must have get method."
                 response = await sess.post(
