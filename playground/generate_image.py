@@ -42,7 +42,7 @@ async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazin
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
         result = await agent.request(
-            session=credential
+            session=_login_credential
         )
     except APIError as e:
         print(f"Error: {e.message}")

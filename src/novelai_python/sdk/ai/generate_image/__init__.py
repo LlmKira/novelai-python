@@ -25,7 +25,7 @@ from typing_extensions import override
 
 from novelai_python.sdk.ai._cost import CostCalculator
 from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, ControlNetModel, Action, UCPreset, \
-    INPAINTING_MODEL_LIST, get_default_noise_schedule, get_supported_noise_schedule
+    INPAINTING_MODEL_LIST, get_default_noise_schedule, get_supported_noise_schedule, get_default_uc_preset
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
@@ -324,7 +324,7 @@ class GenerateImageInfer(ApiBaseModel):
 
     action: Union[str, Action] = Field(Action.GENERATE, description="Mode for img generate")
     input: str = "1girl, best quality, amazing quality, very aesthetic, absurdres"
-    model: Optional[Model] = "nai-diffusion-3"
+    model: Optional[Union[Model, str]] = "nai-diffusion-3"
     parameters: Params = Params()
     model_config = ConfigDict(extra="ignore")
 
@@ -338,30 +338,10 @@ class GenerateImageInfer(ApiBaseModel):
         """
         if self.parameters.negative_prompt is None:
             self.parameters.negative_prompt = ""
-        if self.parameters.ucPreset == 0:
-            # 0: 重型
-            self.parameters.negative_prompt = (
-                "lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, "
-                "watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, "
-                "username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, "
-                "glowing eyes, lowres, bad anatomy, bad hands, text, error, missing fingers, "
-                "extra digit, fewer digits, cropped, worst quality, low quality, normal quality, "
-                f"jpeg artifacts, signature, watermark, username, blurry "
-                f",{self.parameters.negative_prompt}"
-            )
-        elif self.parameters.ucPreset == 1:
-            # 1: 轻型
-            self.parameters.negative_prompt = (f"lowres, jpeg artifacts, worst quality, watermark, blurry, "
-                                               f"very displeasing"
-                                               f",{self.parameters.negative_prompt}")
-        elif self.parameters.ucPreset == 2:
-            # 2: 人物
-            self.parameters.negative_prompt = ("lowres, {bad}, error, fewer, extra, missing, worst quality, "
-                                               "jpeg artifacts, bad quality, watermark, unfinished, displeasing, "
-                                               "chromatic aberration, signature, extra digits, artistic error, "
-                                               "username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched "
-                                               f"pupils, heart-shaped pupils, glowing eyes "
-                                               f",{self.parameters.negative_prompt}")
+        default_negative_prompt = get_default_uc_preset(self.model, self.parameters.ucPreset)
+        self.parameters.negative_prompt = ", ".join(
+            filter(None, [default_negative_prompt, self.parameters.negative_prompt])
+        )
         if self.parameters.qualityToggle:
             self.input += ", best quality, amazing quality, very aesthetic, absurdres"
 
@@ -470,7 +450,8 @@ class GenerateImageInfer(ApiBaseModel):
         :param decrisp_mode: Reduce artifacts caused by high prompt guidance values.
                             减少由高提示引导值引起的伪影。
         :param variety_boost: A new feature to improve the diversity of samples.
-                            一项新功能，用于提高样本的多样性。
+                            Variety Boost means your negative prompt will only be used after the body shape has been decided.
+                            一项新功能，用于提高样本的多样性。但是，这意味着您的负面提示只会在身体形状确定后使用。
         :param reference_information_extracted_multiple:  The reference information extracted for Vibe mode.
                                                             Vibe模式的提取的参考信息。
         :param reference_image_multiple: The reference image for Vibe mode.

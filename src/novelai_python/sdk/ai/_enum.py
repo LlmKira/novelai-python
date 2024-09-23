@@ -6,6 +6,8 @@
 from enum import Enum, IntEnum
 from typing import List
 
+from pydantic.dataclasses import dataclass
+
 
 class Sampler(Enum):
     PLMS = "plms"
@@ -170,6 +172,8 @@ class ModelGroups(Enum):
 
 
 def get_model_group(model: str) -> ModelGroups:
+    if isinstance(model, Enum):
+        model = model.value
     mapping = {
         "stable-diffusion": ModelGroups.STABLE_DIFFUSION,
         "nai-diffusion": ModelGroups.STABLE_DIFFUSION,
@@ -212,8 +216,59 @@ PROMOTION = {
     "Stable Diffusion F1022D28": Model.NAI_DIFFUSION_2,
     "Stable Diffusion XL B0BDF6C1": Model.NAI_DIFFUSION_3,
     "Stable Diffusion XL C1E1DE52": Model.NAI_DIFFUSION_3,
+    "Stable Diffusion XL 7BCCAA2C": Model.NAI_DIFFUSION_3,
     "Stable Diffusion XL 8BA2AF87": Model.NAI_DIFFUSION_3,
     "Stable Diffusion XL 4BE8C60C": Model.NAI_DIFFUSION_FURRY_3,
     "Stable Diffusion XL C8704949": Model.NAI_DIFFUSION_FURRY_3,
+    "Stable Diffusion XL 37C2B166": Model.NAI_DIFFUSION_FURRY_3,
     "Stable Diffusion XL 9CC2F394": Model.NAI_DIFFUSION_FURRY_3,
 }
+
+
+def get_default_uc_preset(model: str, uc_preset: int) -> str:
+    if isinstance(model, Enum):
+        model = model.value
+    if isinstance(uc_preset, Enum):
+        uc_preset = uc_preset.value
+
+    @dataclass
+    class UcPrompt:
+        label: str
+        text: str
+
+    mapper = {
+        ModelGroups.STABLE_DIFFUSION: [
+            UcPrompt("lowQualityPlusBadAnatomy",
+                     text="lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"),
+            UcPrompt("lowQuality",
+                     text="lowres, text, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"),
+            UcPrompt("none", text="lowres")
+        ],
+        ModelGroups.STABLE_DIFFUSION_GROUP_2: [
+            UcPrompt("heavy",
+                     text="lowres, bad, text, error, missing, extra, fewer, cropped, jpeg artifacts, worst quality, bad quality, watermark, displeasing, unfinished, chromatic aberration, scan, scan artifacts"),
+            UcPrompt("light", text="lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"),
+            UcPrompt("none", text="lowres")
+        ],
+        ModelGroups.STABLE_DIFFUSION_XL: [
+            UcPrompt("heavy",
+                     text="lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]"),
+            UcPrompt("light", text="lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"),
+            UcPrompt("humanFocus",
+                     text="lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, glowing eyes"),
+            UcPrompt("none", text="lowres")
+        ],
+        ModelGroups.STABLE_DIFFUSION_XL_FURRY: [
+            UcPrompt("heavy",
+                     text="{{worst quality}}, [displeasing], {unusual pupils}, guide lines, {{unfinished}}, {bad}, url, artist name, {{tall image}}, mosaic, {sketch page}, comic panel, impact (font), [dated], {logo}, ych, {what}, {where is your god now}, {distorted text}, repeated text, {floating head}, {1994}, {widescreen}, absolutely everyone, sequence, {compression artifacts}, hard translated, {cropped}, {commissioner name}, unknown text, high contrast"),
+            UcPrompt("light",
+                     text="{worst quality}, guide lines, unfinished, bad, url, tall image, widescreen, compression artifacts, unknown text"),
+            UcPrompt("none", text="lowres")
+        ],
+    }
+    model_group = get_model_group(model)
+    prompts: List[UcPrompt] = mapper.get(model_group, [UcPrompt("none", "lowres")])
+    if 0 <= uc_preset < len(prompts):
+        return prompts[uc_preset].text
+    else:
+        return "lowres"
