@@ -338,10 +338,11 @@ class GenerateImageInfer(ApiBaseModel):
         """
         if self.parameters.negative_prompt is None:
             self.parameters.negative_prompt = ""
-        default_negative_prompt = get_default_uc_preset(self.model, self.parameters.ucPreset)
-        self.parameters.negative_prompt = ", ".join(
-            filter(None, [default_negative_prompt, self.parameters.negative_prompt])
-        )
+        if self.parameters.ucPreset is not None:
+            default_negative_prompt = get_default_uc_preset(self.model, self.parameters.ucPreset)
+            self.parameters.negative_prompt = ", ".join(
+                filter(None, [default_negative_prompt, self.parameters.negative_prompt])
+            )
         if self.parameters.qualityToggle:
             self.input += ", best quality, amazing quality, very aesthetic, absurdres"
 
