@@ -10,6 +10,7 @@ from loguru import logger
 from pydantic import BaseModel, model_validator
 from tokenizers import Tokenizer, pre_tokenizers, Regex, decoders
 from tokenizers.models import BPE
+
 from .clip_simple_tokenizer import SimpleTokenizer
 
 
@@ -178,7 +179,7 @@ class NaiTokenizer:
     def tokenize_text(self, text: str) -> List[int]:
         if isinstance(self.tokenizer, Tokenizer):
             return [
-                token.replace("Ġ", " ").replace("Ċ", " ").replace("ċ", " ")
+                token.replace("Ġ", " ")  # .replace("Ċ", " ").replace("ċ", " ")
                 for token in self.tokenizer.encode(text).tokens
             ]
         if isinstance(self.tokenizer, SimpleTokenizer):
