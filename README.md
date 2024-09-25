@@ -99,7 +99,7 @@ login_credential = LoginCredential(
 
 async def chat(prompt: str):
     try:
-        agent = LLM.build(prompt=prompt, model=TextLLMModel.Kayra)
+        agent = LLM.build(prompt=prompt, model=TextLLMModel.ERATO)
         result = await agent.request(session=login_credential)
     except APIError as e:
         raise Exception(f"Error: {e.message}")

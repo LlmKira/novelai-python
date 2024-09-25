@@ -26,6 +26,8 @@ dependencies = [
     "ftfy>=6.2.0",
     "regex>=2023.12.25",
     "tokenizers>=0.15.2",
+    "json-repair>=0.29.4",
+    "robust-downloader>=0.0.2",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
