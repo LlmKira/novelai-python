@@ -2,7 +2,6 @@
 # @Time    : 2023/11/18 上午12:18
 # @Author  : sudoskys
 # @File    : __init__.py
-
 from ._exceptions import (
     NovelAiError,
     APIError,

@@ -1,226 +1,209 @@
-# MIT:https://github.com/Aedial/novelai-api/blob/794c4f3d89cc86df3c7d2c401b320f1822822ac0/novelai_api/Tokenizer.py
-# -*- coding: utf-8 -*-
-import itertools
+import gzip
+import io
 import pathlib
-from pathlib import Path
-from typing import Dict, List
+import zlib
+from typing import Dict, List, Optional
 
-import regex as re
-import sentencepiece
-import sentencepiece as spm
-import tokenizers
+import httpx
+from json_repair import repair_json
 from loguru import logger
+from pydantic import BaseModel, model_validator
+from tokenizers import Tokenizer, pre_tokenizers, Regex, decoders
+from tokenizers.models import BPE
+from .clip_simple_tokenizer import SimpleTokenizer
 
-from novelai_python.tokenizer.simple_tokenizer import SimpleTokenizer
 
-tokenizers_path = Path(__file__).parent
-
-
-# MIT:https://github.com/Aedial/novelai-api/blob/794c4f3d89cc86df3c7d2c401b320f1822822ac0/novelai_api/Tokenizer.py
-class SentencePiece(sentencepiece.SentencePieceProcessor):
+def download_file(url, destination_path, session):
     """
-    Wrapper around sentencepiece.SentencePieceProcessor that adds the encode and decode methods
+    Download a file from the specified URL and save it to the destination path.
+
+    :param url: The URL to download the file from.
+    :param destination_path: The path to save the downloaded file.
+    :param session: An httpx.Client instance to use for the download.
+    :return: None
+    :raises ValueError: If the downloaded file size doesn't match the Content-Length header.
     """
+    response = session.get(url, headers={"Content-Type": "application/json"})
+    response.raise_for_status()
+    with open(destination_path, "wb") as f:
+        f.write(response.content)
 
-    trans_table_ids: Dict[int, str]
-    trans_table_str: Dict[str, int]
-    trans_regex_str: re.Pattern
 
-    def __init__(self, model_path: str):
-        super().__init__()
-        self.Load(model_path)
+class TokenizerSetting(BaseModel):
+    pass
 
-        self.trans_table_ids = {
-            self.unk_id(): "<|unk|>",
-            self.pad_id(): "<|pad|>",
-            self.bos_id(): "<|startoftext|>",
-            self.eos_id(): "<|endoftext|>",
-        }
 
-        self.trans_table_str = {
-            "<|unk|>": self.unk_id(),
-            "<|pad|>": self.pad_id(),
-            "<|startoftext|>": self.bos_id(),
-            "<|endoftext|>": self.eos_id(),
-        }
+class ClipTokenizerSetting(TokenizerSetting):
+    text: str
 
-        trans_regex_keys = "|".join(re.escape(e) for e in self.trans_table_str)
-        self.trans_regex_str = re.compile(trans_regex_keys)
 
-    def encode(self, s: str) -> List[int]:
+class LLMTokenizerSetting(TokenizerSetting):
+    class TokenizerConfig(BaseModel):
+        splitRegex: str
+        maxEncodeChars: Optional[int] = None
+        maxNoWhitespaceChars: Optional[int] = None
+        ignoreMerges: Optional[bool] = False
+
+    config: TokenizerConfig
+    specialTokens: List[str]
+    vocab: Dict[str, int]
+    merges: list
+
+    @model_validator(mode="after")
+    def ensure(self):
+        self.merges = [tuple(merge) for merge in self.merges]
+        return self
+
+
+class NaiTokenizer:
+    def __init__(self,
+                 model: str,
+                 tokenizer_model_path: Optional[pathlib.Path] = None,
+                 download_session: Optional[httpx.Client] = None
+                 ):
+        if not model.endswith(".def"):
+            model = f"{model}.def"
+        self.model_full_name = model
+        self.tokenizer_setting = None
+        self.tokenizer = None
+        if download_session is None:
+            download_session = httpx.Client()
+        self._download_session = download_session
+        if tokenizer_model_path is None:
+            tokenizer_model_path = pathlib.Path(__file__).parent
+        self.tokenizer_model_path = tokenizer_model_path
+        self._load_tokenizer_settings()
+        self._create_tokenizer()
+
+    @staticmethod
+    def get_model_download_url(model_full_name):
+        return f"https://novelai.net/tokenizer/compressed/{model_full_name}?v=2&static=true"
+
+    @staticmethod
+    def _read_compressed_def(file_data: bytes) -> str:
         """
-        Encode the provided text using the SentencePiece tokenizer.
-        This workaround is needed because sentencepiece cannot handle some tokens
+        Attempt to read and decompress compressed data, trying gzip first, followed by zlib and raw deflate.
 
-        :param s: Text to encode
-
-        :return: List of tokens the provided text encodes into
+        :param file_data: Compressed byte data.
+        :return: Decompressed file content as a string.
+        :raises RuntimeError: If decompression fails for all methods.
         """
-
-        trans_table = self.trans_table_str
-
-        # find the indexes of the string that need to be replaced
-        indexes = list(self.trans_regex_str.finditer(s))
-
-        # fast path, no translation needed
-        if not indexes:
-            return self.EncodeAsIds(s)
-
-        # split the tokens into parts, using the indexes as separators and decode them
-        parts = [
-            s[0: indexes[0].start()],
-            *[s[i.end() + 1: j.start()] for i, j in zip(indexes, indexes[1:])],
-            s[indexes[-1].end() + 1:],
-        ]
-        encoded_parts: List[List[int]] = [self.EncodeAsIds(part) for part in parts]
-
-        # translate the junctions
-        junctions = [trans_table[i.group(0)] for i in indexes]
-
-        # join the parts with the translated tokens
-        return [
-            *encoded_parts[0],
-            *itertools.chain.from_iterable((j, *p) for j, p in zip(junctions, encoded_parts[1:])),
-        ]
-
-    def decode(self, t: List[int]):
-        """
-        Decode the provided tokens using the SentencePiece tokenizer.
-        This workaround is needed because sentencepiece cannot handle some tokens
-
-        :param t: Tokens to decode
-
-        :return: Text the provided tokens decode into
-        """
-
-        trans_table = self.trans_table_ids
-
-        # find the indexes of the string that need to be replaced
-        indexes = [i for i, token in enumerate(t) if token in trans_table]
-
-        # fast path, no translation needed
-        if not indexes:
-            return self.DecodeIds(t)
-
-        # split the tokens into parts, using the indexes as separators and decode them
-        parts = [
-            t[0: indexes[0]],
-            *[t[i + 1: j] for i, j in zip(indexes, indexes[1:])],
-            t[indexes[-1] + 1:],
-        ]
-        decoded_parts = [self.DecodeIds(part) for part in parts]
-
-        # translate the junctions
-        junctions = [trans_table[t[i]] for i in indexes]
-
-        # join the parts with the translated tokens
-        return "".join((decoded_parts[0], *itertools.chain.from_iterable(zip(junctions, decoded_parts[1:]))))
-
-
-def singleton(cls):
-    instances = {}
-
-    def wrapper(*args, **kwargs):
-        if cls not in instances:
-            instances[cls] = cls(*args, **kwargs)
-        return instances[cls]
-
-    return wrapper
-
-
-# MIT: https://github.com/Aedial/novelai-api/blob/794c4f3d89cc86df3c7d2c401b320f1822822ac0/novelai_api/Tokenizer.py#L118
-@singleton
-class LLMTokenizer:
-    """
-    Abstraction of the tokenizer behind each Model
-    """
-
-    _GPT2_PATH = "gpt2_tokenizer.json"
-    _GENJI_PATH = "gpt2-genji_tokenizer.json"
-    _PILE_PATH = "pile_tokenizer.json"
-    # ORIGIN TODO: check differences from NAI tokenizer (from my limited testing, there is None)
-    _NERDSTASH_TOKENIZER_v1_PATH = "nerdstash_v1.model"
-    _NERDSTASH_TOKENIZER_v2_PATH = "nerdstash_v2.model"
-
-    def __init__(self, tokenizer_path=tokenizers_path):
-        self._GPT2_TOKENIZER = tokenizers.Tokenizer.from_file(str(tokenizer_path / self._GPT2_PATH))
-        self._GENJI_TOKENIZER = tokenizers.Tokenizer.from_file(str(tokenizer_path / self._GENJI_PATH))
-        self._PILE_TOKENIZER = tokenizers.Tokenizer.from_file(str(tokenizer_path / self._PILE_PATH))
-        self._CLIP_TOKENIZER = SimpleTokenizer()
         try:
-            self._NERDSTASH_TOKENIZER_v1 = SentencePiece(str(tokenizer_path / self._NERDSTASH_TOKENIZER_v1_PATH))
-            self._NERDSTASH_TOKENIZER_v2 = SentencePiece(str(tokenizer_path / self._NERDSTASH_TOKENIZER_v2_PATH))
-        except FileNotFoundError as exc:
-            logger.warning(
-                "Nerdstash tokenizers not found, please check model path or "
-                "there cannot be special text such as foreign languages, spaces, etc. in your model path."
+            decompress_obj = zlib.decompressobj(-zlib.MAX_WBITS)
+            return decompress_obj.decompress(file_data).decode('utf-8')
+        except Exception as e:
+            logger.debug(f"Error decompressing with raw deflate: {e}, trying gzip next.")
+
+        try:
+            with gzip.GzipFile(fileobj=io.BytesIO(file_data)) as gzip_file:
+                return gzip_file.read().decode('utf-8')
+        except Exception as e:
+            logger.debug(f"Error decompressing with gzip: {e}, trying zlib next.")
+
+        try:
+            return zlib.decompress(file_data).decode('utf-8')
+        except Exception as e:
+            logger.debug(f"Error decompressing with zlib: {e}, trying raw deflate next.")
+
+        raise RuntimeError("Failed to decompress the data using gzip, zlib, or raw deflate.")
+
+    def _load_tokenizer_settings(self):
+        """
+        Load tokenizer settings from the model file.
+        :return: None
+        :raises FileNotFoundError: If the model file is not found.
+        :raises ValueError: If the tokenizer settings are invalid.
+        :raises LookupError: If the model file download fails.
+        """
+        model_path = self.tokenizer_model_path.joinpath(self.model_full_name)
+        url = self.get_model_download_url(self.model_full_name)
+        try:
+            if not model_path.exists():
+                download_file(url, model_path, self._download_session)
+                logger.info(f"Tokenizer {self.model_full_name} downloaded.")
+        except Exception as e:
+            raise LookupError(f"Failed to download model {self.model_full_name} from {url}: {e}")
+        model_bytes = model_path.read_bytes()
+        decoded_str = self._read_compressed_def(model_bytes)
+        repaired_data = repair_json(decoded_str, return_objects=True)
+        try:
+            if "clip" in self.model_full_name.lower():
+                self.tokenizer_setting = ClipTokenizerSetting.model_validate(repaired_data)
+            else:
+                self.tokenizer_setting = LLMTokenizerSetting.model_validate(repaired_data)
+        except Exception as e:
+            raise ValueError(
+                f"Failed to load tokenizer settings: {e} for {model_path}",
+                "report this issue to https://github.com/LlmKira/novelai-python/issues"
             )
-            raise exc
-        self._tokenizers = {
-            "gpt2": self._GPT2_TOKENIZER,
-            "gpt2-genji": self._GENJI_TOKENIZER,
-            "pile": self._PILE_TOKENIZER,
-            "clip": self._CLIP_TOKENIZER,
-            "nerdstash_v1": self._NERDSTASH_TOKENIZER_v1,
-            "nerdstash_v2": self._NERDSTASH_TOKENIZER_v2,
-        }
 
-    def decode(self, o: List[int], tokenizer_name: str) -> str:
-        if tokenizer_name not in self._tokenizers:
-            raise NotImplementedError(f"Tokenizer {tokenizer_name} not recognized")
-        tokenizer = self._tokenizers[tokenizer_name]
+    def _create_tokenizer(self):
+        if "clip" in self.model_full_name.lower():
+            self._create_clip_tokenizer()
+        else:
+            self._create_bpe_tokenizer()
 
-        return tokenizer.decode(o)
+    def _create_clip_tokenizer(self):
+        setting = self.tokenizer_setting
+        if not isinstance(setting, ClipTokenizerSetting):
+            raise ValueError(f"Invalid tokenizer setting: {setting}")
+        self.tokenizer = SimpleTokenizer(bpe_model_content=setting.text)
 
-    def encode(self, o: str, tokenizer_name: str) -> List[int]:
-        if tokenizer_name not in self._tokenizers:
-            raise NotImplementedError(f"Tokenizer {tokenizer_name} not recognized")
+    def _create_bpe_tokenizer(self):
+        setting = self.tokenizer_setting
+        self.tokenizer = Tokenizer(BPE(
+            vocab=setting.vocab,
+            merges=setting.merges,
+            ignore_merges=setting.config.ignoreMerges
+        ))
 
-        tokenizer = self._tokenizers[tokenizer_name]
-        if isinstance(tokenizer, tokenizers.Tokenizer):
-            return tokenizer.encode(o).ids
-        if isinstance(tokenizer, (SimpleTokenizer, sentencepiece.SentencePieceProcessor)):
-            return tokenizer.encode(o)
-        raise ValueError(f"Tokenizer {tokenizer} ({tokenizer_name}) not recognized")
+        self.tokenizer.add_special_tokens(setting.specialTokens)
+        if setting.config.maxEncodeChars:
+            self.tokenizer.enable_truncation(max_length=setting.config.maxEncodeChars)
+
+        pre_zus = [
+            pre_tokenizers.Split(
+                behavior="merged_with_next",
+                pattern=Regex(setting.config.splitRegex)
+            ),
+        ]
+
+        if self.tokenizer.token_to_id(" ") is None:
+            pre_zus.append(pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=False))
+
+        pre_tokenizer = pre_tokenizers.Sequence(pre_zus)
+        self.tokenizer.pre_tokenizer = pre_tokenizer  # noqa
+        self.tokenizer.decoder = decoders.ByteLevel()  # noqa
+
+    def tokenize_text(self, text: str) -> List[int]:
+        if isinstance(self.tokenizer, Tokenizer):
+            return [
+                token.replace("Ġ", " ").replace("Ċ", " ").replace("ċ", " ")
+                for token in self.tokenizer.encode(text).tokens
+            ]
+        if isinstance(self.tokenizer, SimpleTokenizer):
+            return self.tokenizer.encode(text).tokens
+        raise NotImplementedError("Tokenizer does not support token encoding")
+
+    def encode(self, sentence: str) -> List[int]:
+        if isinstance(self.tokenizer, SimpleTokenizer):
+            return self.tokenizer.encode(sentence).ids
+        if isinstance(self.tokenizer, Tokenizer):
+            return self.tokenizer.encode(sentence, add_special_tokens=True).ids
+        raise NotImplementedError("Tokenizer does not support token encoding")
+
+    def decode(self, token_ids: List[int]) -> str:
+        if isinstance(self.tokenizer, SimpleTokenizer):
+            return self.tokenizer.decode(token_ids)
+        if isinstance(self.tokenizer, Tokenizer):
+            return self.tokenizer.decode(token_ids)
+        raise NotImplementedError("Tokenizer does not support token decoding")
 
 
-class ImagePromptTokenizer:
-    MODEL_V1_PATH = pathlib.Path(__file__).parent.joinpath("novelai.model").absolute().as_posix()
-    MODEL_V2_PATH = pathlib.Path(__file__).parent.joinpath("novelai_v2.model").absolute().as_posix()
-
-    def __init__(self, model_path):
-        self.tokenizer = spm.SentencePieceProcessor(model_file=model_path)  # noqa 401
-
-    def encode(self, raw_text, readable: bool = False):
-        if readable:
-            return self.tokenizer.encode(raw_text, out_type=str)  # noqa 401
-        return self.tokenizer.encode(raw_text)  # noqa 401
-
-    def decode(self, token_ids: List[int]):
-        return self.tokenizer.decode(token_ids)  # noqa 401
-
-
-class TokenizerUtil(ImagePromptTokenizer):
-    """
-    Deprecated, use ImagePromptTokenizer instead
-    """
-
-    def __init__(self, model_path):
-        super().__init__(model_path)
-
-    def encode(self, raw_text, readable: bool = False):
-        logger.warning("`TokenizerUtil` will deprecated, use `ImagePromptTokenizer` instead")
-        return super().encode(raw_text, readable)
-
-    def decode(self, token_ids: List[int]):
-        logger.warning("`TokenizerUtil` will deprecated, use `ImagePromptTokenizer` instead")
-        return super().decode(token_ids)
-
-
+# Example usage:
 if __name__ == "__main__":
-    tokenizer_util = ImagePromptTokenizer(ImagePromptTokenizer.MODEL_V1_PATH)
-    text = "The quick brown fox jumps over the goblin."
-    token_id = tokenizer_util.encode(text)
-    print("Token IDs:", token_id)
-    decoded_text = tokenizer_util.decode(token_id)
-    print("Decoded text:", decoded_text)
+    tokenizer_package = NaiTokenizer("pile_tokenizer")
+    t_text = "Hello, World! This is a   test."
+    print(tokenizer_package.tokenize_text(t_text))
+    print(tokenizer_package.encode(t_text))
+    print(tokenizer_package.decode(tokenizer_package.encode(t_text)))

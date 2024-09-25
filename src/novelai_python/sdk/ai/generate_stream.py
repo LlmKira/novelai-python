@@ -11,6 +11,7 @@ from tenacity import wait_random, retry, stop_after_attempt, retry_if_exception
 
 from .generate import LLM, generate_order, TextLLMModel, PenStyle, PRESET
 from .generate_image import Params
+from ..._enum import TextLLMModelTypeAlias
 from ..._exceptions import APIError, SessionHttpError
 from ..._response.ai.generate_stream import LLMStreamResp
 from ...credential import CredentialBase
@@ -28,7 +29,7 @@ class LLMStream(LLM):
     @classmethod
     def build(cls,
               prompt: str,
-              model: TextLLMModel = TextLLMModel.Kayra,
+              model: TextLLMModelTypeAlias = TextLLMModel.ERATO,
               min_length: Optional[int] = None,
               max_length: Optional[int] = None,
               temperature: Optional[float] = None,

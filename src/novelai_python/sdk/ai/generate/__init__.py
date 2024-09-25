@@ -12,13 +12,14 @@ from pydantic import ConfigDict, PrivateAttr, model_validator, Field
 from tenacity import wait_random, retry, stop_after_attempt, retry_if_exception
 
 from ._const import d_repetition_penalty_whitelist, d_bad_words_ids
-from ._enum import TextLLMModel, PenStyle, generate_order, TOKENIZER
+from ._enum import PenStyle, generate_order
 from ._preset import Params, PRESET
 from ...schema import ApiBaseModel
+from ...._enum import TextLLMModelTypeAlias, TextLLMModel, get_tokenizer_model
 from ...._exceptions import APIError, SessionHttpError
 from ...._response.ai.generate import LLMResp
 from ....credential import CredentialBase
-from ....tokenizer import LLMTokenizer
+from ....tokenizer import NaiTokenizer
 from ....utils.encode import tokens_to_b64
 
 
@@ -28,7 +29,7 @@ class LLM(ApiBaseModel):
     """
     _endpoint: str = PrivateAttr("https://api.novelai.net")
     input: str = Field(..., description="Base64 encoded token text")
-    model: Union[TextLLMModel, str] = TextLLMModel.Kayra
+    model: TextLLMModelTypeAlias = TextLLMModel.ERATO
     """Model to use"""
     parameters: Params = Params()
 
@@ -64,9 +65,9 @@ class LLM(ApiBaseModel):
 
     @model_validator(mode="after")
     def validate_model(self):
-        tokenizer = LLMTokenizer()
+        tokenizer = NaiTokenizer(get_tokenizer_model(self.model))
         if isinstance(self.input, str):
-            prompt = tokenizer.encode(self.input, tokenizer_name=TOKENIZER.get(self.model))
+            prompt = tokenizer.encode(self.input)
             self.input = tokens_to_b64(prompt)
         if self.parameters.stop_sequences:
             if not isinstance(self.parameters.stop_sequences, list):
@@ -74,7 +75,7 @@ class LLM(ApiBaseModel):
             stop_sequences = []
             for i, obj in enumerate(self.parameters.stop_sequences):
                 if isinstance(obj, str):
-                    stop_sequences.append(tokenizer.encode(obj, tokenizer_name=TOKENIZER.get(self.model)))
+                    stop_sequences.append(tokenizer.encode(obj))
                 elif not isinstance(obj, list):
                     raise ValueError(
                         f"Expected type 'str' or 'list' for item #{i} of 'stop_sequences', " f"but got '{type(obj)}'"
@@ -82,7 +83,7 @@ class LLM(ApiBaseModel):
             self.parameters.stop_sequences = stop_sequences
         if self.parameters.repetition_penalty:
             # adjust repetition penalty value for Sigurd and Euterpe
-            if self.model in (TextLLMModel.Sigurd, TextLLMModel.Euterpe):
+            if self.model in (TextLLMModel.J_6B_V4, TextLLMModel.EUTERPE_V2):
                 rep_pen = self.parameters.repetition_penalty
                 self.parameters.repetition_penalty = (0.525 * (rep_pen - 1) / 7) + 1
 
@@ -91,7 +92,7 @@ class LLM(ApiBaseModel):
     @classmethod
     def build(cls,
               prompt: str,
-              model: TextLLMModel = TextLLMModel.Kayra,
+              model: TextLLMModelTypeAlias = TextLLMModel.ERATO,
               min_length: Optional[int] = None,
               max_length: Optional[int] = None,
               temperature: Optional[float] = None,
@@ -207,10 +208,19 @@ class LLM(ApiBaseModel):
                             request=request_data, code=status_code, response=_msg
                         )
                 else:
-                    output = response.json().get("output", None)
-                    assert output, APIError("No Content Returned",
-                                            request=request_data, code=response.status_code, response=response.content
-                                            )
+                    try:
+                        response_data = response.json()
+                    except Exception as e:
+                        raise APIError(
+                            "Unable to deserialize response",
+                            request=request_data, code=response.status_code, response=response.content
+                        )
+                    output = response_data.get("output", None)
+                    if not output:
+                        raise APIError(
+                            "No Content Returned" if not response_data.get("error") else response_data.get("error"),
+                            request=request_data, code=response.status_code, response=response.content
+                        )
                     return LLMResp(
                         output=output,
                         text=LLMResp.decode_token(model=self.model, token_str=output)

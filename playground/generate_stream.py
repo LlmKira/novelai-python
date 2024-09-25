@@ -34,7 +34,7 @@ async def stream(prompt="Hello"):
     try:
         agent = LLMStream.build(
             prompt=prompt,
-            model=TextLLMModel.Kayra,
+            model=TextLLMModel.ERATO,
         )
         _data = []
         # 现在，你可以使用异步for循环来处理每一部分数据
