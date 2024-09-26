@@ -16,6 +16,7 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 - [x] tool.random_prompt
 - [x] tool.paint_mask
 - [x] tool.image_metadata
+- [x] tokenizer
 - [x] /ai/generate-image
 - [x] /user/subscription
 - [x] /user/login
@@ -85,7 +86,7 @@ from dotenv import load_dotenv
 from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
-from novelai_python.sdk.ai.generate import TextLLMModel, LLM
+from novelai_python.sdk.ai.generate import TextLLMModel, LLM, get_default_preset
 
 load_dotenv()
 username = os.getenv("NOVELAI_USER", None)
@@ -99,7 +100,13 @@ login_credential = LoginCredential(
 
 async def chat(prompt: str):
     try:
-        agent = LLM.build(prompt=prompt, model=TextLLMModel.ERATO)
+        model = TextLLMModel.ERATO  # llama3
+        parameters = get_default_preset(model).parameters
+        agent = LLM.build(
+            prompt=prompt,
+            model=model,
+            parameters=None  # Auto Select or get from preset
+        )
         result = await agent.request(session=login_credential)
     except APIError as e:
         raise Exception(f"Error: {e.message}")
@@ -124,6 +131,21 @@ print(prompt)
 ```shell
 pip install novelai_python
 python3 -m novelai_python.server -h '127.0.0.1' -p 7888
+```
+
+#### Tokenizer
+
+```python
+from novelai_python._enum import get_tokenizer_model, TextLLMModel
+from novelai_python.tokenizer import NaiTokenizer
+
+tokenizer_package = NaiTokenizer(get_tokenizer_model(TextLLMModel.ERATO))
+t_text = "a fox jumped over the lazy dog"
+encode_tokens = tokenizer_package.encode(t_text)
+print(tokenizer_package.tokenize_text(t_text))
+print(f"Tokenized text: {encode_tokens}")
+print(tokenizer_package.decode(tokenizer_package.encode(t_text)))
+
 ```
 
 ## Acknowledgements 🙏
