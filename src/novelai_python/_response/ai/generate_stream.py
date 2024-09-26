@@ -20,4 +20,7 @@ class LLMStreamResp(BaseModel):
 
     @staticmethod
     def decode(token_str, model: TextLLMModel) -> str:
-        return NaiTokenizer(get_tokenizer_model(model)).decode(b64_to_tokens(token_str))
+        dtype = 'uint32' if model in [TextLLMModel.ERATO] else 'uint16'
+        return NaiTokenizer(model=get_tokenizer_model(model)).decode(
+            b64_to_tokens(token_str, dtype=dtype)
+        )
