@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # @Author  : sudoskys
 import json
-from typing import Optional, Union, List, AsyncIterable
+from typing import Optional, Union, AsyncIterable
 
 import curl_cffi
 import httpx
@@ -9,12 +9,12 @@ from curl_cffi.requests import AsyncSession
 from loguru import logger
 from tenacity import wait_random, retry, stop_after_attempt, retry_if_exception
 
-from .generate import LLM, generate_order, TextLLMModel, PenStyle, PRESET
-from .generate_image import Params
+from .generate import LLM, TextLLMModel, PenStyle, AdvanceLLMSetting, LLMGenerationParams
 from ..._enum import TextLLMModelTypeAlias
 from ..._exceptions import APIError, SessionHttpError
 from ..._response.ai.generate_stream import LLMStreamResp
 from ...credential import CredentialBase
+from ...utils import try_jsonfy
 
 
 class LLMStream(LLM):
@@ -30,48 +30,31 @@ class LLMStream(LLM):
     def build(cls,
               prompt: str,
               model: TextLLMModelTypeAlias = TextLLMModel.ERATO,
-              min_length: Optional[int] = None,
-              max_length: Optional[int] = None,
-              temperature: Optional[float] = None,
-              top_k: Optional[int] = None,
-              top_p: Optional[float] = None,
-              frequency_penalty: Optional[float] = None,
-              presence_penalty: Optional[float] = None,
-              stop_sequences: Optional[Union[List[str]]] = None,
-              repetition_penalty: Optional[float] = None,
-              pen_style: Optional[PenStyle] = None,
+              phrase_rep_pen: PenStyle = PenStyle.Off,
+              *,
+              advanced_setting: AdvanceLLMSetting = AdvanceLLMSetting(),
+              parameters: Optional[LLMGenerationParams] = None,
+              default_bias: Optional[bool] = True,
+              logprobs_count: Optional[int] = 10,
+              bias_dinkus_asterism: Optional[bool] = False,
+              prefix: Optional[str] = "vanilla",
               **kwargs
               ) -> "LLMStream":
         """
         Generate Prompt
         """
         assert isinstance(prompt, str), "Prompt must be a string"
-        # 清理空值
-        kwarg = {
-            "min_length": min_length,
-            "max_length": max_length,
-            "temperature": temperature,
-            "top_k": top_k,
-            "top_p": top_p,
-            "frequency_penalty": frequency_penalty,
-            "presence_penalty": presence_penalty,
-            "stop_sequences": stop_sequences,
-            "repetition_penalty": repetition_penalty,
-            "pen_style": pen_style
-        }
-        kwargs = {**kwarg, **kwargs}
-        param = {k: v for k, v in kwargs.items() if v is not None}
-        _preset_model = PRESET.get(model.name, {})
-        if not _preset_model:
-            _build_prop = Params.model_validate(param)
-        else:
-            _build_prop = _preset_model.model_copy(deep=True, update=param)
-        assert _build_prop is not None, "Params validate failed"
-        return cls(
+        created = cls(
             input=prompt,
             model=model,
-            parameters=_build_prop
+            advanced_setting=advanced_setting,
+            parameters=parameters,
+            default_bias=default_bias,
+            logprobs_count=logprobs_count,
+            bias_dinkus_asterism=bias_dinkus_asterism,
+            prefix=prefix,
         )
+        return created
 
     @retry(
         wait=wait_random(min=1, max=3),
@@ -91,9 +74,17 @@ class LLMStream(LLM):
         :return: LLMStreamResp
         """
         # Data Build
-        request_data = self.model_dump(mode="json", exclude_none=True)
-        request_data["order"] = generate_order(request_data) or []
-        assert request_data.get("parameters"), "Parameters is required"
+        base_map = self.parameters.get_base_map()
+        parameters = {
+            **base_map,
+            **self.advanced_setting.model_dump(mode="json", exclude_none=True),
+        }
+        parameters.update(self.parameters.model_dump(mode="json", exclude_none=True).items())
+        # Override
+        request_data = {
+            **self.model_dump(mode="json", include={"input", "model"}),
+            "parameters": parameters,
+        }
         async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
             # Header
             sess.headers.update(await self.necessary_headers(request_data))
@@ -110,42 +101,44 @@ class LLMStream(LLM):
                     json=request_data,
                     stream=True  # 使用 stream=True 参数
                 )
+                response_data = try_jsonfy(response.content, default_when_error={})
+                message = response_data.get("error") or response_data.get(
+                    "message") or f"Server error with status_code {response.status_code}"
+                status_code = response_data.get("statusCode", response.status_code)
                 header_type = response.headers.get('Content-Type')
                 # 检查 'Content-Type' 是否为 'text/event-stream'
                 if header_type not in ['text/event-stream']:
-                    try:
-                        _msg = response.json()
-                    except Exception as e:
-                        _msg = {"statusCode": response.status_code, "message": response.content}
-                    status_code = _msg.get("statusCode", response.status_code)
-                    message = _msg.get("message", "Unknown error")
                     if status_code == 400:
                         raise APIError(
                             "A validation error occured.",
-                            request=request_data, code=status_code, response=_msg
+                            request=request_data, code=status_code, response=message
                         )
-
                     elif status_code == 401:
                         raise APIError(
                             "Access Token is incorrect.",
-                            request=request_data, code=status_code, response=_msg
+                            request=request_data, code=status_code, response=message
                         )
                     elif status_code == 402:
                         raise APIError(
                             "An active subscription is required to access this endpoint.",
-                            request=request_data, code=status_code, response=_msg
+                            request=request_data, code=status_code, response=message
                         )
                     elif status_code == 409:
                         raise APIError(
                             "A conflict error occured.",
-                            request=request_data, code=status_code, response=_msg
+                            request=request_data, code=status_code, response=message
                         )
                     else:
                         raise APIError(
-                            "An unknown error occured.",
-                            request=request_data, code=status_code, response=_msg
+                            f"Server did not send text/event-stream, status code {status_code}",
+                            request=request_data, code=status_code, response=message
                         )
                 else:
+                    if response.status_code != 200:
+                        raise APIError(
+                            f"Server error with status code {response.status_code}",
+                            request=request_data, code=response.status_code, response=response.content
+                        )
                     # Streaming data processing
                     async for line in response.aiter_lines():
                         event = line.decode().strip().split(":", 1)
