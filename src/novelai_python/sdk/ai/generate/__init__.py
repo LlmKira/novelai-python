@@ -92,7 +92,7 @@ class LLM(ApiBaseModel):
             self.endpoint = "https://api.novelai.net"
         tokenizer = NaiTokenizer(get_tokenizer_model(self.model))
         model_group = get_llm_group(self.model)
-        total_tokens = len(tokenizer.encode(self.input))
+        total_tokens = tokenizer.total_tokens()
         if isinstance(self.input, str):
             prompt = tokenizer.encode(self.input)
             dtype = "uint32" if self.model in [TextLLMModel.ERATO] else "uint16"
@@ -284,6 +284,10 @@ class LLM(ApiBaseModel):
         self.advanced_setting.num_logprobs = self.logprobs_count
         if not self.advanced_setting.max_length:
             self.advanced_setting.max_length = 40
+        if self.parameters.repetition_penalty_range == 0:
+            self.parameters.repetition_penalty_range = None
+        if self.parameters.repetition_penalty_slope == 0:
+            self.parameters.repetition_penalty_slope = None
         return self
 
     @classmethod

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field, model_validator, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
 
 """
 class StorySettings(BaseModel):
@@ -77,11 +77,6 @@ class LogitBiasGroup(BaseModel):
     ensure_sequence_finish: bool
     generate_once: bool
 
-    @model_validator(mode="before")
-    def validate_sequence(cls, value):
-        print(value)
-        return value
-
 
 class AdvanceLLMSetting(BaseModel):
     """
@@ -89,7 +84,7 @@ class AdvanceLLMSetting(BaseModel):
     """
     min_length: Optional[int] = 1
     max_length: Optional[int] = None
-    repetition_penalty: Optional[float] = None
+    repetition_penalty: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
     generate_until_sentence: Optional[bool] = True
     use_cache: Optional[bool] = False
     use_string: Optional[bool] = False
@@ -107,36 +102,36 @@ class LLMGenerationParams(BaseModel):
     LLM Generation Settings
     """
     textGenerationSettingsVersion: Optional[int] = None
-    temperature: Optional[float] = None
+    temperature: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
     max_length: Optional[int] = Field(default=None, ge=1, le=100)  # Max 150(vip3),100(vip2)
     min_length: Optional[int] = Field(default=None, ge=1, le=100)  # Max 150(vip3),100(vip2)
-    top_k: Optional[float] = Field(default=None, ge=0)
-    top_p: Optional[float] = Field(default=None, gt=0, le=1)
-    top_a: Optional[float] = Field(default=None, ge=0)
-    typical_p: Optional[float] = Field(default=None, ge=0, le=1)
-    tail_free_sampling: Optional[float] = Field(default=None, ge=0)
-    repetition_penalty: Optional[float] = Field(default=None, gt=0)
+    top_k: Optional[int] = Field(default=None, ge=0)
+    top_p: Optional[Union[float, int]] = Field(default=None, gt=0, le=1, allow_inf_nan=False)
+    top_a: Optional[Union[float, int]] = Field(default=None, ge=0, allow_inf_nan=False)
+    typical_p: Optional[Union[float, int]] = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    tail_free_sampling: Optional[Union[float, int]] = Field(default=None, ge=0, allow_inf_nan=False)
+    repetition_penalty: Optional[Union[float, int]] = Field(default=None, gt=0, allow_inf_nan=False)
     repetition_penalty_range: Optional[int] = Field(default=None, ge=0)
-    repetition_penalty_slope: Optional[float] = Field(default=None, ge=0)
+    repetition_penalty_slope: Optional[Union[float, int]] = Field(default=None, ge=0, allow_inf_nan=False)
 
     eos_token_id: int = None
     bad_words_ids: List[List[int]] = None
     logit_bias_groups: Optional[List[LogitBiasGroup]] = []
 
-    repetition_penalty_frequency: Optional[float] = None
-    repetition_penalty_presence: Optional[float] = None
+    repetition_penalty_frequency: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
+    repetition_penalty_presence: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
     repetition_penalty_whitelist: Optional[List[int]] = None
     repetition_penalty_default_whitelist: Optional[bool] = None
-    cfg_scale: Optional[float] = None
+    cfg_scale: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
     cfg_uc: Optional[str] = None
     phrase_rep_pen: PenStyle = PenStyle.Off
-    top_g: Optional[float] = None
-    mirostat_tau: Optional[float] = None
-    mirostat_lr: Optional[float] = None
-    math1_temp: Optional[float] = None
-    math1_quad: Optional[float] = None
-    math1_quad_entropy_scale: Optional[float] = None
-    min_p: Optional[float] = None
+    top_g: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
+    mirostat_tau: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
+    mirostat_lr: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
+    math1_temp: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
+    math1_quad: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
+    math1_quad_entropy_scale: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
+    min_p: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
 
     order: Union[List[int], List[KeyOrderEntry]] = [
         KeyOrderEntry(id=Key.Cfg, enabled=False),
