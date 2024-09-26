@@ -1,11 +1,17 @@
-from novelai_python._enum import TextTokenizerGroup
+from novelai_python._enum import TextTokenizerGroup, get_tokenizer_model, TextLLMModel
 from novelai_python.tokenizer import NaiTokenizer
+from novelai_python.utils.encode import b64_to_tokens
 
-tokenizer_package = NaiTokenizer("pile_tokenizer")
-t_text = "Hello, World! This is a   test."
+tokenizer_package = NaiTokenizer(get_tokenizer_model(TextLLMModel.ERATO))
+t_text = "a fox jumped over the lazy dog"
+encode_tokens = tokenizer_package.encode(t_text)
 print(tokenizer_package.tokenize_text(t_text))
-print(tokenizer_package.encode(t_text))
+print(f"Tokenized text: {encode_tokens}")
 print(tokenizer_package.decode(tokenizer_package.encode(t_text)))
+
+b64 = "UfQBADoAAABIAQAAGQAAANwAAAATAAAAexQAAEAAAAD/mwAA2GkAAJ8DAAAXAQAAtT4AAC8WAAA="
+oks = b64_to_tokens(b64)
+print(oks)
 
 
 def limit_prompt_shown(raw_text: str, token_limit=225):

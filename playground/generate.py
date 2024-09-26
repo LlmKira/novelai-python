@@ -27,7 +27,7 @@ async def chat(prompt="Hello"):
     try:
         agent = LLM.build(
             prompt=prompt,
-            model=TextLLMModel.KRAKE_V2,
+            model=TextLLMModel.ERATO,
         )
         result = await agent.request(session=_login_credential)
     except APIError as e:
@@ -37,8 +37,10 @@ async def chat(prompt="Hello"):
     except Exception as e:
         logger.exception(e)
     else:
-        print(f"Result: \n{result.text}")
+        print(f"Result:\n{result.text}")
 
 
 loop = asyncio.new_event_loop()
-loop.run_until_complete(chat())
+loop.run_until_complete(chat(
+    prompt="a fox jumped over the lazy dog, and the dog barked at the fox. The fox ran away."
+))
