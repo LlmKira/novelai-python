@@ -83,6 +83,13 @@ class LLM(ApiBaseModel):
 
     @model_validator(mode="after")
     def normalize_model(self):
+        if self.model in [
+            TextLLMModel.NEO_2B, TextLLMModel.J_6B, TextLLMModel.J_6B_V3, TextLLMModel.J_6B_V4,
+            TextLLMModel.GENJI_JP_6B, TextLLMModel.GENJI_JP_6B_V2, TextLLMModel.GENJI_PYTHON_6B,
+            TextLLMModel.EUTERPE_V0, TextLLMModel.EUTERPE_V2, TextLLMModel.KRAKE_V1, TextLLMModel.KRAKE_V2,
+            TextLLMModel.CASSANDRA, TextLLMModel.COMMENT_BOT, TextLLMModel.INFILL, TextLLMModel.CLIO
+        ]:
+            self.endpoint = "https://api.novelai.net"
         tokenizer = NaiTokenizer(get_tokenizer_model(self.model))
         model_group = get_llm_group(self.model)
         total_tokens = len(tokenizer.encode(self.input))
@@ -238,10 +245,10 @@ class LLM(ApiBaseModel):
 
         valid_sequences = []
         for cell in logit_bias_group_exp:
-            if not any(token < 0 or token >= total_tokens for token in cell.sequence):
+            if any(token < 0 or token >= total_tokens for token in cell.sequence):
                 # 超出范围的 Token
-                logger.debug(
-                    f"Bias {cell} contains tokens that are out of range and will be ignored."
+                logger.trace(
+                    f"Bias [{cell}] contains tokens that are out of range and will be ignored."
                 )
             else:
                 # 将有效偏置组添加到列表
@@ -258,8 +265,8 @@ class LLM(ApiBaseModel):
         valid_bad_words_ids = []
         self.parameters.bad_words_ids = bad_words_ids
         for ban_word in self.parameters.bad_words_ids:
-            if not any(token < 0 or token >= total_tokens for token in ban_word):
-                logger.warning(
+            if any(token < 0 or token >= total_tokens for token in ban_word):
+                logger.trace(
                     f"Bad word {ban_word} contains tokens that are out of range and will be ignored."
                 )
             else:
@@ -358,7 +365,7 @@ class LLM(ApiBaseModel):
                 message = response_data.get("error") or response_data.get(
                     "message") or f"Server error with status_code {response.status_code}"
                 status_code = response_data.get("statusCode", response.status_code)
-                if status_code == 200:
+                if status_code == 200 or status_code == 201:
                     output = response_data.get("output", None)
                     if not output:
                         raise APIError(
