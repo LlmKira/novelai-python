@@ -11,14 +11,18 @@ from loguru import logger
 from .encode import encode_access_key  # noqa 401
 
 
-def try_jsonfy(obj: Union[str, dict, list, tuple]):
+def try_jsonfy(obj: Union[str, dict, list, tuple], default_when_error=None):
     """
-    try to jsonfy a object
+    try to jsonfy object
     :param obj:
+    :param default_when_error:
     :return:
     """
     try:
         return json.loads(obj)
     except Exception as e:
-        logger.error(f"Decode Error {obj}")
-        return f"Decode Error {type(obj)}"
+        logger.trace(f"Decode Error {obj}")
+        if default_when_error is None:
+            return f"Decode Error {type(obj)}"
+        else:
+            return default_when_error

@@ -1,16 +1,22 @@
-from novelai_python.tokenizer import ImagePromptTokenizer
+from novelai_python._enum import TextTokenizerGroup, get_tokenizer_model, TextLLMModel
+from novelai_python.tokenizer import NaiTokenizer
+from novelai_python.utils.encode import b64_to_tokens
 
-tokenizer_util = ImagePromptTokenizer(ImagePromptTokenizer.MODEL_V2_PATH)
-text = "The quick brown fox jumps over the goblin."
-token_id = tokenizer_util.encode(text)
-print("Token IDs:", token_id)
-decoded_text = tokenizer_util.decode(token_id)
-print("Decoded text:", decoded_text)
+tokenizer_package = NaiTokenizer(get_tokenizer_model(TextLLMModel.ERATO))
+t_text = "a fox jumped over the lazy dog"
+encode_tokens = tokenizer_package.encode(t_text)
+print(tokenizer_package.tokenize_text(t_text))
+print(f"Tokenized text: {encode_tokens}")
+print(tokenizer_package.decode(tokenizer_package.encode(t_text)))
+
+b64 = "UfQBADoAAABIAQAAGQAAANwAAAATAAAAexQAAEAAAAD/mwAA2GkAAJ8DAAAXAQAAtT4AAC8WAAA="
+oks = b64_to_tokens(b64)
+print(oks)
 
 
 def limit_prompt_shown(raw_text: str, token_limit=225):
     assert isinstance(raw_text, str), "raw_text must be a string"
-    tokenizer = ImagePromptTokenizer(ImagePromptTokenizer.MODEL_V2_PATH)
+    tokenizer = NaiTokenizer(TextTokenizerGroup.NERDSTASH_V2)
     token_array = tokenizer.encode(raw_text)
     used_tokens_len = len(token_array)
     if used_tokens_len > token_limit:

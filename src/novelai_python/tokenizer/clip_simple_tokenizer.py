@@ -1,11 +1,18 @@
-# MIT:https://github.com/Aedial/novelai-api/blob/794c4f3d89cc86df3c7d2c401b320f1822822ac0/novelai_api/simple_tokenizer.py
-import gzip
+# MIT:https://github.com/openai/CLIP
 import html
 import os
+from dataclasses import dataclass
 from functools import lru_cache
+from typing import List
 
 import ftfy
 import regex as re
+
+
+@dataclass
+class EncodingResult:
+    ids: List[int]
+    tokens: List[str]
 
 
 @lru_cache()
@@ -55,46 +62,43 @@ def basic_clean(text):
 
 
 def whitespace_clean(text):
-    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r'\s+', ' ', text)
     text = text.strip()
     return text
 
 
 class SimpleTokenizer(object):
-    def __init__(self, bpe_path: str = default_bpe()):
+    def __init__(self, bpe_model_content: str = default_bpe()):
         self.byte_encoder = bytes_to_unicode()
         self.byte_decoder = {v: k for k, v in self.byte_encoder.items()}
-        merges = gzip.open(bpe_path).read().decode("utf-8").split("\n")
-        merges = merges[1: 49152 - 256 - 2 + 1]
+        # merges = gzip.open(bpe_path).read().decode("utf-8").split("\n")
+        merges = bpe_model_content.split('\n')
+        merges = merges[1:49152 - 256 - 2 + 1]
         merges = [tuple(merge.split()) for merge in merges]
         vocab = list(bytes_to_unicode().values())
-        vocab = vocab + [v + "</w>" for v in vocab]
+        vocab = vocab + [v + '</w>' for v in vocab]
         for merge in merges:
-            vocab.append("".join(merge))
-        vocab.extend(["<|startoftext|>", "<|endoftext|>"])
+            vocab.append(''.join(merge))
+        vocab.extend(['<|startoftext|>', '<|endoftext|>'])
         self.encoder = dict(zip(vocab, range(len(vocab))))
         self.decoder = {v: k for k, v in self.encoder.items()}
         self.bpe_ranks = dict(zip(merges, range(len(merges))))
-        self.cache = {
-            "<|startoftext|>": "<|startoftext|>",
-            "<|endoftext|>": "<|endoftext|>",
-        }
+        self.cache = {'<|startoftext|>': '<|startoftext|>', '<|endoftext|>': '<|endoftext|>'}
         self.pat = re.compile(
             r"""<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+""",
-            re.IGNORECASE,
-        )
+            re.IGNORECASE)
 
     def bpe(self, token):
         if token in self.cache:
             return self.cache[token]
-        word = tuple(token[:-1]) + (token[-1] + "</w>",)
+        word = tuple(token[:-1]) + (token[-1] + '</w>',)
         pairs = get_pairs(word)
 
         if not pairs:
-            return token + "</w>"
+            return token + '</w>'
 
         while True:
-            bigram = min(pairs, key=lambda pair: self.bpe_ranks.get(pair, float("inf")))
+            bigram = min(pairs, key=lambda pair: self.bpe_ranks.get(pair, float('inf')))
             if bigram not in self.bpe_ranks:
                 break
             first, second = bigram
@@ -121,19 +125,22 @@ class SimpleTokenizer(object):
                 break
             else:
                 pairs = get_pairs(word)
-        word = " ".join(word)
+        word = ' '.join(word)
         self.cache[token] = word
         return word
 
     def encode(self, text):
         bpe_tokens = []
+        ids = []
         text = whitespace_clean(basic_clean(text)).lower()
         for token in re.findall(self.pat, text):
-            token = "".join(self.byte_encoder[b] for b in token.encode("utf-8"))
-            bpe_tokens.extend(self.encoder[bpe_token] for bpe_token in self.bpe(token).split(" "))
-        return bpe_tokens
+            token = ''.join(self.byte_encoder[b] for b in token.encode('utf-8'))
+            bpe_result = self.bpe(token).split(' ')
+            bpe_tokens.extend(bpe_result)
+            ids.extend(self.encoder[bpe_token] for bpe_token in bpe_result)
+        return EncodingResult(ids=ids, tokens=[token.replace('</w>', ' ') for token in bpe_tokens])
 
     def decode(self, tokens):
-        text = "".join([self.decoder[token] for token in tokens])
-        text = bytearray([self.byte_decoder[c] for c in text]).decode("utf-8", errors="replace").replace("</w>", " ")
+        text = ''.join([self.decoder[token] for token in tokens])
+        text = bytearray([self.byte_decoder[c] for c in text]).decode('utf-8', errors="replace").replace('</w>', ' ')
         return text

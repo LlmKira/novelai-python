@@ -1,0 +1,362 @@
+[
+  {
+    "label": "No Module",
+    "mode": 0,
+    "description": ""
+  },
+  {
+    "label": "Special: Openings",
+    "mode": 0,
+    "description": ""
+  },
+  {
+    "label": "General: Instruct (Experimental)",
+    "mode": 0,
+    "description": "Use Instruct commands to give the AI a specific direction."
+  },
+  {
+    "label": "General: Cross-Genre",
+    "mode": 0,
+    "description": "A general module for many genres."
+  },
+  {
+    "label": "Special: Text Adventure",
+    "mode": 1,
+    "description": "It's up to you whether to change your course of action. Do you proceed?"
+  },
+  {
+    "label": "General: Prose Augmenter",
+    "mode": 0,
+    "description": "A general module for verbose prose. If you find the AI struggling with short sentences and other writing quality pitfalls, Prose Augmenter can help."
+  },
+  {
+    "label": "Style: Algernon Blackwood",
+    "mode": 0,
+    "description": "The unquestioned master of weird atmosphere, unusual fiction and ghost stories."
+  },
+  {
+    "label": "Style: Arthur Conan Doyle",
+    "mode": 0,
+    "description": "A master detective seeks the truth in every case, solving crimes with logic, wit, and a keen mind. It's elementary, my dear."
+  },
+  {
+    "label": "Style: Edgar Allan Poe",
+    "mode": 0,
+    "description": "The darkness in man's soul, the twisted will of a madman. Influenced by the works of one of literature's greatest authors."
+  },
+  {
+    "label": "Style: H.P. Lovecraft",
+    "mode": 0,
+    "description": "In a forgotten corner of the universe, beings stretch out ethereal tendrils. Who knows what unknown horrors lurk in the shadows...?"
+  },
+  {
+    "label": "Style: Sheridan Le Fanu",
+    "mode": 0,
+    "description": "It's a restless and scrupulous passion, curiosity. What whispers slip between the veil of light and shadow?"
+  },
+  {
+    "label": "Style: Jane Austen",
+    "mode": 0,
+    "description": "Experience a Regency world of wit, romance, and social politics."
+  },
+  {
+    "label": "Style: Jules Verne",
+    "mode": 0,
+    "description": "Journey to distant lands to explore strange cultures. Travel to a world of tribal folk, mermaids, and dinosaurs."
+  },
+  {
+    "label": "Style: William Shakespeare",
+    "mode": 0,
+    "description": "Beguiling language - in script form, tragedy, all-powerful characters, and a world of romantic fantasy and adventure."
+  },
+  {
+    "label": "Theme: 19th Century Romance",
+    "mode": 0,
+    "description": "Take a trip down memory lane to an era when chivalry was king. Witness love affairs bloom, and scandalous trysts be exposed!"
+  },
+  {
+    "label": "Theme: Action Archeology",
+    "mode": 0,
+    "description": "Rumors of great treasures abound throughout history. Follow clues through mystical ruins, avoiding devious traps along the way."
+  },
+  {
+    "label": "Theme: Artificial Intelligence",
+    "mode": 0,
+    "description": "In this world of silicon, the line between machine and human blurs. Dream of electric sheep, or starships off a distant world."
+  },
+  {
+    "label": "Theme: Ancient China",
+    "mode": 0,
+    "description": "Ancient China's turbulent history comes alive, featuring the rise of an Empire, celestial bureaucracy, and heroes. Claim your own destiny, or serve others' whims!"
+  },
+  {
+    "label": "Theme: Ancient Greece",
+    "mode": 0,
+    "description": "Wander through the streets of Athens, drink wine in tavernas, listen to the songs of the rhapsodists while you befriend the gods—or betray them."
+  },
+  {
+    "label": "Theme: Ancient India",
+    "mode": 0,
+    "description": "Find your place in ancient Indian society: Ancient Indian mythology, magic, demons, yadavs, rakshas, and more! A vast universe of myth and legend awaits!"
+  },
+  {
+    "label": "Theme: Animal Fiction",
+    "mode": 0,
+    "description": "Drawing from fiction written from the perspective of animals or about animals, be a fierce lion, cunning crow, or tall giraffe. Be whatever animal you desire!"
+  },
+  {
+    "label": "Theme: Anthropomorphic Animals",
+    "mode": 0,
+    "description": "Begone, hands! It's time for paws, tails, wings, and claws! These anthro animals have fur, and a lot of it."
+  },
+  {
+    "label": "Theme: Children's Fiction",
+    "mode": 0,
+    "description": "Evoke your inner child and engage in an adventure that will take you back to earlier days."
+  },
+  {
+    "label": "Theme: Christmas",
+    "mode": 0,
+    "description": "A joyful thematic wildcard to instantly transport you into the merriest season of the year!"
+  },
+  {
+    "label": "Theme: Comedic Fantasy",
+    "mode": 0,
+    "description": "Fantasy of a satirical and humorous bent, with witty narrators, bumbling wizards, and heroic but yet inept warriors!"
+  },
+  {
+    "label": "Theme: Contemporary",
+    "mode": 0,
+    "description": "Relatively relatable: portraying modern everyday life."
+  },
+  {
+    "label": "Theme: Cyberpunk",
+    "mode": 0,
+    "description": "Jack into the Grid, and conduct cybernetic warfare against other sentients. Enhance your body with various cybernetic enhancements and perform espionage in a dystopia."
+  },
+  {
+    "label": "Theme: Dark Fantasy",
+    "mode": 0,
+    "description": "The gifted few harness strange powers. When fortresses are besieged, this ancient world will be pushed to the brink."
+  },
+  {
+    "label": "Theme: Dragons",
+    "mode": 0,
+    "description": "Crimson skies are dominated by wings like hurricanes and teeth like daggers. This realm is ruled over by fire breathers of legend."
+  },
+  {
+    "label": "Theme: Egypt",
+    "mode": 0,
+    "description": "Mummies stir in the desert, seeking freedom from their curse. Explore ancient pyramids, and discover why the pharaohs were revered beyond their time."
+  },
+  {
+    "label": "Theme: Feudal Japan",
+    "mode": 0,
+    "description": "Go back to Feudal Japan, where samurai epics abound, along with detective stories, and tales of love conveyed through poetry."
+  },
+  {
+    "label": "Theme: Gaming",
+    "mode": 0,
+    "description": "Experience the crunch! Take part in a gaming company's office life, or play old-school games with your friends."
+  },
+  {
+    "label": "Theme: General Fantasy",
+    "mode": 0,
+    "description": "Behold a land where men wield magic swords, and elves sing songs of valor. Experience epic battles, and legendary adventures."
+  },
+  {
+    "label": "Theme: Golden Age Scifi",
+    "mode": 0,
+    "description": "No computers or long distance communications, just spaceships, robots, lasers, and (mostly) men surviving on their wits against the galaxy."
+  },
+  {
+    "label": "Theme: Hard SF",
+    "mode": 0,
+    "description": "Simply put, sci-fi that tries to be realistic. A lot of semi-plausible tech here!"
+  },
+  {
+    "label": "Theme: History",
+    "mode": 0,
+    "description": "A pen is stronger than a sword. Rewrite history however you desire."
+  },
+  {
+    "label": "Theme: Horror",
+    "mode": 0,
+    "description": "Experience nightmares like never before. Indulge in the deepest depths of the human mind, and beyond..."
+  },
+  {
+    "label": "Theme: Hunter Gatherer",
+    "mode": 0,
+    "description": "When man discovered fire, a new age dawned upon the world. Enter the paleolithic, and discover the secrets of survival in our primitive past."
+  },
+  {
+    "label": "Theme: LitRPG",
+    "mode": 0,
+    "description": "Stat blocks and status conditions, monsters and magic spells; Level up your roleplaying experience!"
+  },
+  {
+    "label": "Theme: Magic Academy",
+    "mode": 0,
+    "description": "Learn spells from wizards old and young. One must choose their path wisely—and never stop learning."
+  },
+  {
+    "label": "Theme: Magic Library",
+    "mode": 0,
+    "description": "They say a book is a gateway to another world. In this magical collection, the adage may be more literal than expected."
+  },
+  {
+    "label": "Theme: Light Novels",
+    "mode": 0,
+    "description": "Get your dose of otaku medicine, with a dash of isekai, fantasy, slice of life and some romance!"
+  },
+  {
+    "label": "Theme: Mars Colonization",
+    "mode": 0,
+    "description": "Brave pioneers set foot on another world. What would it take to tame the red planet?"
+  },
+  {
+    "label": "Theme: Medieval",
+    "mode": 0,
+    "description": "A new age dawns as knights rise and empires fall. Take up sword and shield, or cloak and dagger in this archaic setting."
+  },
+  {
+    "label": "Theme: Military SciFi",
+    "mode": 0,
+    "description": "Though the weapons changed, war remained the same. From futuristic trenches to intergalactic starfighters, experience life at the front lines."
+  },
+  {
+    "label": "Theme: Music",
+    "mode": 0,
+    "description": "The world of touring bands, drugs, and groupies! Can you resist temptation or stay focused on your art?"
+  },
+  {
+    "label": "Theme: Mystery",
+    "mode": 0,
+    "description": "Whodunit? Conduct investigations into mysteries that abound. Poke your nose into places where it doesn't belong."
+  },
+  {
+    "label": "Theme: Nature",
+    "mode": 0,
+    "description": "Survive the elements of rugged terrain, climb sheer mountains, and forge a path through the wilderness."
+  },
+  {
+    "label": "Theme: Naval Age of Discovery",
+    "mode": 0,
+    "description": "Sail the seven seas aboard mighty ships, while exploring exotic ports and uncharted waters."
+  },
+  {
+    "label": "Theme: Noir",
+    "mode": 0,
+    "description": "Cynical detectives, hard-boiled dialogue, and black and white morality."
+  },
+  {
+    "label": "Theme: Philosophy",
+    "mode": 0,
+    "description": "Let philosophical and political figures from old and new guide your stories."
+  },
+  {
+    "label": "Theme: Pirates",
+    "mode": 0,
+    "description": "There be loot to plunder on the high seas! 'Course, ye best be ready when the galleons come calling..."
+  },
+  {
+    "label": "Theme: Poetic Fantasy",
+    "mode": 0,
+    "description": "Craft beautiful poetry and stories, set in a curious land of magic and wonder, with delicate prose. Fairy dust not included."
+  },
+  {
+    "label": "Theme: Post-Apocalyptic",
+    "mode": 0,
+    "description": "The world has ended, but the story continues. Scavenge for supplies and face fearsome mutated beasts."
+  },
+  {
+    "label": "Theme: Rats",
+    "mode": 0,
+    "description": "Preying and stalking through the night, these little squeakers seek food and shelter wherever they find it. Eeek!"
+  },
+  {
+    "label": "Theme: Roman Empire",
+    "mode": 0,
+    "description": "When in Rome, do as the Romans do."
+  },
+  {
+    "label": "Theme: Science Fantasy",
+    "mode": 0,
+    "description": "Each step within these storied lands whispers tales of civilizations long forgotten where great technological works were once regarded as witchcraft."
+  },
+  {
+    "label": "Theme: Space Opera",
+    "mode": 0,
+    "description": "Soar between asteroids, explode planets, find your alien love, or maybe even start an intergalactic war. Infinite universe, infinite possibilities."
+  },
+  {
+    "label": "Theme: Superheroes",
+    "mode": 0,
+    "description": "When heroes clash with villains, only one can emerge victorious. Stand for justice, or join forces against it."
+  },
+  {
+    "label": "Theme: Steampunk",
+    "mode": 0,
+    "description": "Soar above the clouds and into a world of adventure, clockwork engines and flying machines."
+  },
+  {
+    "label": "Theme: Travel",
+    "mode": 0,
+    "description": "Travel around the world on years-long journeys to the darkest jungles, highest peaks, deepest seas, driest deserts, and see the myriad Wonders of the World!"
+  },
+  {
+    "label": "Theme: Urban Fantasy",
+    "mode": 0,
+    "description": "Interact with elves, fairies and other fantasy creatures in a modern urban environment where magic exists!"
+  },
+  {
+    "label": "Theme: Valentines",
+    "mode": 0,
+    "description": "This module is sure to make your heart flutter! Keep the sparks flying with this module trained on a collection of romantic literature!"
+  },
+  {
+    "label": "Theme: Vikings",
+    "mode": 0,
+    "description": "Raise your swords and shields, screaming on the way to Valhalla!"
+  },
+  {
+    "label": "Theme: Weird West",
+    "mode": 0,
+    "description": "Take to the dusty trail and encounter magical natives, werewolf cowboys, and undead creatures of the wild west."
+  },
+  {
+    "label": "Theme: Western Romance",
+    "mode": 0,
+    "description": "Blaze the open trails with a big iron on your hip, and maybe a pretty pardner as well."
+  },
+  {
+    "label": "Inspiration: Crab, Snail, and Monkey",
+    "mode": 0,
+    "description": "High school gets weird in this unique mixture of slice of life, romance, and supernatural mystery."
+  },
+  {
+    "label": "Inspiration: Mercantile Wolfgirl Romance",
+    "mode": 0,
+    "description": "A merchant and a wolf girl goddess travelling the lands."
+  },
+  {
+    "label": "Inspiration: Nervegear",
+    "mode": 0,
+    "description": "It's all fun and games, until the users of a VR MMORPG find they can't log out."
+  },
+  {
+    "label": "Inspiration: Romance of the Three Kingdoms",
+    "mode": 0,
+    "description": "China's greatest warlords vie for supremacy. Experience the art of war on a grand scale, in one of the most renowned tales ever told."
+  },
+  {
+    "label": "Inspiration: Throne Wars",
+    "mode": 0,
+    "description": "As the kingdom faces invasion from within and without, one must make difficult choices; to fight with honor, or or rule by fear?"
+  },
+  {
+    "label": "Inspiration: Witch at Level Cap",
+    "mode": 0,
+    "description": "Having gone to another world and maxed out her level cap, a witch lives a laid back life."
+  }
+]

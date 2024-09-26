@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2024/2/7 上午11:41
-# @Author  : sudoskys
-# @File    : encode.py
-# @Software: PyCharm
+import base64
 from base64 import urlsafe_b64encode
 from hashlib import blake2b
-from typing import Iterable, List
 
 import argon2
+import numpy as np
 
 
 # https://github.com/HanaokaYuzu/NovelAI-API/blob/master/src/novelai/utils.py#L12
@@ -38,7 +36,6 @@ def encode_access_key(username: str, password: str) -> str:
     return hashed[:64]
 
 
-import base64
 import hashlib
 import hmac
 
@@ -63,21 +60,40 @@ def decode_base64(encoded_data):
     return decoded_data.decode("UTF-8")
 
 
-# MIT: https://github.com/Aedial/novelai-api/blob/794c4f3d89cc86df3c7d2c401b320f1822822ac0/novelai_api/utils.py
-def tokens_to_b64(tokens: Iterable[int]) -> str:
+def b64_to_tokens(encoded_str, dtype='uint32'):
     """
-    Encode a list of tokens into a base64 string that can be sent to the API
+    big-endian
+    将 Base64 编码的字符串解码为 tokens 数组。
+    :param encoded_str: 从 Base64 解码的字符串
+    :param dtype: 解码的数组类型，可以是 'uint32' 或 'uint16'
+    :return: 解码后的整数数组
     """
+    # NOTE:
+    byte_data = base64.b64decode(encoded_str)
+    if dtype == 'uint32':
+        array_data = np.frombuffer(byte_data, dtype=np.uint32)
+    elif dtype == 'uint16':
+        array_data = np.frombuffer(byte_data, dtype=np.uint16)
+    else:
+        raise ValueError('Unsupported dtype')
+    return array_data.tolist()
 
-    return base64.b64encode(b"".join(t.to_bytes(2, "little") for t in tokens)).decode()
 
-
-# MIT:https://github.com/Aedial/novelai-api/blob/794c4f3d89cc86df3c7d2c401b320f1822822ac0/novelai_api/utils.py#L332
-def b64_to_tokens(b64: str) -> List[int]:
+def tokens_to_b64(tokens, dtype='uint32'):
     """
-    Decode a base64 string returned by the API into a list of tokens
+    big-endian
+    将给定的 token 数组编码为 Base64 字符串。
+    :param tokens: 输入的整数数组
+    :param dtype: 输出的数组类型，可以是 'uint32' 或 'uint16'
+    :return: base64 编码字符串
     """
-
-    b = base64.b64decode(b64)
-
-    return [int.from_bytes(b[i: i + 2], "little") for i in range(0, len(b), 2)]
+    # 根据 dtype 确定 numpy 数组数据类型
+    if dtype == 'uint32':
+        array_data = np.array(tokens, dtype=np.uint32)
+    elif dtype == 'uint16':
+        array_data = np.array(tokens, dtype=np.uint16)
+    else:
+        raise ValueError('Unsupported dtype')
+    byte_data = array_data.tobytes()
+    base64_str = base64.b64encode(byte_data).decode('utf-8')
+    return base64_str
