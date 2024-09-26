@@ -134,7 +134,7 @@ class LLMStream(LLM):
                             request=request_data, code=status_code, response=message
                         )
                 else:
-                    if response.status_code != 200:
+                    if response.status_code not in [200, 201]:
                         raise APIError(
                             f"Server error with status code {response.status_code}",
                             request=request_data, code=response.status_code, response=response.content

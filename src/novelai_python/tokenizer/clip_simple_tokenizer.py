@@ -144,3 +144,11 @@ class SimpleTokenizer(object):
         text = ''.join([self.decoder[token] for token in tokens])
         text = bytearray([self.byte_decoder[c] for c in text]).decode('utf-8', errors="replace").replace('</w>', ' ')
         return text
+
+    def get_vocab(self):
+        return self.encoder
+
+
+if __name__ == '__main__':
+    tokenizer = SimpleTokenizer()
+    print(len(tokenizer.get_vocab()))

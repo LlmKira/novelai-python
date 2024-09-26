@@ -187,6 +187,13 @@ class NaiTokenizer:
             return self.tokenizer.encode(text).tokens
         raise NotImplementedError("Tokenizer does not support token encoding")
 
+    def total_tokens(self) -> int:
+        if isinstance(self.tokenizer, Tokenizer):
+            return len(self.tokenizer.get_vocab())
+        if isinstance(self.tokenizer, SimpleTokenizer):
+            return len(self.tokenizer.get_vocab())
+        raise NotImplementedError("Tokenizer does not support token encoding")
+
     def encode(self, sentence: str) -> List[int]:
         if isinstance(self.tokenizer, SimpleTokenizer):
             return self.tokenizer.encode(sentence).ids

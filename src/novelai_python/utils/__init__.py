@@ -21,7 +21,7 @@ def try_jsonfy(obj: Union[str, dict, list, tuple], default_when_error=None):
     try:
         return json.loads(obj)
     except Exception as e:
-        logger.trace(f"Decode Error {obj}")
+        logger.trace(f"Decode Error {obj} {e}")
         if default_when_error is None:
             return f"Decode Error {type(obj)}"
         else:
