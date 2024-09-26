@@ -60,7 +60,7 @@ class NaiTokenizer:
     def __init__(self,
                  model: str,
                  tokenizer_model_path: Optional[pathlib.Path] = None,
-                 download_session: Optional[httpx.Client] = None
+                 download_session: Optional[httpx.Client] = None,
                  ):
         if not model.endswith(".def"):
             model = f"{model}.def"
@@ -123,6 +123,7 @@ class NaiTokenizer:
                 download_file(url, model_path, self._download_session)
                 logger.info(f"Tokenizer {self.model_full_name} downloaded.")
         except Exception as e:
+            model_path.unlink(missing_ok=True)
             raise LookupError(f"Failed to download model {self.model_full_name} from {url}: {e}")
         model_bytes = model_path.read_bytes()
         decoded_str = self._read_compressed_def(model_bytes)
