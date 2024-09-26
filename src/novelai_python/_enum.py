@@ -62,21 +62,32 @@ TOKENIZER_MODEL_MAP = {
     TextLLMModel.ERATO: TextTokenizerGroup.LLAMA3,
 }
 
+COLORS_LLM = [
+    TextLLMModel.BLUE,
+    TextLLMModel.RED,
+    TextLLMModel.GREEN,
+    TextLLMModel.PURPLE,
+    TextLLMModel.PINK,
+    TextLLMModel.YELLOW,
+    TextLLMModel.WHITE,
+    TextLLMModel.BLACK,
+]
 
-def get_llm_group(model: TextLLMModelTypeAlias) -> Optional[TextTokenizerGroup]:
+
+def get_llm_group(model: TextLLMModel) -> Optional[TextTokenizerGroup]:
     if isinstance(model, str):
         model = TextLLMModel(model)
     return TOKENIZER_MODEL_MAP.get(model, None)
 
 
-def get_tokenizer_model(model: TextLLMModelTypeAlias) -> str:
+def get_tokenizer_model(model: TextLLMModel) -> str:
     if isinstance(model, str):
         model = TextLLMModel(model)
     group = TOKENIZER_MODEL_MAP.get(model, TextTokenizerGroup.GPT2)
     return group
 
 
-def get_tokenizer_model_url(model: TextLLMModelTypeAlias) -> str:
+def get_tokenizer_model_url(model: TextLLMModel) -> str:
     model_name = get_tokenizer_model(model)
     if not model_name.endswith(".def"):
         model_name = f"{model_name}.def"
