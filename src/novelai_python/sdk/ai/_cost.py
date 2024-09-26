@@ -1,11 +1,11 @@
 import math
 import random
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from pydantic import BaseModel
 
 from novelai_python.sdk.ai._const import map, initialN, initial_n, step, newN
-from novelai_python.sdk.ai._enum import Sampler, Model, ModelGroups, get_model_group, ModelTypeAlias
+from novelai_python.sdk.ai._enum import Sampler, ModelGroups, get_model_group, ModelTypeAlias
 
 
 class Args(BaseModel):
