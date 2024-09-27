@@ -170,7 +170,7 @@ class ImageMetadata(BaseModel):
     def _extract_metadata_from_comments(cls, image: IMAGE_INPUT_TYPE):
         """
         Extract metadata from image comments and other info.
-        :param image: IMAGE_INPUT_TYPE
+        :param image: Union[str, bytes, Path, BytesIO]
         """
         with Image.open(image) as img:
             title = img.info.get("Title", None)
