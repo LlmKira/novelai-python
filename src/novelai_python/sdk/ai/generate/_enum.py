@@ -148,30 +148,12 @@ def get_repetition_penalty_whitelist(group: TextTokenizerGroup) -> List[str]:
     return []
 
 
-def get_default_preset(model: TextLLMModel):
-    if model == TextLLMModel.J_6B_V4:
-        return J6bv4.get_all_presets()[0]
-    elif model == TextLLMModel.NEO_2B:
-        return Neo2b.get_all_presets()[0]
-    elif model == TextLLMModel.GENJI_PYTHON_6B:
-        return Genjipython6b.get_all_presets()[0]
-    elif model == TextLLMModel.GENJI_JP_6B_V2:
-        return Genjijp6bv2.get_all_presets()[0]
-    elif model == TextLLMModel.EUTERPE_V2:
-        return Euterpev2.get_all_presets()[0]
-    elif model == TextLLMModel.KRAKE_V1:
-        return Krakev1.get_all_presets()[0]
-    elif model == TextLLMModel.KRAKE_V2:
-        return Krakev2.get_all_presets()[0]
-    elif model in COLORS_LLM:
-        return Colorful.get_all_presets()[0]
-    elif model == TextLLMModel.CLIO:
-        return Clio.get_all_presets()[0]
-    elif model == TextLLMModel.KAYRA:
-        return Kayra.get_all_presets()[0]
-    elif model == TextLLMModel.ERATO:
-        return Erato.get_all_presets()[0]
-    return Default.get_all_presets()[0]
+def get_model_preset(model: TextLLMModel) -> "ModelPresetManager":
+    return PresetMapping.get(model, Default)
+
+
+def get_default_preset(model: TextLLMModel) -> Preset:
+    return get_model_preset(model).get_all_presets()[0]
 
 
 class ModelPresetManager:
@@ -2279,3 +2261,24 @@ Erato.register_preset(
         description="Designed for writing in Japanese. Works fine for English too."
     )
 )
+
+PresetMapping = {
+    TextLLMModel.J_6B_V4: J6bv4,
+    TextLLMModel.NEO_2B: Neo2b,
+    TextLLMModel.GENJI_PYTHON_6B: Genjipython6b,
+    TextLLMModel.GENJI_JP_6B_V2: Genjijp6bv2,
+    TextLLMModel.EUTERPE_V2: Euterpev2,
+    TextLLMModel.KRAKE_V1: Krakev1,
+    TextLLMModel.KRAKE_V2: Krakev2,
+    TextLLMModel.BLUE: Colorful,
+    TextLLMModel.RED: Colorful,
+    TextLLMModel.GREEN: Colorful,
+    TextLLMModel.PURPLE: Colorful,
+    TextLLMModel.PINK: Colorful,
+    TextLLMModel.YELLOW: Colorful,
+    TextLLMModel.WHITE: Colorful,
+    TextLLMModel.BLACK: Colorful,
+    TextLLMModel.CLIO: Clio,
+    TextLLMModel.KAYRA: Kayra,
+    TextLLMModel.ERATO: Erato,
+}

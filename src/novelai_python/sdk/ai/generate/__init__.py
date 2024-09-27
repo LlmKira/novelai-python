@@ -305,7 +305,15 @@ class LLM(ApiBaseModel):
               **kwargs
               ) -> "LLM":
         """
-        Generate Prompt
+        Generate
+        :param prompt: prompt, exp "Hello, World!"
+        :param model: TextLLMModelTypeAlias
+        :param advanced_setting: AdvanceLLMSetting, default None means auto-select
+        :param parameters: LLMGenerationParams, default None means auto-select, use get_model_preset
+        :param default_bias: bool, default True
+        :param logprobs_count: int, default None
+        :param bias_dinkus_asterism: bool, default False
+        :param prefix: str, default "vanilla"
         """
         assert isinstance(prompt, str), "Prompt must be a string"
         created = cls(
