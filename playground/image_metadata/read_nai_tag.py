@@ -17,6 +17,11 @@ except ValueError:
     raise LookupError("Cant find a MetaData")
 
 print(meta.Title)
-print(meta.Description)
-print(meta.Comment)
-print(ImageVerifier().verify(image=image))
+print(f"Description: {meta.Description}")
+print(f"Comment: {meta.Comment}")
+print(f"Request Method: {meta.Comment.request_type}")
+print(f"Used image model: {meta.used_model}")
+# Verify if the image is from NovelAI
+is_novelai, have_latent = ImageVerifier().verify(image=image)
+print(f"Is NovelAI: {is_novelai}")
+print(f"Have Latent: {have_latent}")
