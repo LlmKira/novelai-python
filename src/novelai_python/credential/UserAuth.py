@@ -2,10 +2,10 @@
 # @Time    : 2024/2/7 下午12:14
 # @Author  : sudoskys
 # @File    : UserAuth.py
-import datetime
 import time
 from typing import Optional
 
+import arrow
 import shortuuid
 from curl_cffi.requests import AsyncSession
 from pydantic import SecretStr, Field
@@ -33,7 +33,7 @@ class LoginCredential(CredentialBase):
             "Origin": "https://novelai.net",
             "Referer": "https://novelai.net/",
             "x-correlation-id": self._x_correlation_id,
-            "x-initiated-at": f"{datetime.datetime.now(datetime.UTC).isoformat()}Z",
+            "x-initiated-at": f"{arrow.utcnow().isoformat()}Z",
         }
 
         # 30 天有效期

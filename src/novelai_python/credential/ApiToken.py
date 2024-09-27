@@ -4,8 +4,7 @@
 # @File    : ApiToken.py
 # @Software: PyCharm
 
-import datetime
-
+import arrow
 import shortuuid
 from curl_cffi.requests import AsyncSession
 from loguru import logger
@@ -31,7 +30,7 @@ class ApiCredential(CredentialBase):
             "Origin": "https://novelai.net",
             "Referer": "https://novelai.net/",
             "x-correlation-id": self._x_correlation_id,
-            "x-initiated-at": f"{datetime.datetime.now(datetime.UTC).isoformat()}Z",
+            "x-initiated-at": f"{arrow.utcnow().isoformat()}Z",
         }
 
         if update_headers:
