@@ -158,6 +158,14 @@ print(tokenizer_package.decode(tokenizer_package.encode(t_text)))
 
 ```
 
+## About Nsfw 🚫
+
+You might need some solutions for identifying NSFW content and adding a mosaic to prevent operational mishaps.
+
+https://dghs-imgutils.deepghs.org/main/api_doc/detect/nudenet.html
+
+https://dghs-imgutils.deepghs.org/main/api_doc/operate/censor.html
+
 ## Acknowledgements 🙏
 
 [BackEnd](https://api.novelai.net/docs)
