@@ -1,6 +1,6 @@
 [project]
 name = "novelai-python"
-version = "0.5.1"
+version = "0.5.2"
 description = "NovelAI Python Binding With Pydantic"
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
@@ -28,6 +28,7 @@ dependencies = [
     "tokenizers>=0.15.2",
     "json-repair>=0.29.4",
     "robust-downloader>=0.0.2",
+    "bchlib>=2.1.3",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
