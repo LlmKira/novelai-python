@@ -7,7 +7,8 @@ from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
 from novelai_python import JwtCredential
-from novelai_python.sdk.ai.generate import TextLLMModel, LLM
+from novelai_python.sdk.ai.generate import TextLLMModel, LLM, AdvanceLLMSetting
+from novelai_python.sdk.ai.generate._enum import get_model_preset
 
 load_dotenv()
 jwt = os.getenv("NOVELAI_JWT", None)
@@ -28,7 +29,16 @@ async def chat(prompt="Hello"):
         agent = LLM.build(
             prompt=prompt,
             model=TextLLMModel.ERATO,
+            parameters=get_model_preset(TextLLMModel.ERATO).get_all_presets()[0].parameters,
+            advanced_setting=AdvanceLLMSetting(
+                min_length=1,
+                max_length=None,  # Auto
+            )
         )
+        # NOTE:parameter > advanced_setting, which logic in generate/__init__.py
+        # If you not pass the parameter, it will use the default preset.
+        # So if you want to set the generation params, you should pass your own params.
+        # Only if you want to use some params not affect the generation, you can use advanced_setting.
         result = await agent.request(session=_login_credential)
     except APIError as e:
         logger.exception(e)

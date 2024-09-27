@@ -39,7 +39,7 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 ### Usage 🖥️
 
 ```shell
-pip install novelai-python
+pip -U install novelai-python
 ```
 
 More examples can be found in the [playground](https://github.com/LlmKira/novelai-python/tree/main/playground)
@@ -86,7 +86,8 @@ from dotenv import load_dotenv
 from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
-from novelai_python.sdk.ai.generate import TextLLMModel, LLM, get_default_preset
+from novelai_python.sdk.ai.generate import TextLLMModel, LLM, get_default_preset, AdvanceLLMSetting
+from novelai_python.sdk.ai.generate._enum import get_model_preset
 
 load_dotenv()
 username = os.getenv("NOVELAI_USER", None)
@@ -105,8 +106,17 @@ async def chat(prompt: str):
         agent = LLM.build(
             prompt=prompt,
             model=model,
-            parameters=None  # Auto Select or get from preset
+            # parameters=None,  # Auto Select or get from preset
+            parameters=get_model_preset(TextLLMModel.ERATO).get_all_presets()[0].parameters,  # Select from enum preset
+            advanced_setting=AdvanceLLMSetting(
+                min_length=1,
+                max_length=None,  # Auto
+            )
         )
+        # NOTE:parameter > advanced_setting, which logic in generate/__init__.py
+        # If you not pass the parameter, it will use the default preset.
+        # So if you want to set the generation params, you should pass your own params.
+        # Only if you want to use some params not affect the generation, you can use advanced_setting.
         result = await agent.request(session=login_credential)
     except APIError as e:
         raise Exception(f"Error: {e.message}")
@@ -147,6 +157,14 @@ print(f"Tokenized text: {encode_tokens}")
 print(tokenizer_package.decode(tokenizer_package.encode(t_text)))
 
 ```
+
+## About Nsfw 🚫
+
+You might need some solutions for identifying NSFW content and adding a mosaic to prevent operational mishaps.
+
+https://dghs-imgutils.deepghs.org/main/api_doc/detect/nudenet.html
+
+https://dghs-imgutils.deepghs.org/main/api_doc/operate/censor.html
 
 ## Acknowledgements 🙏
 
