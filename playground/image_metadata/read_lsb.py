@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 from novelai_python.tool.image_metadata.lsb_extractor import ImageLsbDataExtractor

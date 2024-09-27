@@ -1,12 +1,12 @@
 # MIT: https://github.com/NovelAI/novelai-image-metadata/blob/main/nai_meta.py
+import gzip
+import json
 from io import BytesIO
 from pathlib import Path
 from typing import Union
 
-from PIL import Image
 import numpy as np
-import gzip
-import json
+from PIL import Image
 
 
 class LSBExtractor(object):
@@ -59,26 +59,23 @@ class ImageLsbDataExtractor(object):
     def __init__(self):
         self.magic = "stealth_pngcomp"
 
-    def extract_data(self, image: Union[str, bytes, Path, BytesIO, np.ndarray]) -> dict:
+    def extract_data(self, image: Union[BytesIO, bytes, Path], ) -> dict:
+        if isinstance(image, (bytes, BytesIO, Path)):
+            img = Image.open(image)
+            img.convert("RGBA")
+            image = np.array(img)
+        else:
+            raise TypeError(f"Invalid image type: {type(image)}, only {type(BytesIO)} is supported")
+
         try:
-            if isinstance(image, Image.Image):
-                image = np.array(image)
-            elif isinstance(image, (str, bytes, Path, BytesIO)):
-                img = Image.open(image)
-                image = np.array(img)
-
             if not (image.shape[-1] == 4 and len(image.shape) == 3):
-                raise AssertionError('image format error')
-
+                raise AssertionError('image format error, maybe image already be modified')
             reader = LSBExtractor(image)
-
             read_magic = reader.get_next_n_bytes(len(self.magic)).decode("utf-8")
             if not (self.magic == read_magic):
                 raise AssertionError('magic number mismatch')
-
             read_len = reader.read_32bit_integer() // 8
             json_data = reader.get_next_n_bytes(read_len)
-
             json_data = json.loads(gzip.decompress(json_data).decode("utf-8"))
             if "Comment" in json_data:
                 json_data["Comment"] = json.loads(json_data["Comment"])
@@ -86,15 +83,12 @@ class ImageLsbDataExtractor(object):
         except FileNotFoundError:
             # 无法找到文件
             raise Exception(f"The file {image} does not exist.")
-
         except json.JSONDecodeError as e:
             # 无法解析JSON数据
             raise Exception(f"Failed to decode JSON data from image: {image}. Error: {str(e)}")
-
         except AssertionError as err:
             # 魔数不匹配
             raise Exception(f"Failed to extract data from image: {image}. Error: {str(err)}")
-
         except Exception as e:
             # 从图像中提取数据时发生意外错误
             raise Exception(f"Unexpected error happened when extracting data from image: {image}. Error: {str(e)}")

@@ -2,7 +2,6 @@
 import base64
 import json
 from io import BytesIO
-from pathlib import Path
 from typing import Union, Optional, List
 
 import numpy as np
@@ -13,9 +12,10 @@ from nacl.encoding import Base64Encoder
 from nacl.signing import VerifyKey
 from pydantic import BaseModel, ConfigDict
 
+from novelai_python.sdk.ai._enum import PROMOTION, Model
+from ._type import IMAGE_INPUT_TYPE, get_image_bytes
 from .lsb_extractor import ImageLsbDataExtractor
 from .lsb_injector import inject_data
-from novelai_python.sdk.ai._enum import PROMOTION, Model
 
 
 class ImageMetadata(BaseModel):
@@ -24,37 +24,51 @@ class ImageMetadata(BaseModel):
     """
 
     class CommentModel(BaseModel):
-        prompt: str
-        steps: int = None
-        height: int = None
-        width: int = None
-        scale: float = None
-        uncond_scale: float = None
-        cfg_rescale: float = None
-        seed: int = None
-        n_samples: int = None
-        hide_debug_overlay: bool = None
-        noise_schedule: str = None
-        legacy_v3_extend: bool = None
+        prompt: Optional[str] = None
+        steps: Optional[int] = None
+        height: Optional[int] = None
+        width: Optional[int] = None
+        scale: Optional[float] = None
+        uncond_scale: Optional[float] = None
+        cfg_rescale: Optional[float] = None
+        seed: Optional[int] = None
+        n_samples: Optional[int] = None
+        hide_debug_overlay: Optional[bool] = None
+        noise_schedule: Optional[str] = None
+        legacy_v3_extend: Optional[bool] = None
         reference_information_extracted: Optional[float] = None
         reference_strength: Optional[float] = None
         reference_strength_multiple: Optional[List[float]] = None
         reference_information_extracted_multiple: Optional[List[float]] = None
-        sampler: str = None
-        controlnet_strength: float = None
-        controlnet_model: Union[None, str] = None
-        dynamic_thresholding: bool = None
-        dynamic_thresholding_percentile: float = None
-        dynamic_thresholding_mimic_scale: float = None
-        sm: bool = None
-        sm_dyn: bool = None
-        skip_cfg_below_sigma: float = None
-        lora_unet_weights: Union[None, str] = None
-        lora_clip_weights: Union[None, str] = None
-        uc: str = None
-        request_type: str = None
-        signed_hash: str = None
+        sampler: Optional[str] = None
+        controlnet_strength: Optional[float] = None
+        controlnet_model: Optional[Union[None, str]] = None
+        dynamic_thresholding: Optional[bool] = None
+        dynamic_thresholding_percentile: Optional[float] = None
+        dynamic_thresholding_mimic_scale: Optional[float] = None
+        sm: Optional[bool] = None
+        sm_dyn: Optional[bool] = None
+        skip_cfg_below_sigma: Optional[float] = None
+        lora_unet_weights: Optional[Union[None, str]] = None
+        lora_clip_weights: Optional[Union[None, str]] = None
+        uc: Optional[str] = None
+        request_type: Optional[str] = None
+        signed_hash: Optional[str] = None
+        skip_cfg_above_sigma: Optional[float] = None
+        deliberate_euler_ancestral_bug: Optional[bool] = None
+        prefer_brownian: Optional[bool] = None
+        cfg_sched_eligibility: Optional[str] = None
+        explike_fine_detail: Optional[bool] = None
+        minimize_sigma_inf: Optional[bool] = None
+        uncond_per_vibe: Optional[bool] = None
+        wonky_vibe_correlation: Optional[bool] = None
+        version: Optional[int] = None
+
         model_config = ConfigDict(extra="allow")
+
+        @property
+        def generate_method(self):
+            return self.request_type or "Unknown"
 
         @property
         def negative_prompt(self):
@@ -64,7 +78,6 @@ class ImageMetadata(BaseModel):
         def vibe_transfer_strength(self) -> List[float]:
             """
             Get the vibe transfer strength totally
-            :return: List[float]
             """
             if self.reference_strength_multiple:
                 return self.reference_strength_multiple
@@ -75,7 +88,6 @@ class ImageMetadata(BaseModel):
         def vibe_transfer_information(self) -> List[float]:
             """
             Get the vibe transfer information totally
-            :return: List[float]
             """
             if self.reference_information_extracted_multiple:
                 return self.reference_information_extracted_multiple
@@ -88,11 +100,7 @@ class ImageMetadata(BaseModel):
     Source: str = None
     Description: str
     Comment: CommentModel
-    """
-    AI generated image
-    silvery white, best quality, amazing quality, very aesthetic, absurdres
-    {'prompt': 'silvery white, best quality, amazing quality, very aesthetic, absurdres', 'steps': 28, 'height': 128, 'width': 128, 'scale': 10.0, 'uncond_scale': 1.0, 'cfg_rescale': 0.38, 'seed': 1148692016, 'n_samples': 1, 'hide_debug_overlay': False, 'noise_schedule': 'native', 'legacy_v3_extend': False, 'reference_information_extracted': 0.87, 'reference_strength': 1.0, 'sampler': 'k_euler', 'controlnet_strength': 1.0, 'controlnet_model': None, 'dynamic_thresholding': False, 'dynamic_thresholding_percentile': 0.999, 'dynamic_thresholding_mimic_scale': 10.0, 'sm': True, 'sm_dyn': True, 'skip_cfg_below_sigma': 0.0, 'lora_unet_weights': None, 'lora_clip_weights': None, 'uc': 'nsfw, lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], small', 'request_type': 'PromptGenerateRequest', 'signed_hash': 'GmLfTgQTOI4WRcTloiSmenArH/Y8szJdVJ1DW18yeqYPkqw3o1zellB4xCQFYle+0tuF9KVP8RkHiDNbQXr0DA=='}
-    """
+
     model_config = ConfigDict(extra="allow")
 
     @property
@@ -104,15 +112,14 @@ class ImageMetadata(BaseModel):
         return PROMOTION.get(self.Source, None)
 
     @staticmethod
-    def reset_alpha(input_img: BytesIO) -> BytesIO:
+    def reset_alpha(image: IMAGE_INPUT_TYPE) -> BytesIO:
         """
         Remove LSB from the image, set the alpha channel to 254
-        :param input_img:
-        :return:
+        :param image: Type: Union[str, bytes, Path, BytesIO]
+        :return: BytesIO
         """
-        if isinstance(input_img, BytesIO):
-            input_img.seek(0)
-        image = Image.open(input_img).convert('RGBA')
+        image_data = get_image_bytes(image)
+        image = Image.open(image_data).convert('RGBA')
         data = np.array(image)
         data[..., 3] = 254
         new_image = Image.fromarray(data, 'RGBA')
@@ -120,20 +127,18 @@ class ImageMetadata(BaseModel):
         new_image.save(_new_img_io, format="PNG")
         return _new_img_io
 
-    def apply_to_image(self,
-                       origin_image: Image.Image,
-                       *,
-                       inject_lsb: bool = True
-                       ) -> BytesIO:
+    def apply_to_image(self, image: IMAGE_INPUT_TYPE, *, inject_lsb: bool = True) -> BytesIO:
         """
         Write metadata to origin_image
         If you set inject_lsb to True, the image will be injected with metadata using LSB.
 
         **But if you set inject_lsb to False, the image will be reset to the 254 alpha channel**
-        :param origin_image:  BytesIO
+        :param image:  Union[str, bytes, Path, BytesIO]
         :param inject_lsb:  Inject metadata using LSB
         :return:  BytesIO
         """
+        image_data = get_image_bytes(image)
+        origin_image = Image.open(image_data)
         metadata = PngInfo()
         for k, v in self.model_dump(mode="json").items():
             if isinstance(v, dict):
@@ -142,84 +147,92 @@ class ImageMetadata(BaseModel):
         if inject_lsb:
             # Inject metadata using LSB
             origin_image = inject_data(origin_image, metadata)
-        # Save original image with metadata (and LSB if inject_lsb is True)
-        new_img = BytesIO()
-        origin_image.save(new_img, format="PNG", pnginfo=metadata, optimize=False, compress_level=0)
-        return new_img
+
+        # Prepare image to be saved
+        be_copy_image = BytesIO()
+        origin_image.save(be_copy_image, format="PNG", pnginfo=metadata, optimize=False, compress_level=0)
+        return be_copy_image
 
     @classmethod
-    def load_image(cls,
-                   image_io: Union[str, bytes, Path, BytesIO]
-                   ):
+    def _extract_metadata_from_lsb(cls, image: IMAGE_INPUT_TYPE):
         """
-        Load image and extract metadata using LSB/Metadata
-        :param image_io: str, bytes, Path, BytesIO
-        :return: ImageMetadata
-        :raises ValueError:  Data extraction failed
+        Extract metadata using LSB extraction method.
+        :param image: IMAGE_INPUT_TYPE
         """
-        if isinstance(image_io, BytesIO):
-            image_io.seek(0)
         try:
-            image_data = ImageLsbDataExtractor().extract_data(image_io)
-            model = cls.model_validate(image_data)
+            image_meta_data = ImageLsbDataExtractor().extract_data(image)
+            return cls.model_validate(image_meta_data)
         except Exception as e:
-            logger.trace(f"Error trying extracting data in LSB: {e}")
-        else:
-            return model
-        with Image.open(image_io) as img:
+            logger.trace(f"Error extracting data in LSB: {e}")
+            return None
+
+    @classmethod
+    def _extract_metadata_from_comments(cls, image: IMAGE_INPUT_TYPE):
+        """
+        Extract metadata from image comments and other info.
+        :param image: IMAGE_INPUT_TYPE
+        """
+        with Image.open(image) as img:
             title = img.info.get("Title", None)
-            prompt = img.info.get("Description", None)
-            comment = img.info.get("Comment", None)
+            description = img.info.get("Description", None)
+            comment = img.info.get("Comment", "{}")
             try:
-                assert isinstance(comment, str), ValueError("Comment Empty")
-                comment = json.loads(comment)
+                comment_dict = json.loads(comment)
             except Exception as e:
                 logger.trace(f"Error loading comment: {e}")
-                comment = {}
-        if comment.get("prompt", None) is None:
-            comment["prompt"] = prompt
+                comment_dict = {}
         try:
-            comment_model = cls.CommentModel.model_validate(comment)
-            return cls(Title=title, Description=prompt, Comment=comment_model)
+            comment_dict.setdefault("prompt", description)
+            comment_model = cls.CommentModel.model_validate(comment_dict)
+            return cls(Title=title, Description=description, Comment=comment_model)
         except Exception as e:
             logger.debug(f"Error loading comment: {e}")
-            raise ValueError("Data extraction failed")
+            return None
+
+    @classmethod
+    def load_image(cls, image: IMAGE_INPUT_TYPE):
+        """
+        Load image and extract metadata using LSB/Metadata
+        :param image: str, bytes, Path, BytesIO
+        :return: ImageMetadata
+        :raises ValueError: Data extraction failed
+        """
+        image_data = get_image_bytes(image)
+        metadata = cls._extract_metadata_from_lsb(image_data)
+        if metadata:
+            return metadata
+        metadata = cls._extract_metadata_from_comments(image)
+        if metadata:
+            return metadata
+        raise ValueError("No metadata found")
 
     @staticmethod
     def verify_image_is_novelai(
-            image: Union[Image.Image, np.ndarray],
+            image,
             verify_key_hex: str = "Y2JcQAOhLwzwSDUJPNgL04nS0Tbqm7cSRc4xk0vRMic="
     ) -> bool:
         """
         Verify if the image is a NovelAI generated image
-        :param image:  Image.Image or np.ndarray
-        :param verify_key_hex:
-        :return:  bool
-        :raises RuntimeError:  No metadata found in image
-        :raises RuntimeError:  Comment not in metadata
-        :raises RuntimeError:  signed_hash not in comment
-        """
-        # MIT:https://github.com/NovelAI/novelai-image-metadata/blob/main/nai_sig.py
-        if isinstance(image, Image.Image):
-            image = np.array(image)
-        metadata = ImageLsbDataExtractor().extract_data(image)
 
-        if metadata is None:
-            raise RuntimeError("No metadata found in image")
-        if "Comment" not in metadata:
-            raise RuntimeError("Comment not in metadata")
-        comment = metadata["Comment"]
-        if "signed_hash" not in comment:
-            raise RuntimeError("signed_hash not in comment")
-        signed_hash = comment["signed_hash"].encode("utf-8")
-        signed_hash = base64.b64decode(signed_hash)
-        del comment["signed_hash"]
-        verify_key_hex = verify_key_hex.encode("utf-8")
-        verify_key = VerifyKey(verify_key_hex, encoder=Base64Encoder)
-        image_and_comment = image[:, :, :3].tobytes() + json.dumps(comment).encode("utf-8")
+        :param image: Union[str, bytes, Path, BytesIO] - The input image to verify.
+        :param verify_key_hex: str - The verification key in base64 format.
+        :return: bool - True if the image is verified as NovelAI generated, otherwise False.
+        :raises ValueError: If the required metadata or signed hash is missing.
+        """
+        image_data = get_image_bytes(image)
+        image_array = np.array(Image.open(image_data))
+        metadata = ImageMetadata.load_image(image_data)
+
+        if not metadata or not metadata.Comment or not metadata.Comment.signed_hash:
+            raise ValueError("Required metadata or signed hash is missing, maybe not a NovelAI image")
+
+        comment_json = metadata.Comment.model_dump(mode="json")
+        signed_hash = base64.b64decode(comment_json.pop("signed_hash").encode("utf-8"))
         try:
+            verify_key = VerifyKey(verify_key_hex.encode("utf-8"), encoder=Base64Encoder)
+            image_and_comment = image_array[:, :, :3].tobytes() + json.dumps(comment_json).encode("utf-8")
             verify_key.verify(image_and_comment, signed_hash)
+            return True
         except Exception as e:
-            logger.trace(e)
+            logger.trace(f"Verification failed: {e}")
             return False
-        return True
