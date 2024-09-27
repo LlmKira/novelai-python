@@ -2,7 +2,7 @@
 import base64
 import json
 from io import BytesIO
-from typing import Union, Optional, List
+from typing import Union, Optional, List, Tuple
 
 import numpy as np
 from PIL import Image
@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict
 
 from novelai_python.sdk.ai._enum import PROMOTION, Model
 from ._type import IMAGE_INPUT_TYPE, get_image_bytes
+from .bch_utils import fec_decode
 from .lsb_extractor import ImageLsbDataExtractor
 from .lsb_injector import inject_data
 
@@ -160,7 +161,7 @@ class ImageMetadata(BaseModel):
         :param image: IMAGE_INPUT_TYPE
         """
         try:
-            image_meta_data = ImageLsbDataExtractor().extract_data(image)
+            image_meta_data, fec_data = ImageLsbDataExtractor().extract_data(image)
             return cls.model_validate(image_meta_data)
         except Exception as e:
             logger.trace(f"Error extracting data in LSB: {e}")
@@ -206,33 +207,91 @@ class ImageMetadata(BaseModel):
             return metadata
         raise ValueError("No metadata found")
 
+
+class ImageVerifier:
+
     @staticmethod
-    def verify_image_is_novelai(
-            image,
-            verify_key_hex: str = "Y2JcQAOhLwzwSDUJPNgL04nS0Tbqm7cSRc4xk0vRMic="
-    ) -> bool:
+    def verify_latents(image: Image.Image, signed_hash: bytes, verify_key: VerifyKey):
+        image.load()
+        sig = None
+        latents = None
+        try:
+            for cid, data, after_idat in image.private_chunks:
+                if after_idat:
+                    if cid == b'ltns':
+                        sig = data
+                    elif cid == b'ltnt':
+                        latents = data
+        except Exception as e:
+            logger.trace(f"Error extracting latents: {e}")
+            return True, False, None
+        if sig is None or latents is None:
+            return True, False, None
+        if not sig.startswith(b'NovelAI_ltntsig'):
+            return False, False, None
+        sig = sig[len(b'NovelAI_ltntsig'):]
+        if not latents.startswith(b'NovelAI_latents'):
+            return False, False, None
+        latents = latents[len(b'NovelAI_latents'):]
+        if len(sig) != 64:
+            return False, False, None
+        w, h = image.size
+        base_size = (w // 8) * (h // 8) * 4
+        if len(latents) != base_size * 4 and len(latents) != base_size * 2:
+            return False, False, None
+        float_dim = 4 if len(latents) == base_size * 4 else 2
+        try:
+            verify_key.verify(signed_hash + latents, sig)
+            return True, True, (float_dim, latents)
+        except Exception as e:
+            logger.trace(f"Error verifying latents: {e}")
+            return False, False, None
+
+    def verify(self,
+               image,
+               verify_key_hex: str = "Y2JcQAOhLwzwSDUJPNgL04nS0Tbqm7cSRc4xk0vRMic="
+               ) -> Tuple[bool, bool]:
         """
         Verify if the image is a NovelAI generated image
 
         :param image: Union[str, bytes, Path, BytesIO] - The input image to verify.
         :param verify_key_hex: str - The verification key in base64 format.
-        :return: bool - True if the image is verified as NovelAI generated, otherwise False.
+        :return: Tuple[bool, bool] - The first bool indicates if the image is verified, the second bool indicates if the image has latents.
         :raises ValueError: If the required metadata or signed hash is missing.
         """
-        image_data = get_image_bytes(image)
-        image_array = np.array(Image.open(image_data))
-        metadata = ImageMetadata.load_image(image_data)
-
-        if not metadata or not metadata.Comment or not metadata.Comment.signed_hash:
-            raise ValueError("Required metadata or signed hash is missing, maybe not a NovelAI image")
-
-        comment_json = metadata.Comment.model_dump(mode="json")
-        signed_hash = base64.b64decode(comment_json.pop("signed_hash").encode("utf-8"))
+        image_obj = Image.open(get_image_bytes(image))
+        w, h = image_obj.size
+        image_array = np.array(image_obj)
         try:
-            verify_key = VerifyKey(verify_key_hex.encode("utf-8"), encoder=Base64Encoder)
-            image_and_comment = image_array[:, :, :3].tobytes() + json.dumps(comment_json).encode("utf-8")
-            verify_key.verify(image_and_comment, signed_hash)
-            return True
+            metadata, fec_data = ImageLsbDataExtractor().extract_data(image, get_fec=True)
         except Exception as e:
-            logger.trace(f"Verification failed: {e}")
-            return False
+            logger.trace(f"Error extracting data in LSB: {e}")
+            metadata = None
+            fec_data = None
+        if not metadata or not metadata.get("Comment") or not metadata["Comment"].get("signed_hash"):
+            raise ValueError(
+                "Bad image lsb or metadata. Comment or Comment.signed_hash is missing, the image is be tampered or not generated by NovelAI."
+            )
+        parameter = metadata["Comment"]
+        signed_hash = base64.b64decode(parameter.pop("signed_hash").encode("utf-8"))
+        # Build verify key
+        verify_key = VerifyKey(verify_key_hex.encode("utf-8"), encoder=Base64Encoder)
+        # Verify latents
+        good_latents, have_latents, latents = self.verify_latents(image_obj, signed_hash, verify_key)
+        if not good_latents:
+            return False, False
+        rgb = image_array[:, :, :3].tobytes()
+        parameter = json.dumps(parameter).encode("utf-8")
+        image_and_comment = rgb + parameter
+        try:
+            verify_key.verify(image_and_comment, signed_hash)
+        except Exception as e:
+            logger.trace(f"Error verifying image [1]: {e}")
+            try:
+                rgb, errs = fec_decode(bytearray(rgb), bytearray(fec_data), w, h)
+                image_and_comment = rgb + parameter
+                verify_key.verify(image_and_comment, signed_hash)
+            except Exception as e:
+                logger.trace(f"Error verifying image [2]: {e}")
+                return False, False
+        return True, have_latents

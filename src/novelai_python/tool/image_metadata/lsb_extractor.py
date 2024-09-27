@@ -59,7 +59,7 @@ class ImageLsbDataExtractor(object):
     def __init__(self):
         self.magic = "stealth_pngcomp"
 
-    def extract_data(self, image: Union[BytesIO, bytes, Path], ) -> dict:
+    def extract_data(self, image: Union[BytesIO, bytes, Path], get_fec: bool = False) -> tuple:
         if isinstance(image, (bytes, BytesIO, Path)):
             img = Image.open(image)
             img.convert("RGBA")
@@ -79,7 +79,16 @@ class ImageLsbDataExtractor(object):
             json_data = json.loads(gzip.decompress(json_data).decode("utf-8"))
             if "Comment" in json_data:
                 json_data["Comment"] = json.loads(json_data["Comment"])
-            return json_data
+
+            if not get_fec:
+                return json_data, None
+
+            fec_len = reader.read_32bit_integer()
+            fec_data = None
+            if fec_len != 0xffffffff:
+                fec_data = reader.get_next_n_bytes(fec_len // 8)
+
+            return json_data, fec_data
         except FileNotFoundError:
             # 无法找到文件
             raise Exception(f"The file {image} does not exist.")
