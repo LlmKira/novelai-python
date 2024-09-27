@@ -5,7 +5,7 @@
 groups = ["default", "dev", "testing"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:d97e0fe3e9659cc78992a3fbe8cc33307067e47ad4b074c9c5e48f72289208a6"
+content_hash = "sha256:6357c7ce4e98787f69a1bba0f67d789f7fe5bd5026cbba51b19c2980a21e0b31"
 
 [[metadata.targets]]
 requires_python = ">=3.9"
@@ -87,6 +87,58 @@ files = [
     {file = "argon2_cffi_bindings-21.2.0-pp38-pypy38_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:20ef543a89dee4db46a1a6e206cd015360e5a75822f76df533845c3cbaf72670"},
     {file = "argon2_cffi_bindings-21.2.0-pp38-pypy38_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:ed2937d286e2ad0cc79a7087d3c272832865f779430e0cc2b4f3718d3159b0cb"},
     {file = "argon2_cffi_bindings-21.2.0-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:5e00316dabdaea0b2dd82d141cc66889ced0cdcbfa599e8b471cf22c620c329a"},
+]
+
+[[package]]
+name = "bchlib"
+version = "2.1.3"
+requires_python = ">=3.6.0"
+summary = "A python wrapper module for the Linux kernel BCH library."
+groups = ["default"]
+files = [
+    {file = "bchlib-2.1.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:0ba3c8255f4d1aaf4dba90d39e8b31563e5bdf42c9b08660a2c76bacec1814f7"},
+    {file = "bchlib-2.1.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:08cab7d645613bc486ad547f29e49f51ad1defab20e3c8b3d6b4a6af86d0d673"},
+    {file = "bchlib-2.1.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ae1aa14cc35bedd0f283f7ad357dc70ae2f6164aa3aa58eee2cb329d0e780d6c"},
+    {file = "bchlib-2.1.3-cp310-cp310-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:258c2a6e223810e265eb4337da8fe33d4f15ca0ce35c32267c45c5002a187d64"},
+    {file = "bchlib-2.1.3-cp310-cp310-musllinux_1_2_i686.whl", hash = "sha256:ec7036de49578d74c82888af88d0c4fc22ece684de20ddf07b5d1d0b39d542ba"},
+    {file = "bchlib-2.1.3-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:4669bba18732fc1be06761fec4685a66b194748a3f08cf5afdf541702bd4c5e1"},
+    {file = "bchlib-2.1.3-cp310-cp310-win32.whl", hash = "sha256:d133db99607be27e16e74ea2a5aca9244e357b5a5f1580e418143929f99cd0bb"},
+    {file = "bchlib-2.1.3-cp310-cp310-win_amd64.whl", hash = "sha256:f70569bd9df1eda7c2dee55d995ec65ee651906a877421525c99f5187d36be24"},
+    {file = "bchlib-2.1.3-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:64407c0bc8b58ce41399f7f1d52a46c7fa63dc83fa91e70cf84f46b87854e807"},
+    {file = "bchlib-2.1.3-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:ee67db08c41894cf490de535f4ec54659745ffafbcf37b9f04b18b1e44101d96"},
+    {file = "bchlib-2.1.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:80570e504162b330fffd8d9b20679a09eddb3d9edd961159d2bf73e064fb22a2"},
+    {file = "bchlib-2.1.3-cp311-cp311-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:5f601388cd8847884eef6d68d14dfb37ae469ad8fa3429b49bbefd663208c1f5"},
+    {file = "bchlib-2.1.3-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:0ef8ff4bb45d5263702d615ec38662354d8374cfa4db2d9ab7f18f5a29f211e0"},
+    {file = "bchlib-2.1.3-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:460277205bc29062275159d0221f6b286669a8d8f4c61f8e6ae4eaa7b3091370"},
+    {file = "bchlib-2.1.3-cp311-cp311-win32.whl", hash = "sha256:06375176fb7465a9de16a8b3318ba16e4f2ba4edb78cd631e5588521c9661a60"},
+    {file = "bchlib-2.1.3-cp311-cp311-win_amd64.whl", hash = "sha256:1060fecdefc0d9782aa5ef4c82537a60049af45c842d540c16a64fef85c0c44d"},
+    {file = "bchlib-2.1.3-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:3edba1ba46b895fcb31b4269e2527a3f69b2a5789a8f34fcd95eacddeedb7758"},
+    {file = "bchlib-2.1.3-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:ec73cbf5d5ef85fc5614b704ab71b4e7d7de41a762c93fda1a96dc8c0a98d8c3"},
+    {file = "bchlib-2.1.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8397acef706f069c096a379ab3b56de650e9d64f8b54dea6af53e48a0406656d"},
+    {file = "bchlib-2.1.3-cp312-cp312-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:6c3c0c08c3eb114c4fa782c4c22d9cd197082a5c5fc9e2b7b95036e1af44790f"},
+    {file = "bchlib-2.1.3-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:0be4fdcf66cdf91f51126a7139330d983a9bc05289cb142d45b7f7d91019ee22"},
+    {file = "bchlib-2.1.3-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:f1170738939e2dcde43cb772095412e6368cc6942f143f55b646d5c252d3e7af"},
+    {file = "bchlib-2.1.3-cp312-cp312-win32.whl", hash = "sha256:0019affb4dbf9af38ebb1cb813c17140ec3c1af9afc55844bc4b3fab462be145"},
+    {file = "bchlib-2.1.3-cp312-cp312-win_amd64.whl", hash = "sha256:c469d9c19d0621815dd04e759b842ed218f828a1e1fc5e1c6939944785b335e4"},
+    {file = "bchlib-2.1.3-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:b077da495ecb05fda51ee997e9b9fe85efc4dfa887dbc3a1c3351162f0a77a57"},
+    {file = "bchlib-2.1.3-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:c1b807eb7c99d739e5dc74c0f90335b9d2168639e3e5df12a3f018a4950a0280"},
+    {file = "bchlib-2.1.3-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5f41747e7eabb79d2ace40b5b61ed790692859444e423323049dac175302afa6"},
+    {file = "bchlib-2.1.3-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:19d8ba8d24642d0d5da13a8c1149fd979623288f2250e83e0a2166c0d0773b8c"},
+    {file = "bchlib-2.1.3-cp39-cp39-musllinux_1_2_i686.whl", hash = "sha256:0a7e2503e7b0ae1f95c8117da03ba51edc642f7f10ac0dfab216e938ebdc615a"},
+    {file = "bchlib-2.1.3-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:a14541ca447c94c063f7371891ff8e2f3134004e40f521dc5244b311ab2c7e76"},
+    {file = "bchlib-2.1.3-cp39-cp39-win32.whl", hash = "sha256:6ba74cbbd7541c46fae4187dd00d5c363c622432aa9d365c505c2cd2dfa59e99"},
+    {file = "bchlib-2.1.3-cp39-cp39-win_amd64.whl", hash = "sha256:2d078e51f2c1c464d319b00b536b9731de86423e09e72084d98ffd714d3de94f"},
+    {file = "bchlib-2.1.3-pp310-pypy310_pp73-macosx_10_15_x86_64.whl", hash = "sha256:d5125436a420cf386d1c3dde5203c9b4611096aabd0da84b2de04b96d42ba723"},
+    {file = "bchlib-2.1.3-pp310-pypy310_pp73-macosx_11_0_arm64.whl", hash = "sha256:7d6dba3d9256b51c8fc3ed1bdbc129bfcda56cfa04d0280b638b9e9364d5bdd0"},
+    {file = "bchlib-2.1.3-pp310-pypy310_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:85270e5a93681ece506f6b37772f2be404e71d4911cce3fdd539c7f89f0ebdac"},
+    {file = "bchlib-2.1.3-pp310-pypy310_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:6804608aaae5efc858003ab8e69a27c63fde41dfa85f89febd7bc001eef46502"},
+    {file = "bchlib-2.1.3-pp310-pypy310_pp73-win_amd64.whl", hash = "sha256:c9682324fb384008f08432e4b40f044be7a976af24462c5fa56b1fbc6f7abc92"},
+    {file = "bchlib-2.1.3-pp39-pypy39_pp73-macosx_10_15_x86_64.whl", hash = "sha256:d5700fd82130b429e1a7defd15e8cf7a36825ed1f22c969e83affc2dd952daaf"},
+    {file = "bchlib-2.1.3-pp39-pypy39_pp73-macosx_11_0_arm64.whl", hash = "sha256:8e83931682b6b561ff26ccc71c8115e3b1fdce611f7adf94a6060cfed61d6416"},
+    {file = "bchlib-2.1.3-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c3a28dbb408e8bd06407fa5ff5f5015bd8bc2e1de95b8f99c9fa98594e838c46"},
+    {file = "bchlib-2.1.3-pp39-pypy39_pp73-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:12b83b336216278041ae7aa4fc7f15ddb4107c609f48860894ecbd6406395bf8"},
+    {file = "bchlib-2.1.3-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:18551bd114cecf5da37f76e959041b128ccddb6ccd8032f12d72e2ac39d67d9f"},
+    {file = "bchlib-2.1.3.tar.gz", hash = "sha256:f1c5d2a838259bd505f4c4afbd1187d5751224a4401923a10c5dd4f2e21e2125"},
 ]
 
 [[package]]
