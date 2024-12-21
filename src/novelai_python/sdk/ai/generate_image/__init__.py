@@ -570,6 +570,7 @@ class GenerateImageInfer(ApiBaseModel):
             qualitySuffix: bool = True,
             negative_prompt: str = "",
             ucPreset: UCPresetTypeAlias = UCPreset.TYPE0,
+            sm: bool = False,
             steps: int = 23,
             seed: int = None,
             sampler: Union[Sampler, str] = None,
@@ -589,6 +590,7 @@ class GenerateImageInfer(ApiBaseModel):
 
         If you need to define more parameters, you should initialize the Param class yourself.
 
+        :param sm:
         :param reference_information_extracted_multiple:
         :param reference_strength_multiple:
         :param reference_image_multiple:
@@ -634,6 +636,7 @@ class GenerateImageInfer(ApiBaseModel):
             add_original_image=add_original_image,
             steps=steps,
             seed=seed,
+            sm=sm,
             negative_prompt=negative_prompt,
             ucPreset=ucPreset,
             qualityToggle=qualityToggle,
@@ -656,6 +659,7 @@ class GenerateImageInfer(ApiBaseModel):
             *,
             image: Union[bytes, str],
             strength: float = 0.7,
+            noise: float = 0,
             seed: int = None,
             extra_noise_seed: int = None,
             model: Union[Model, str] = Model.NAI_DIFFUSION_3,
@@ -673,15 +677,17 @@ class GenerateImageInfer(ApiBaseModel):
             reference_information_extracted_multiple: List[float] = None,
             qualityToggle: bool = False,
             decrisp_mode: bool = False,
-            variety_boost: bool = False,
+            variety_boost: bool = False
     ):
         """
         Quickly construct a parameter class that meets the requirements.
 
         If you need to define more parameters, you should initialize the Param class yourself.
 
+        :param controlnet_strength:
         :param strength:
         :param image:
+        :param noise: For img2img
         :param extra_noise_seed: Get extra_noise_seed
         :param reference_information_extracted_multiple:
         :param reference_strength_multiple:
@@ -725,6 +731,7 @@ class GenerateImageInfer(ApiBaseModel):
         params = Params(
             image=image,
             strength=strength,
+            noise=noise,
             width=width,
             height=height,
             sampler=sampler,
