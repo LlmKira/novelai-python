@@ -88,7 +88,7 @@ async def main():
     )
     cost = gen.calculate_cost(is_opus=True)
     print(f"charge: {cost} if you are vip3")
-    resp = gen.request(session=session)
+    resp = await gen.request(session=session)
     resp: ImageGenerateResp
     print(resp.meta)
     file = resp.files[0]
