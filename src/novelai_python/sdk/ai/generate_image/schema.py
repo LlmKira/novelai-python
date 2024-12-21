@@ -77,7 +77,7 @@ class CharCaption(BaseModel):
 class Caption(BaseModel):
     base_caption: str = Field("", description="Main Prompt")
     """Main Prompt"""
-    char_captions: List[CharCaption] = Field([], description="Character Captions")
+    char_captions: List[CharCaption] = Field(default_factory=list, description="Character Captions")
     """Character Captions"""
 
 

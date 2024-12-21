@@ -92,7 +92,7 @@ class AdvanceLLMSetting(BaseModel):
     prefix: Optional[str] = ""
     logit_bias_exp: Optional[List[LogitBiasGroup]] = None
     num_logprobs: Optional[int] = None
-    order: List[int] = []
+    order: List[int] = Field(default_factory=list)
     bracket_ban: Optional[bool] = True
     model_config = ConfigDict(extra="allow")
 
@@ -116,7 +116,7 @@ class LLMGenerationParams(BaseModel):
 
     eos_token_id: int = None
     bad_words_ids: List[List[int]] = None
-    logit_bias_groups: Optional[List[LogitBiasGroup]] = []
+    logit_bias_groups: Optional[List[LogitBiasGroup]] = Field(default_factory=list)
 
     repetition_penalty_frequency: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
     repetition_penalty_presence: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
@@ -133,19 +133,21 @@ class LLMGenerationParams(BaseModel):
     math1_quad_entropy_scale: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
     min_p: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
 
-    order: Union[List[int], List[KeyOrderEntry]] = [
-        KeyOrderEntry(id=Key.Cfg, enabled=False),
-        KeyOrderEntry(id=Key.Temperature, enabled=True),
-        KeyOrderEntry(id=Key.TopK, enabled=True),
-        KeyOrderEntry(id=Key.TopP, enabled=True),
-        KeyOrderEntry(id=Key.TFS, enabled=True),
-        KeyOrderEntry(id=Key.TopA, enabled=False),
-        KeyOrderEntry(id=Key.TypicalP, enabled=False),
-        KeyOrderEntry(id=Key.TopG, enabled=False),
-        KeyOrderEntry(id=Key.Mirostat, enabled=False),
-        KeyOrderEntry(id=Key.Math1, enabled=False),
-        KeyOrderEntry(id=Key.MinP, enabled=False),
-    ]
+    order: Union[List[int], List[KeyOrderEntry]] = Field(
+        default=[
+            KeyOrderEntry(id=Key.Cfg, enabled=False),
+            KeyOrderEntry(id=Key.Temperature, enabled=True),
+            KeyOrderEntry(id=Key.TopK, enabled=True),
+            KeyOrderEntry(id=Key.TopP, enabled=True),
+            KeyOrderEntry(id=Key.TFS, enabled=True),
+            KeyOrderEntry(id=Key.TopA, enabled=False),
+            KeyOrderEntry(id=Key.TypicalP, enabled=False),
+            KeyOrderEntry(id=Key.TopG, enabled=False),
+            KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            KeyOrderEntry(id=Key.Math1, enabled=False),
+            KeyOrderEntry(id=Key.MinP, enabled=False),
+        ]
+    )
 
     def get_base_map(self):
         parameters = self.model_dump(mode="json", exclude_none=True)

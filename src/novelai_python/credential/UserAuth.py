@@ -19,7 +19,7 @@ class LoginCredential(CredentialBase):
     """
     username: str = Field(None, description="username")
     password: SecretStr = Field(None, description="password")
-    _session_headers: dict = {}
+    _session_headers: dict = Field(default_factory=dict)
     _update_at: Optional[int] = None
     _x_correlation_id: str = shortuuid.uuid()[0:6]
 
