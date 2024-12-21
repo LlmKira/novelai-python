@@ -7,7 +7,7 @@ from novelai_python.tokenizer import NaiTokenizer
 class TestNaiTokenizer(unittest.TestCase):
 
     def setUp(self):
-        self.text = "The quick brown fox jumps over the lazy dog"
+        self.text = "the quick brown fox jumps over the lazy dog"
         self.tokenizer_groups = [
             TextTokenizerGroup.CLIP,
             TextTokenizerGroup.NERDSTASH,
