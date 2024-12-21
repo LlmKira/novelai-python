@@ -2,7 +2,7 @@
 # @Time    : 2024/2/13 下午12:42
 # @Author  : sudoskys
 # @File    : __init__.py.py
-# @Software: PyCharm
+
 from novelai_python.tool.paint_mask import create_mask_from_sketch
 
 with open('sk.jpg', 'rb') as f:

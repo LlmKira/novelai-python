@@ -2,7 +2,7 @@
 # @Time    : 2024/1/26 上午11:04
 # @Author  : sudoskys
 # @File    : JwtToken.py
-# @Software: PyCharm
+
 
 import arrow
 import shortuuid

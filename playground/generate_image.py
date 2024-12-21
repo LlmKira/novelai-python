@@ -2,7 +2,7 @@
 # @Time    : 2024/1/26 下午12:23
 # @Author  : sudoskys
 # @File    : __init__.py.py
-# @Software: PyCharm
+
 import asyncio
 import os
 import pathlib

@@ -2,7 +2,7 @@
 # @Time    : 2024/1/26 下午2:03
 # @Author  : sudoskys
 # @File    : nsfw.py
-# @Software: PyCharm
+
 nsfw = {
     "pussy": [
         [

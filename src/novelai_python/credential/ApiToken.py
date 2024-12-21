@@ -2,7 +2,7 @@
 # @Time    : 2024/2/8 下午3:05
 # @Author  : sudoskys
 # @File    : ApiToken.py
-# @Software: PyCharm
+
 
 import arrow
 import shortuuid

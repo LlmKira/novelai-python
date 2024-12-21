@@ -2,12 +2,12 @@
 # @Time    : 2024/2/13 下午12:03
 # @Author  : sudoskys
 # @File    : test_upscale.py
-# @Software: PyCharm
+
 # -*- coding: utf-8 -*-
 # @Time    : 2024/2/14 下午4:20
 # @Author  : sudoskys
 # @File    : test_upscale.py
-# @Software: PyCharm
+
 from unittest import mock
 from unittest.mock import AsyncMock, Mock
 

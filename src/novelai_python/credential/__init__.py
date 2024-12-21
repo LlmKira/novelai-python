@@ -2,7 +2,7 @@
 # @Time    : 2024/1/26 上午10:51
 # @Author  : sudoskys
 # @File    : __init__.py.py
-# @Software: PyCharm
+
 from pydantic import SecretStr
 
 from .ApiToken import ApiCredential

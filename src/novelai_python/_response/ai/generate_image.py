@@ -2,7 +2,7 @@
 # @Time    : 2024/1/26 上午11:16
 # @Author  : sudoskys
 # @File    : text2image.py
-# @Software: PyCharm
+
 from typing import Tuple, List
 
 from pydantic import BaseModel

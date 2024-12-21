@@ -2,7 +2,7 @@
 # @Time    : 2024/2/9 下午10:04
 # @Author  : sudoskys
 # @File    : generate_image_img2img.py
-# @Software: PyCharm
+
 import asyncio
 import base64
 import os

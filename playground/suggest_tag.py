@@ -2,7 +2,7 @@
 # @Time    : 2024/2/13 下午8:25
 # @Author  : sudoskys
 # @File    : suggest_tag.py
-# @Software: PyCharm
+
 import asyncio
 import os
 

@@ -2,7 +2,7 @@
 # @Time    : 2024/2/10 上午11:15
 # @Author  : sudoskys
 # @File    : schema.py
-# @Software: PyCharm
+
 from abc import ABC, abstractmethod
 from typing import Optional, Union
 

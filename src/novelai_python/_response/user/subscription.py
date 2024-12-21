@@ -2,7 +2,7 @@
 # @Time    : 2024/2/7 上午9:57
 # @Author  : sudoskys
 # @File    : subscription.py
-# @Software: PyCharm
+
 from typing import Optional, Dict, Any, List
 
 from pydantic import BaseModel, Field

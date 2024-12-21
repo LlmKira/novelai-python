@@ -2,7 +2,6 @@
 # @Time    : 2024/2/13 下午8:10
 # @Author  : sudoskys
 # @File    : _enum.py
-# @Software: PyCharm
 from enum import Enum, IntEnum
 from typing import List, Optional, Union
 

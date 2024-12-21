@@ -2,7 +2,7 @@
 # @Time    : 2024/2/9 下午10:41
 # @Author  : sudoskys
 # @File    : useful.py
-# @Software: PyCharm
+
 import collections
 import random
 from typing import List, Union

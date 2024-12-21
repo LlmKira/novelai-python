@@ -2,7 +2,7 @@
 # @Time    : 2024/2/7 下午12:14
 # @Author  : sudoskys
 # @File    : _shema.py
-# @Software: PyCharm
+
 from curl_cffi.requests import AsyncSession
 from fake_useragent import UserAgent
 from pydantic import BaseModel

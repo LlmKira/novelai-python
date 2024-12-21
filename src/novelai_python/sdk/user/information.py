@@ -2,7 +2,7 @@
 # @Time    : 2024/2/8 下午3:09
 # @Author  : sudoskys
 # @File    : information.py
-# @Software: PyCharm
+
 from typing import Optional, Union
 from urllib.parse import urlparse
 

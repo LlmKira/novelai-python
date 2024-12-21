@@ -2,12 +2,12 @@
 # @Time    : 2024/2/13 上午11:58
 # @Author  : sudoskys
 # @File    : upscale.py
-# @Software: PyCharm
+
 # -*- coding: utf-8 -*-
 # @Time    : 2024/2/14 下午5:20
 # @Author  : sudoskys
 # @File    : upscale_demo.py
-# @Software: PyCharm
+
 # To run the demo, you need an event loop, for instance by using asyncio
 import asyncio
 import os

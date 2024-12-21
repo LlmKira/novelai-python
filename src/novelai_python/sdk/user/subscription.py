@@ -2,7 +2,7 @@
 # @Time    : 2024/2/7 上午10:04
 # @Author  : sudoskys
 # @File    : subscription.py.py
-# @Software: PyCharm
+
 from typing import Optional, Union
 from urllib.parse import urlparse
 
