@@ -8,7 +8,7 @@ from pydantic import SecretStr
 
 from novelai_python import APIError, Login
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
-from novelai_python.sdk.ai.generate_image import Action, Sampler
+from novelai_python.sdk.ai.generate_image import Action, Sampler, Model
 from novelai_python.utils.useful import enum_to_list
 
 
@@ -32,15 +32,15 @@ async def generate(
             raise ValueError(f"Image not found: {image_path}")
         with open(image_path, "rb") as f:
             image = f.read()
-        agent = GenerateImageInfer.build(
+        agent = GenerateImageInfer.build_generate(
             prompt=prompt,
-            action=Action.GENERATE,
             sampler=Sampler.K_DPMPP_SDE,
-            reference_image=image,
-            reference_strength=0.9,
-            reference_information_extracted=1,
-            add_original_image=True,  # This Not affect the vibe generation
-            qualityToggle=True,
+            model=Model.NAI_DIFFUSION_3,
+            reference_image_multiple=[image],
+            reference_strength_multiple=[0.9],
+            reference_information_extracted_multiple=[1],
+            add_original_image=True,
+            # This Not affect the vibe generation
         )
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")

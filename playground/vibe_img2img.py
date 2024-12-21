@@ -37,18 +37,14 @@ async def generate(
             image = f.read()
         with open(reference_image_path, "rb") as f:
             reference_image = f.read()
-        agent = GenerateImageInfer.build(
+        agent = GenerateImageInfer.build_img2img(
             prompt=prompt,
-            action=Action.IMG2IMG,
             sampler=Sampler.K_DPMPP_SDE,
-
             image=image,
             strength=0.6,
-
-            reference_image=reference_image,
-            reference_strength=0.6,
-            reference_information_extracted=1,
-
+            reference_image_multiple=[reference_image],
+            reference_strength_multiple=[0.9],
+            reference_information_extracted_multiple=[1],
             add_original_image=True,  # This Not affect the vibe generation
             qualityToggle=True,
         )

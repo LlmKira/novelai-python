@@ -92,6 +92,8 @@ class Resolution(Enum):
 
 
 class Model(Enum):
+    NAI_DIFFUSION_4_CURATED_PREVIEW = "nai-diffusion-4-curated-preview"
+
     NAI_DIFFUSION_3 = "nai-diffusion-3"
     NAI_DIFFUSION_3_INPAINTING = "nai-diffusion-3-inpainting"
     NAI_DIFFUSION_FURRY_3 = "nai-diffusion-furry-3"
@@ -112,6 +114,7 @@ class Model(Enum):
     WAIFU_DIFFUSION = "waifu-diffusion"
     CURATED_DIFFUSION_TEST = "curated-diffusion-test"
     NAI_DIFFUSION_XL = "nai-diffusion-xl"
+    DALLE_MINI = "dalle-mini"
 
 
 class ModelGroups(Enum):
@@ -119,6 +122,7 @@ class ModelGroups(Enum):
     STABLE_DIFFUSION_GROUP_2 = "stable_diffusion_group2"
     STABLE_DIFFUSION_XL = "stable_diffusion_xl"
     STABLE_DIFFUSION_XL_FURRY = "stable_diffusion_xl_furry"
+    V4 = "v4"
 
 
 INPAINTING_MODEL_LIST = [
@@ -153,6 +157,158 @@ PROMOTION = {
 ModelTypeAlias = Optional[Union[Model, str]]
 ImageBytesTypeAlias = Optional[Union[str, bytes]]
 UCPresetTypeAlias = Optional[Union[UCPreset, int]]
+
+
+@dataclass
+class SupportCondition:
+    controlnet: bool
+    vibetransfer: bool
+    scaleMax: int
+    negativePromptGuidance: bool
+    noiseSchedule: bool
+    inpainting: bool
+    cfgDelay: bool
+    characterPrompts: bool
+    v4Prompts: bool
+    smea: bool
+    text: bool
+
+
+def get_supported_params(model: Model):
+    """
+    Get supported parameters for a given model
+    :param model: Model
+    :return: SupportCondition
+    """
+    if model in [
+        Model.STABLE_DIFFUSION,
+        Model.NAI_DIFFUSION,
+        Model.SAFE_DIFFUSION,
+        Model.WAIFU_DIFFUSION,
+        Model.NAI_DIFFUSION_FURRY,
+        Model.CURATED_DIFFUSION_TEST,
+        Model.NAI_DIFFUSION_INPAINTING,
+        Model.SAFE_DIFFUSION_INPAINTING,
+        Model.FURRY_DIFFUSION_INPAINTING
+    ]:
+        return SupportCondition(
+            controlnet=True,
+            vibetransfer=False,
+            scaleMax=25,
+            negativePromptGuidance=False,
+            noiseSchedule=False,
+            inpainting=True,
+            cfgDelay=False,
+            characterPrompts=False,
+            v4Prompts=False,
+            smea=True,
+            text=False
+        )
+    if model in [Model.NAI_DIFFUSION_2]:
+        return SupportCondition(
+            controlnet=True,
+            vibetransfer=False,
+            scaleMax=25,
+            negativePromptGuidance=True,
+            noiseSchedule=False,
+            inpainting=True,
+            cfgDelay=False,
+            characterPrompts=False,
+            v4Prompts=False,
+            smea=True,
+            text=False
+        )
+    if model in [
+        Model.NAI_DIFFUSION_XL,
+        Model.NAI_DIFFUSION_3,
+        Model.NAI_DIFFUSION_3_INPAINTING,
+        Model.NAI_DIFFUSION_FURRY_3,
+        Model.NAI_DIFFUSION_FURRY_3_INPAINTING
+    ]:
+        return SupportCondition(
+            controlnet=False,
+            vibetransfer=True,
+            scaleMax=10,
+            negativePromptGuidance=True,
+            noiseSchedule=True,
+            inpainting=True,
+            cfgDelay=True,
+            characterPrompts=False,
+            v4Prompts=False,
+            smea=True,
+            text=False
+        )
+    if model in [Model.CUSTOM, Model.NAI_DIFFUSION_4_CURATED_PREVIEW]:
+        return SupportCondition(
+            controlnet=False,
+            vibetransfer=False,
+            scaleMax=10,
+            negativePromptGuidance=True,
+            noiseSchedule=True,
+            inpainting=True,
+            cfgDelay=False,
+            characterPrompts=True,
+            v4Prompts=True,
+            smea=False,
+            text=True
+        )
+    return SupportCondition(
+        controlnet=False,
+        vibetransfer=False,
+        scaleMax=25,
+        negativePromptGuidance=False,
+        noiseSchedule=False,
+        inpainting=False,
+        cfgDelay=False,
+        characterPrompts=False,
+        v4Prompts=False,
+        smea=False,
+        text=False
+    )
+
+
+@dataclass
+class Modifier(object):
+    qualityTags: str
+    suffix: str
+
+
+def get_modifiers(model: Model) -> Modifier:
+    """
+    Get modifiers from model
+    :param model:
+    :return:
+    """
+    if model in [Model.CUSTOM, Model.NAI_DIFFUSION_4_CURATED_PREVIEW]:
+        return Modifier(
+            qualityTags="",
+            suffix=", rating:general, amazing quality, very aesthetic, absurdres"
+        )
+    if model in [Model.NAI_DIFFUSION_2]:
+        return Modifier(
+            qualityTags="very aesthetic, best quality, absurdres, ",
+            suffix=""
+        )
+    if model in [
+        Model.NAI_DIFFUSION_3,
+        Model.NAI_DIFFUSION_3_INPAINTING
+    ]:
+        return Modifier(
+            qualityTags="",
+            suffix=", best quality, amazing quality, very aesthetic, absurdres"
+        )
+    if model in [
+        Model.NAI_DIFFUSION_FURRY_3,
+        Model.NAI_DIFFUSION_FURRY_3_INPAINTING
+    ]:
+        return Modifier(
+            qualityTags="",
+            suffix=", {best quality}, {amazing quality}"
+        )
+    return Modifier(
+        qualityTags="masterpiece, best quality, ",
+        suffix=""
+    )
 
 
 def get_supported_noise_schedule(sample_type: Sampler) -> List[NoiseSchedule]:
@@ -224,9 +380,10 @@ def get_model_group(model: ModelTypeAlias) -> ModelGroups:
         "nai-diffusion-xl": ModelGroups.STABLE_DIFFUSION_XL,
         "nai-diffusion-3": ModelGroups.STABLE_DIFFUSION_XL,
         "nai-diffusion-3-inpainting": ModelGroups.STABLE_DIFFUSION_XL,
-        "custom": ModelGroups.STABLE_DIFFUSION_XL,
+        "custom": ModelGroups.V4,
         "nai-diffusion-furry-3": ModelGroups.STABLE_DIFFUSION_XL_FURRY,
         "nai-diffusion-furry-3-inpainting": ModelGroups.STABLE_DIFFUSION_XL_FURRY,
+        "nai-diffusion-4-curated-preview": ModelGroups.V4,
     }
     return mapping.get(model, ModelGroups.STABLE_DIFFUSION)
 
