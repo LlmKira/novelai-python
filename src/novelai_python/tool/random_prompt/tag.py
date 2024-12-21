@@ -2,7 +2,7 @@
 # @Time    : 2024/1/26 下午2:00
 # @Author  : sudoskys
 # @File    : tag.py
-# @Software: PyCharm
+
 
 cameraPerspective = [
     ['dutch angle',

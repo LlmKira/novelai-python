@@ -19,9 +19,9 @@ class LoginCredential(CredentialBase):
     """
     username: str = Field(None, description="username")
     password: SecretStr = Field(None, description="password")
-    _session_headers: dict = {}
-    _update_at: Optional[int] = None
-    _x_correlation_id: str = shortuuid.uuid()[0:6]
+    session_headers: dict = Field(default_factory=dict)
+    update_at: Optional[int] = None
+    x_correlation_id: str = shortuuid.uuid()[0:6]
 
     async def get_session(self, timeout: int = 180, update_headers: dict = None):
         headers = {
@@ -32,19 +32,19 @@ class LoginCredential(CredentialBase):
             "Content-Type": "application/json",
             "Origin": "https://novelai.net",
             "Referer": "https://novelai.net/",
-            "x-correlation-id": self._x_correlation_id,
+            "x-correlation-id": self.x_correlation_id,
             "x-initiated-at": f"{arrow.utcnow().isoformat()}Z",
         }
 
         # 30 天有效期
-        if not self._session_headers or int(time.time()) - self._update_at > 29 * 24 * 60 * 60:
+        if not self.session_headers or int(time.time()) - self.update_at > 29 * 24 * 60 * 60:
             from ..sdk import Login
             resp = await Login.build(user_name=self.username, password=self.password.get_secret_value()).request()
             headers["Authorization"] = f"Bearer {resp.accessToken}"
-            self._session_headers = headers
-            self._update_at = int(time.time())
+            self.session_headers = headers
+            self.update_at = int(time.time())
         else:
-            headers.update(self._session_headers)
+            headers.update(self.session_headers)
 
         if update_headers:
             headers.update(update_headers)

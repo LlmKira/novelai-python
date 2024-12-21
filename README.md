@@ -53,14 +53,39 @@ from dotenv import load_dotenv
 from pydantic import SecretStr
 
 from novelai_python import GenerateImageInfer, ImageGenerateResp, ApiCredential
+from novelai_python.sdk.ai.generate_image import Model, Character, Sampler, UCPreset
+from novelai_python.sdk.ai.generate_image.schema import PositionMap
 
 load_dotenv()
-enhance = "year 2023,dynamic angle,  best quality, amazing quality, very aesthetic, absurdres"
 session = ApiCredential(api_token=SecretStr(os.getenv("NOVELAI_JWT")))  # pst-***
+
+prompt = "1girl, year 2023,dynamic angle,  best quality, amazing quality, very aesthetic, absurdres"
 
 
 async def main():
-    gen = await GenerateImageInfer.build(prompt=f"1girl,{enhance}")
+    gen = GenerateImageInfer.build_generate(
+        prompt=prompt,
+        model=Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
+        character_prompts=[
+            Character(
+                prompt="1girl",
+                uc="red hair",
+                center=PositionMap.AUTO
+            ),
+            Character(
+                prompt="1boy",
+                center=PositionMap.E5
+            )
+        ],
+        sampler=Sampler.K_EULER_ANCESTRAL,
+        ucPreset=UCPreset.TYPE0,
+        # Recommended, using preset negative_prompt depends on selected model
+        qualitySuffix=True,
+        qualityToggle=True,
+        decrisp_mode=False,
+        variety_boost=True,
+        # Checkbox in novelai.net
+    )
     cost = gen.calculate_cost(is_opus=True)
     print(f"charge: {cost} if you are vip3")
     resp = gen.request(session=session)

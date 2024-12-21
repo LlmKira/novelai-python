@@ -2,7 +2,7 @@
 # @Time    : 2024/2/8 下午3:05
 # @Author  : sudoskys
 # @File    : ApiToken.py
-# @Software: PyCharm
+
 
 import arrow
 import shortuuid
@@ -18,7 +18,7 @@ class ApiCredential(CredentialBase):
     ApiCredential is the base class for all credential.
     """
     api_token: SecretStr = Field(None, description="api token")
-    _x_correlation_id: str = shortuuid.uuid()[0:6]
+    x_correlation_id: str = shortuuid.uuid()[0:6]
 
     async def get_session(self, timeout: int = 180, update_headers: dict = None):
         headers = {
@@ -29,7 +29,7 @@ class ApiCredential(CredentialBase):
             "Content-Type": "application/json",
             "Origin": "https://novelai.net",
             "Referer": "https://novelai.net/",
-            "x-correlation-id": self._x_correlation_id,
+            "x-correlation-id": self.x_correlation_id,
             "x-initiated-at": f"{arrow.utcnow().isoformat()}Z",
         }
 

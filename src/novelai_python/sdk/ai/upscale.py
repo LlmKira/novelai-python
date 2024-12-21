@@ -2,7 +2,6 @@
 # @Time    : 2024/2/13 上午10:48
 # @Author  : sudoskys
 # @File    : upscale.py
-# @Software: PyCharm
 import base64
 import json
 from io import BytesIO

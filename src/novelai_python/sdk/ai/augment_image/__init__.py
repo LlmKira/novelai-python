@@ -2,7 +2,7 @@
 # @Time    : 2024/2/13 下午8:08
 # @Author  : sudoskys
 # @File    : __init__.py.py
-# @Software: PyCharm
+
 import base64
 import io
 import json
@@ -85,7 +85,7 @@ class AugmentImageInfer(ApiBaseModel):
                     height=self.height,
                     steps=28,
                     model=Model.NAI_DIFFUSION_3,
-                    image=self.image,
+                    image=bool(self.image),
                     n_samples=1,
                     account_tier=1,
                     strength=1,
@@ -100,7 +100,7 @@ class AugmentImageInfer(ApiBaseModel):
                 height=self.height,
                 steps=28,
                 model=Model.NAI_DIFFUSION_3,
-                image=self.image,
+                image=bool(self.image),
                 n_samples=1,
                 account_tier=3 if is_opus else 1,
                 strength=1,

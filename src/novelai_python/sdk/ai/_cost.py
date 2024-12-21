@@ -11,9 +11,9 @@ from novelai_python.sdk.ai._enum import Sampler, ModelGroups, get_model_group, M
 class Args(BaseModel):
     height: int
     width: int
-    image: Optional[str]
+    image: bool
     n_samples: int
-    strength: float
+    strength: Optional[float]
     steps: int
     sm: bool
     sm_dyn: bool
@@ -34,11 +34,10 @@ class CostCalculator:
             width: int,
             height: int,
             steps: int,
-            image: str,
+            image: bool,
             n_samples: int,
             account_tier: int,
-            strength: float,
-
+            strength: Optional[float],
             is_sm_enabled: bool,
             is_sm_dynamic: bool,
             is_account_active: bool,
@@ -138,14 +137,15 @@ class CostCalculator:
             dimension = 65536
 
         base_dimension = 1048576
-        strength_multiplier = params.strength if params.image else 1
+        strength_multiplier = params.strength if (isinstance(params.strength, float) and params.image) else 1
         steps = params.steps
         samples = params.n_samples
 
         if steps <= 28 and dimension <= base_dimension and account_tier >= 3 and is_account_active and not is_tool_active:
             samples -= 1
 
-        if model_group and model_group in [ModelGroups.STABLE_DIFFUSION_XL, ModelGroups.STABLE_DIFFUSION_XL_FURRY]:
+        if model_group and model_group in [ModelGroups.STABLE_DIFFUSION_XL, ModelGroups.STABLE_DIFFUSION_XL_FURRY,
+                                           ModelGroups.V4]:
             cost = calculate_dimension_cost(img_width, img_height, steps, params.sm, params.sm_dyn)
         elif dimension <= base_dimension and params.sampler in [
             Sampler.PLMS, Sampler.DDIM,

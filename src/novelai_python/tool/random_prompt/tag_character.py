@@ -2,7 +2,7 @@
 # @Time    : 2024/2/7 下午5:56
 # @Author  : sudoskys
 # @File    : tag_character.py
-# @Software: PyCharm
+
 
 rankCharacter = [
     ['futanari-sama_(mdf_an)', 10],

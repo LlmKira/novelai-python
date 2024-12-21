@@ -2,7 +2,7 @@
 # @Time    : 2024/2/8 下午4:34
 # @Author  : sudoskys
 # @File    : information.py
-# @Software: PyCharm
+
 import asyncio
 import os
 

@@ -2,7 +2,7 @@
 # @Time    : 2024/1/27 上午10:41
 # @Author  : sudoskys
 # @File    : test_random_prompt.py
-# @Software: PyCharm
+
 
 from novelai_python.tool.random_prompt import RandomPromptGenerator
 

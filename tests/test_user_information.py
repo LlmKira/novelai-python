@@ -2,7 +2,7 @@
 # @Time    : 2024/2/8 下午3:17
 # @Author  : sudoskys
 # @File    : test_information.py
-# @Software: PyCharm
+
 from unittest import mock
 
 import pytest

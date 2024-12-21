@@ -2,7 +2,7 @@
 # @Time    : 2024/2/7 下午12:07
 # @Author  : sudoskys
 # @File    : login.py
-# @Software: PyCharm
+
 import asyncio
 import os
 

@@ -306,6 +306,7 @@ class LLM(ApiBaseModel):
               ) -> "LLM":
         """
         Generate
+        :param phrase_rep_pen: Phrase_rep_pen
         :param prompt: prompt, exp "Hello, World!"
         :param model: TextLLMModelTypeAlias
         :param advanced_setting: AdvanceLLMSetting, default None means auto-select

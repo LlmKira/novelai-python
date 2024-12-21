@@ -2,7 +2,7 @@
 # @Time    : 2024/1/26 下午12:23
 # @Author  : sudoskys
 # @File    : __init__.py.py
-# @Software: PyCharm
+
 import asyncio
 import os
 import pathlib
@@ -12,12 +12,14 @@ from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
-from novelai_python.sdk.ai._enum import UCPreset
-from novelai_python.sdk.ai.generate_image import Action, Model, Sampler
+from novelai_python.sdk.ai.generate_image import Action, Model, Sampler, Character, UCPreset
+from novelai_python.sdk.ai.generate_image.schema import PositionMap
 from novelai_python.utils.useful import enum_to_list
 
 
-async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazing quality, very aesthetic, absurdres"):
+async def generate(
+        prompt="1girl, year 2023, dynamic angle, best quality, amazing quality, very aesthetic, absurdres"
+):
     jwt = os.getenv("NOVELAI_JWT", None)
     if jwt is None:
         raise ValueError("NOVELAI_JWT is not set in `.env` file, please create one and set it")
@@ -29,16 +31,39 @@ async def generate(prompt="1girl, year 2023, dynamic angle, best quality, amazin
     )
     # await _login_credential.request()
     print(f"Action List:{enum_to_list(Action)}")
+    print(
+        """
+        .1 .3 .5 .7 .9
+        A1 B1 C1 D1 E1
+        A2 B2 C2 D2 E2
+        A3 B3 C3 D3 E3
+        ..............
+        A5 B5 C5 D5 E5
+        """
+    )
     try:
-        agent = GenerateImageInfer.build(
+        agent = GenerateImageInfer.build_generate(
             prompt=prompt,
-            model=Model.NAI_DIFFUSION_3,
-            action=Action.GENERATE,
-            sampler=Sampler.K_DPMPP_2M,
-            ucPreset=UCPreset.TYPE0,  # Recommended, using preset negative_prompt depends on selected model
+            model=Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
+            character_prompts=[
+                Character(
+                    prompt="1girl",
+                    uc="red hair",
+                    center=PositionMap.AUTO
+                ),
+                Character(
+                    prompt="1boy",
+                    center=PositionMap.E5
+                )
+            ],
+            sampler=Sampler.K_EULER_ANCESTRAL,
+            ucPreset=UCPreset.TYPE0,
+            # Recommended, using preset negative_prompt depends on selected model
+            qualitySuffix=True,
             qualityToggle=True,
             decrisp_mode=False,
-            variety_boost=True,  # Checkbox in website
+            variety_boost=True,
+            # Checkbox in novelai.net
         )
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")

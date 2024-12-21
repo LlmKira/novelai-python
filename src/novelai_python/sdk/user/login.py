@@ -2,7 +2,7 @@
 # @Time    : 2024/2/7 上午11:46
 # @Author  : sudoskys
 # @File    : login.py
-# @Software: PyCharm
+
 import json
 from typing import Optional, Union
 

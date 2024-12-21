@@ -2,7 +2,7 @@
 # @Time    : 2024/2/9 下午10:04
 # @Author  : sudoskys
 # @File    : generate_image_img2img.py
-# @Software: PyCharm
+
 import asyncio
 import base64
 import os
@@ -41,15 +41,12 @@ async def generate(
             # Base64 encode the image
             image = base64.b64encode(f.read()).decode()
             # image = f.read() # Or you can use the raw bytes
-        agent = GenerateImageInfer.build(
+        agent = GenerateImageInfer.build_img2img(
             prompt=prompt,
-            action=Action.IMG2IMG,
             sampler=Sampler.K_DPMPP_SDE,
             image=image,
-            add_original_image=False,
-            strength=0.9,
-            noise=0.1,
-            qualityToggle=True,
+            seed=123456789,
+            extra_noise_seed=123123123,
         )
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")

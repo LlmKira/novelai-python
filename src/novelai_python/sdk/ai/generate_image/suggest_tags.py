@@ -2,7 +2,7 @@
 # @Time    : 2024/2/13 下午8:09
 # @Author  : sudoskys
 # @File    : suggest-tags.py
-# @Software: PyCharm
+
 from typing import Optional, Union
 from urllib.parse import urlparse
 

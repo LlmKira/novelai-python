@@ -2,7 +2,7 @@
 # @Time    : 2024/2/7 上午10:16
 # @Author  : sudoskys
 # @File    : subscription.py
-# @Software: PyCharm
+
 import asyncio
 import os
 

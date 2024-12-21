@@ -2,14 +2,15 @@
 import asyncio
 import os
 import pathlib
+
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
-from novelai_python import APIError, Login
-from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
+from novelai_python import APIError, Login, ApiCredential
+from novelai_python import GenerateImageInfer, ImageGenerateResp
 from novelai_python.sdk.ai.generate_image import Action, Sampler, Model
-from novelai_python.utils.useful import enum_to_list
 from novelai_python.tool.paint_mask import create_mask_from_sketch
+from novelai_python.utils.useful import enum_to_list
 
 with open('static_image.png', 'rb') as f:
     ori_bytes = f.read()
@@ -34,7 +35,7 @@ async def generate(
     jwt = os.getenv("NOVELAI_JWT", None)
     if jwt is None:
         raise ValueError("NOVELAI_JWT is not set in `.env` file, please create one and set it")
-    credential = JwtCredential(jwt_token=SecretStr(jwt))
+    credential = ApiCredential(api_token=SecretStr(jwt))
     """Or you can use the login credential to get the jwt token"""
     _login_credential = Login.build(
         user_name=os.getenv("NOVELAI_USER"),
@@ -55,18 +56,17 @@ async def generate(
             reference_image = f.read()
         with open(mask_path, "rb") as f:
             mask = f.read()
-        agent = GenerateImageInfer.build(
+        agent = GenerateImageInfer.build_infill(
             prompt=prompt,
-            action=Action.INFILL,
             model=Model.NAI_DIFFUSION_3_INPAINTING,
             sampler=Sampler.K_DPMPP_SDE,
             image=image,
             mask=mask,
             strength=0.6,
 
-            reference_image=reference_image,
-            reference_strength=0.6,
-            reference_information_extracted=1,
+            reference_image_multiple=[reference_image],
+            reference_strength_multiple=[0.9],
+            reference_information_extracted_multiple=[1],
 
             add_original_image=True,  # This Not affect the vibe generation
             qualityToggle=True,
@@ -88,5 +88,5 @@ async def generate(
 
 
 load_dotenv()
-loop = asyncio.get_event_loop()
+loop = asyncio.new_event_loop()
 loop.run_until_complete(generate())

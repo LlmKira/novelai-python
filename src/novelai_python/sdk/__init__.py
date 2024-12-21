@@ -2,7 +2,7 @@
 # @Time    : 2024/1/26 上午10:51
 # @Author  : sudoskys
 # @File    : __init__.py.py
-# @Software: PyCharm
+
 
 from .ai.augment_image import AugmentImageInfer  # noqa 401
 from .ai.generate import LLM, LLMResp  # noqa 401

@@ -1,0 +1,131 @@
+{
+  "input": "2boys, 1girl, photorealistic, full body, rating:general, amazing quality, very aesthetic, absurdres",
+  "model": "nai-diffusion-4-curated-preview",
+  "action": "img2img",
+  "parameters": {
+    "params_version": 3,
+    "width": 640,
+    "height": 640,
+    "scale": 6,
+    "sampler": "k_euler_ancestral",
+    "steps": 23,
+    "n_samples": 1,
+    "strength": 0.7,
+    "noise": 0.2,
+    "ucPreset": 0,
+    "qualityToggle": true,
+    "dynamic_thresholding": false,
+    "controlnet_strength": 1,
+    "legacy": false,
+    "add_original_image": true,
+    "cfg_rescale": 0,
+    "noise_schedule": "karras",
+    "legacy_v3_extend": false,
+    "use_coords": true,
+    "seed": 3634432471,
+    "image": "Base64 Data",
+    "characterPrompts": [
+      {
+        "prompt": "girl, brown eyes, long hair, asymmetrical hair, light blue hair, flat chest, hooded cloak, hazmat suit, :3, hand to own mouth, corsage",
+        "uc": "",
+        "center": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "prompt": "boy, dark skin, black eyes, long hair, single braid, mizu happi, trembling, flower trim",
+        "uc": "",
+        "center": {
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "prompt": "boy, black eyes, half updo, short ponytai, diagonal bangs, hat, bicorne, animal costume, grin, under-rim eyewear",
+        "uc": "",
+        "center": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    ],
+    "extra_noise_seed": 3634432471,
+    "v4_prompt": {
+      "caption": {
+        "base_caption": "2boys, 1girl, photorealistic, full body, rating:general, amazing quality, very aesthetic, absurdres",
+        "char_captions": [
+          {
+            "char_caption": "girl, brown eyes, long hair, asymmetrical hair, light blue hair, flat chest, hooded cloak, hazmat suit, :3, hand to own mouth, corsage",
+            "centers": [
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "char_caption": "boy, dark skin, black eyes, long hair, single braid, mizu happi, trembling, flower trim",
+            "centers": [
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "char_caption": "boy, black eyes, half updo, short ponytai, diagonal bangs, hat, bicorne, animal costume, grin, under-rim eyewear",
+            "centers": [
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          }
+        ]
+      },
+      "use_coords": true,
+      "use_order": true
+    },
+    "v4_negative_prompt": {
+      "caption": {
+        "base_caption": "blurry, lowres, error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, logo, dated, signature, multiple views, gigantic breasts",
+        "char_captions": [
+          {
+            "char_caption": "",
+            "centers": [
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "char_caption": "",
+            "centers": [
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "char_caption": "",
+            "centers": [
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "negative_prompt": "blurry, lowres, error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, logo, dated, signature, multiple views, gigantic breasts",
+    "reference_image_multiple": [],
+    "reference_information_extracted_multiple": [],
+    "reference_strength_multiple": [],
+    "deliberate_euler_ancestral_bug": false,
+    "prefer_brownian": true
+  }
+}

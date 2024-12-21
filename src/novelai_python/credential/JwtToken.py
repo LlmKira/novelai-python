@@ -2,7 +2,7 @@
 # @Time    : 2024/1/26 上午11:04
 # @Author  : sudoskys
 # @File    : JwtToken.py
-# @Software: PyCharm
+
 
 import arrow
 import shortuuid
@@ -18,7 +18,7 @@ class JwtCredential(CredentialBase):
     JwtCredential is the base class for all credential.
     """
     jwt_token: SecretStr = Field(None, description="jwt token")
-    _x_correlation_id: str = shortuuid.uuid()[0:6]
+    x_correlation_id: str = shortuuid.uuid()[0:6]
 
     async def get_session(self, timeout: int = 180, update_headers: dict = None):
         headers = {
@@ -29,7 +29,7 @@ class JwtCredential(CredentialBase):
             "Content-Type": "application/json",
             "Origin": "https://novelai.net",
             "Referer": "https://novelai.net/",
-            "x-correlation-id": self._x_correlation_id,
+            "x-correlation-id": self.x_correlation_id,
             "x-initiated-at": f"{arrow.utcnow().isoformat()}Z",
         }
 
