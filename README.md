@@ -42,8 +42,8 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 pip -U install novelai-python
 ```
 
-More examples can be found in the [playground](https://github.com/LlmKira/novelai-python/tree/main/playground)
-directory, read code as documentation.
+**More examples can be found in the [playground](https://github.com/LlmKira/novelai-python/tree/main/playground)
+directory, read code as documentation.**
 
 ```python
 import asyncio
