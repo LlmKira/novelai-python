@@ -1,5 +1,6 @@
 import gzip
 import io
+import json
 import pathlib
 import zlib
 from typing import Dict, List, Optional
@@ -54,6 +55,14 @@ class LLMTokenizerSetting(TokenizerSetting):
     def ensure(self):
         self.merges = [tuple(merge) for merge in self.merges]
         return self
+
+
+def is_clip_model(model_name: str) -> bool:
+    return model_name.lower().startswith("clip_tokenizer")
+
+
+def is_t5_model(model_name: str) -> bool:
+    return model_name.lower().startswith("t5_tokenizer")
 
 
 class NaiTokenizer:
@@ -129,8 +138,10 @@ class NaiTokenizer:
         decoded_str = self._read_compressed_def(model_bytes)
         repaired_data = repair_json(decoded_str, return_objects=True)
         try:
-            if "clip" in self.model_full_name.lower():
+            if is_clip_model(self.model_full_name):
                 self.tokenizer_setting = ClipTokenizerSetting.model_validate(repaired_data)
+            elif is_t5_model(self.model_full_name):
+                self.tokenizer_setting = json.dumps(repaired_data)
             else:
                 self.tokenizer_setting = LLMTokenizerSetting.model_validate(repaired_data)
         except Exception as e:
@@ -140,8 +151,10 @@ class NaiTokenizer:
             )
 
     def _create_tokenizer(self):
-        if "clip" in self.model_full_name.lower():
+        if is_clip_model(self.model_full_name):
             self._create_clip_tokenizer()
+        elif is_t5_model(self.model_full_name):
+            self.tokenizer = Tokenizer.from_str(self.tokenizer_setting)
         else:
             self._create_bpe_tokenizer()
 
