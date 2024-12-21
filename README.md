@@ -151,10 +151,15 @@ python3 -m novelai_python.server -h '127.0.0.1' -p 7888
 #### 📦 Tokenizer
 
 ```python
-from novelai_python._enum import get_tokenizer_model, TextLLMModel
+from novelai_python._enum import get_tokenizer_model, TextLLMModel, TextTokenizerGroup
 from novelai_python.tokenizer import NaiTokenizer
 
+# Through llm model name to get the tokenizer
 tokenizer_package = NaiTokenizer(get_tokenizer_model(TextLLMModel.ERATO))
+# Directly use the tokenizer
+clip_tokenizer = NaiTokenizer(TextTokenizerGroup.CLIP)
+
+# Tokenize a text
 t_text = "a fox jumped over the lazy dog"
 encode_tokens = tokenizer_package.encode(t_text)
 print(tokenizer_package.tokenize_text(t_text))

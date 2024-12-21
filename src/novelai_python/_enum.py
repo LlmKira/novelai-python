@@ -40,6 +40,7 @@ class TextTokenizerGroup(object):
     LLAMA3 = "llama3_tokenizer.def"
     GPT2 = "gpt2_tokenizer.def"
     CLIP = "clip_tokenizer.def"
+    T5 = "t5_tokenizer.def"
 
 
 TextLLMModelTypeAlias = Union[TextLLMModel, str]
