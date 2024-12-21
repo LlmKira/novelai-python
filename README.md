@@ -11,32 +11,12 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 
 > Python >= 3.9 is required.
 
-### Roadmap 🚧
+### 📰 News
 
-- [x] tool.random_prompt
-- [x] tool.paint_mask
-- [x] tool.image_metadata
-- [x] tokenizer
-- [x] /ai/generate-image
-- [x] /user/subscription
-- [x] /user/login
-- [x] /user/information
-- [x] /ai/upscale
-- [x] /ai/generate-image/suggest-tags
-- [x] /ai/generate-voice
-- [x] /ai/generate-stream
-- [x] /ai/generate
-- [x] /ai/augment-image
-- [ ] /ai/annotate-image
-- [ ] /ai/classify
-- [ ] /ai/generate-prompt
+- [Image Generation Model Release — NovelAI Anime Diffusion V4 Curated Preview (EN)](https://blog.novelai.net/release-novelai-anime-diffusion-v4-curated-preview-en-ca4b0b11e671)
+- [Tutorial: Creating Consistent Characters with NovelAI Diffusion Anime [Female]](https://blog.novelai.net/tutorial-en-creating-consistent-characters-with-novelai-diffusion-anime-female-538b4b678a4e)
 
-> GenerateImageInfer.calculate_cost is correct in most cases, but please request account information to get accurate
-> consumption information.
-
-> This repo is maintained by me personally now. If you have any questions, please feel free to open an issue.
-
-### Usage 🖥️
+### 📦 Usage
 
 ```shell
 pip -U install novelai-python
@@ -101,7 +81,7 @@ loop.run_until_complete(main())
 
 ```
 
-#### LLM
+#### 📦 LLM
 
 ```python
 import asyncio
@@ -152,7 +132,7 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(chat("Hello"))
 ```
 
-#### Random Prompt
+#### 📦 Random Prompt
 
 ```python
 from novelai_python.tool.random_prompt import RandomPromptGenerator
@@ -161,14 +141,14 @@ prompt = RandomPromptGenerator(nsfw_enabled=False).random_prompt()
 print(prompt)
 ```
 
-#### Run A Server
+#### 📦 Run A Server
 
 ```shell
 pip install novelai_python
 python3 -m novelai_python.server -h '127.0.0.1' -p 7888
 ```
 
-#### Tokenizer
+#### 📦 Tokenizer
 
 ```python
 from novelai_python._enum import get_tokenizer_model, TextLLMModel
@@ -183,7 +163,32 @@ print(tokenizer_package.decode(tokenizer_package.encode(t_text)))
 
 ```
 
-## About Nsfw 🚫
+### 🔨 Roadmap
+
+- [x] tool.random_prompt
+- [x] tool.paint_mask
+- [x] tool.image_metadata
+- [x] tokenizer
+- [x] /ai/generate-image
+- [x] /user/subscription
+- [x] /user/login
+- [x] /user/information
+- [x] /ai/upscale
+- [x] /ai/generate-image/suggest-tags
+- [x] /ai/generate-voice
+- [x] /ai/generate-stream
+- [x] /ai/generate
+- [x] /ai/augment-image
+- [ ] /ai/annotate-image
+- [ ] /ai/classify
+- [ ] /ai/generate-prompt
+
+> GenerateImageInfer.calculate_cost is correct in most cases, but please request account information to get accurate
+> consumption information.
+
+> This repo is maintained by me personally now. If you have any questions, please feel free to open an issue.
+
+## 🚫 About Nsfw
 
 You might need some solutions for identifying NSFW content and adding a mosaic to prevent operational mishaps.
 
@@ -191,7 +196,7 @@ https://dghs-imgutils.deepghs.org/main/api_doc/detect/nudenet.html
 
 https://dghs-imgutils.deepghs.org/main/api_doc/operate/censor.html
 
-## Acknowledgements 🙏
+## 🙏 Acknowledgements
 
 [BackEnd](https://api.novelai.net/docs)
 
