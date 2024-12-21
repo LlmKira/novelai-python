@@ -512,6 +512,7 @@ class GenerateImageInfer(ApiBaseModel):
             # 计算动态系数 dynamic_factor 并用于调整 skip_cfg_above_sigma
             dynamic_factor = ((weight * dimensions_scaled[0] * dimensions_scaled[1]) / reference_value) ** 0.5
             self.parameters.skip_cfg_above_sigma *= dynamic_factor
+            self.parameters.skip_cfg_above_sigma = math.ceil(self.parameters.skip_cfg_above_sigma)
 
         if not get_supported_params(self.model).cfgDelay:
             self.parameters.skip_cfg_above_sigma = None
