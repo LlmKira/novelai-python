@@ -7,7 +7,6 @@ import json
 import math
 import random
 from copy import deepcopy
-from dataclasses import field
 from io import BytesIO
 from typing import Optional, Union, Tuple, List
 from urllib.parse import urlparse
@@ -28,7 +27,7 @@ from novelai_python.sdk.ai._cost import CostCalculator
 from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, ControlNetModel, Action, UCPreset, \
     INPAINTING_MODEL_LIST, get_default_uc_preset, \
     ModelTypeAlias, UCPresetTypeAlias, get_default_noise_schedule, get_supported_noise_schedule, \
-    get_model_group, ModelGroups, get_supported_params, get_modifiers
+    get_model_group, ModelGroups, get_supported_params, get_modifiers, ImageBytesTypeAlias
 from .schema import Character, V4Prompt, V4NegativePrompt
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
@@ -79,7 +78,7 @@ class Params(BaseModel):
     """Noise Schedule"""
     legacy_v3_extend: Optional[bool] = False
     """Legacy V3 Extend"""
-    mask: Union[bytes, str] = None
+    mask: ImageBytesTypeAlias = None
     """Mask for Inpainting"""
     seed: int = Field(
         default_factory=lambda: random.randint(0, 4294967295 - 7),
@@ -87,13 +86,13 @@ class Params(BaseModel):
         le=4294967295 - 7,
     )
     """Seed"""
-    image: Union[bytes, str] = None
+    image: ImageBytesTypeAlias = None
     """Image for img2img"""
     negative_prompt: Optional[str] = ''
     """Negative Prompt"""
-    reference_image_multiple: Optional[List[Union[str, bytes]]] = field(default_factory=list)
+    reference_image_multiple: Optional[List[Union[str, bytes]]] = Field(default_factory=list)
     """Reference Image For Vibe Mode"""
-    reference_information_extracted_multiple: Optional[List[float]] = field(default_factory=list)
+    reference_information_extracted_multiple: Optional[List[float]] = Field(default_factory=list)
     """Reference Information Extracted For Vibe Mode"""
     reference_strength_multiple: Optional[List[float]] = Field(
         default=list,
@@ -113,7 +112,7 @@ class Params(BaseModel):
     """
     use_coords: bool = Field(True, description="Use Coordinates")
     """Use Coordinates"""
-    characterPrompts: List[Character] = field(default_factory=list)
+    characterPrompts: List[Character] = Field(default_factory=list)
     """Character Prompts"""
 
     v4_prompt: Optional[V4Prompt] = Field(None, description="V4 Prompt")
@@ -135,6 +134,12 @@ class Params(BaseModel):
     """Variety Boost, a new feature to improve the diversity of samples."""
     uncond_scale: Optional[float] = Field(None, ge=0, le=1.5, multiple_of=0.05)
     """Undesired Content Strength"""
+
+    @model_validator(mode="after")
+    def v_character(self):
+        if len(self.characterPrompts) > 6:
+            raise ValueError("Too many character given")
+        return self
 
     @field_validator('uncond_scale')
     def v_uncond_scale(cls, v: float):
@@ -684,10 +689,9 @@ class GenerateImageInfer(ApiBaseModel):
 
         If you need to define more parameters, you should initialize the Param class yourself.
 
-        :param controlnet_strength:
         :param strength:
         :param image:
-        :param noise: For img2img
+        :param noise: For image to image
         :param extra_noise_seed: Get extra_noise_seed
         :param reference_information_extracted_multiple:
         :param reference_strength_multiple:
