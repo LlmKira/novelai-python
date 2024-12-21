@@ -12,8 +12,7 @@ from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
-from novelai_python.sdk.ai._enum import UCPreset
-from novelai_python.sdk.ai.generate_image import Action, Model, Sampler, Character
+from novelai_python.sdk.ai.generate_image import Action, Model, Sampler, Character, UCPreset
 from novelai_python.sdk.ai.generate_image.schema import PositionMap
 from novelai_python.utils.useful import enum_to_list
 
