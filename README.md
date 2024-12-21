@@ -3,7 +3,7 @@
 ---
 
 [![PyPI version](https://badge.fury.io/py/novelai-python.svg)](https://badge.fury.io/py/novelai-python)
-[![Downloads](https://static.pepy.tech/badge/novelai_python)](https://static.pepy.tech/project/novelai_python)
+[![Downloads](https://pepy.tech/badge/novelai_python)](https://pepy.tech/project/novelai_python)
 
 ✨ NovelAI api python sdk with Pydantic, modern and user-friendly.
 
