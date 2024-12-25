@@ -1,5 +1,7 @@
 import random
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
+
+type Options = List[List[Union[str, int, Optional[List]]]]
 
 viewF = [
     ["front view", 6],
@@ -1732,8 +1734,6 @@ colorsF = [
     ["two tone", 2],
     ["pattern", 3],
 ]
-
-type Options = List[List[str | int | Optional[List]]]
 
 
 def random_range(a, b):

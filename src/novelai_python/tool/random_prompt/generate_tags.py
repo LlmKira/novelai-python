@@ -1,9 +1,11 @@
 import base64
 import random
 from datetime import datetime
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Union
 
 from pydantic import BaseModel
+
+type Options = List[List[Union[str, int, Optional[List]]]]
 
 cameraAngles = [
     ["dutch angle", 5],
@@ -1989,22 +1991,22 @@ holidayThemes = [
 
 
 class NsfwDecode(BaseModel):
-    p: List[List[str | int | List]]
-    mp: List[List[str | int | List]]
-    n: List[List[str | int | List]]
-    u: List[List[str | int | List]]
-    nk: List[List[str | int | List]]
-    bd: List[List[str | int | List]]
-    nEx: List[List[str | int | List]]
-    nSM: List[List[str | int | List]]
-    nSA: List[List[str | int | List]]
-    nSP: List[List[str | int | List]]
-    nPM: List[List[str | int | List]]
-    nPA: List[List[str | int | List]]
-    nPP: List[List[str | int | List]]
-    sMod: List[List[str | int | List]]
-    sActMod: List[List[str | int | List]]
-    sT: List[List[str | int | List]]
+    p: List[List[Union[str, int, List]]]
+    mp: List[List[Union[str, int, List]]]
+    n: List[List[Union[str, int, List]]]
+    u: List[List[Union[str, int, List]]]
+    nk: List[List[Union[str, int, List]]]
+    bd: List[List[Union[str, int, List]]]
+    nEx: List[List[Union[str, int, List]]]
+    nSM: List[List[Union[str, int, List]]]
+    nSA: List[List[Union[str, int, List]]]
+    nSP: List[List[Union[str, int, List]]]
+    nPM: List[List[Union[str, int, List]]]
+    nPA: List[List[Union[str, int, List]]]
+    nPP: List[List[Union[str, int, List]]]
+    sMod: List[List[Union[str, int, List]]]
+    sActMod: List[List[Union[str, int, List]]]
+    sT: List[List[Union[str, int, List]]]
     h: str
     yu: str
     ya: str
@@ -2034,8 +2036,6 @@ def random_range(a, b):
         a, b = b, a
     return random.randint(a, b)
 
-
-type Options = List[List[str | int | Optional[List]]]
 
 nsfwDecode = decode_nsfw_data(nsfwData)
 

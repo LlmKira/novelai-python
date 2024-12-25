@@ -1,5 +1,5 @@
 import random
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from pydantic import dataclasses
 
@@ -2568,7 +2568,7 @@ def random_range(a, b):
 
 
 def select_weighted_option(
-        options: WeightedOptions | WeightedSimpleOptions,
+        options: Union[WeightedOptions, WeightedSimpleOptions],
         conditions: Conditions,
 ) -> str | int:
     """
