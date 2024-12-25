@@ -7,7 +7,8 @@
 
 ✨ NovelAI api python sdk with Pydantic, modern and user-friendly.
 
-The goal of this repository is to use Pydantic to build legitimate requests to access the NovelAI API service.
+The goal of this repository is to use Pydantic to build legitimate requests to access
+the [NovelAI API service](https://api.novelai.net/docs).
 
 > Python >= 3.9 is required.
 
@@ -21,6 +22,10 @@ The goal of this repository is to use Pydantic to build legitimate requests to a
 ```shell
 pip -U install novelai-python
 ```
+
+For security reasons, storing user credentials in plaintext is strongly discouraged.
+
+All API users must adhere to the NovelAI Terms of Service: https://novelai.net/terms.
 
 **More examples can be found in the [playground](https://github.com/LlmKira/novelai-python/tree/main/playground)
 directory, read code as documentation.**
@@ -202,8 +207,6 @@ https://dghs-imgutils.deepghs.org/main/api_doc/detect/nudenet.html
 https://dghs-imgutils.deepghs.org/main/api_doc/operate/censor.html
 
 ## 🙏 Acknowledgements
-
-[BackEnd](https://api.novelai.net/docs)
 
 [novelai-api](https://github.com/Aedial/novelai-api)
 

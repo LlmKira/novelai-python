@@ -1,5 +1,5 @@
 import random
-from typing import List, Callable
+from typing import List
 
 from pydantic import dataclasses
 
@@ -2547,7 +2547,7 @@ type WeightedSimpleOptions = List[WeightedSimpleOption]
 class Conditions:
     tags: List[str]
 
-    def add(self, v: str):
+    def add(self, v:str):
         if v not in self.tags:
             self.tags.append(v)
 
@@ -2570,13 +2570,11 @@ def random_range(a, b):
 def select_weighted_option(
         options: WeightedOptions | WeightedSimpleOptions,
         conditions: Conditions,
-        callback: Callable[[List[str]], None]
 ) -> str | int:
     """
     选择一个加权选项
     :param options: 权重
     :param conditions: 条件
-    :param callback: 回调
     :return: 选项
     """
     # 如果 conditions 的元素存在于最后两个数组中，则不会被选中
@@ -2625,7 +2623,8 @@ def select_weighted_option(
             required = []
             if len(option) >= 4:
                 required = option[3]
-            callback(required)
+            for req in required:
+                conditions.add(req)
             return option[0]
     return ""
 
@@ -2642,53 +2641,46 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
     selected_attributes = []
     uni_tags = tags.copy()
 
-    def append_tags(required: List[str]):
-        for tag in required:
-            uni_tags.add(tag)
-
-    def weighted_op(options: WeightedOptions | WeightedSimpleOptions, conditions: Conditions):
-        return select_weighted_option(options, conditions, append_tags)
-
     if random.random() < 0.1:
-        selected_attributes.append(weighted_op(animalCharacteristicsL, uni_tags))
+        selected_attributes.append(select_weighted_option(animalCharacteristicsL, uni_tags))
     if random.random() < 0.4:
-        selected_attributes.append(weighted_op(skinTypesL, uni_tags))
+        selected_attributes.append(select_weighted_option(skinTypesL, uni_tags))
     if random.random() < 0.05:
-        selected_attributes.append(weighted_op(eyeCharacteristicsL, uni_tags))
+        selected_attributes.append(select_weighted_option(eyeCharacteristicsL, uni_tags))
     if "no eyes" not in uni_tags:
         if random.random() < 0.2:
-            selected_attributes.append(weighted_op(eyeExpressionsL, uni_tags))
+            selected_attributes.append(select_weighted_option(eyeExpressionsL, uni_tags))
         if random.random() < 0.8 and "nocoloreyes" not in uni_tags:
-            selected_attributes.append(weighted_op(eyeColorsL, uni_tags))
+            selected_attributes.append(select_weighted_option(eyeColorsL, uni_tags))
     # Hair Length
     if random.random() < 0.8:
-        selected_attributes.append(weighted_op(hairLengthsL, uni_tags))
+        selected_attributes.append(select_weighted_option(hairLengthsL, uni_tags))
 
     # Hair Style
     if random.random() < 0.7:
-        selected_attributes.append(weighted_op(braidedHairstylesL, uni_tags))
+        selected_attributes.append(select_weighted_option(braidedHairstylesL, uni_tags))
 
     # Hair Color
     if random.random() < 0.7:
-        selected_attributes.append(weighted_op(hairColorsL, uni_tags))
+        selected_attributes.append(select_weighted_option(hairColorsL, uni_tags))
 
     # Hair Style and Pattern
     if random.random() < 0.1:
-        selected_attributes.append(weighted_op(hairStylesAndPatternsL, uni_tags))
-        selected_attributes.append(weighted_op(hairColorsL, uni_tags))
+        selected_attributes.append(select_weighted_option(hairStylesAndPatternsL, uni_tags))
+        selected_attributes.append(select_weighted_option(hairColorsL, uni_tags))
 
     # Hair Accessories
     if random.random() < 0.3:
-        selected_attributes.append(weighted_op(uniqueHairstylesL, uni_tags))
+        selected_attributes.append(select_weighted_option(uniqueHairstylesL, uni_tags))
 
     # Hair Accessories
     if random.random() < 0.4:
-        selected_attributes.append(weighted_op(bangsStylesL, uni_tags))
+        selected_attributes.append(select_weighted_option(bangsStylesL, uni_tags))
     if gender.startswith("f") and random.random() < 0.8:
-        selected_attributes.append(weighted_op(breastSizesL, uni_tags))
+        selected_attributes.append(select_weighted_option(breastSizesL, uni_tags))
 
     if character_limit == 1:
-        body_feature_num = weighted_op(
+        body_feature_num = select_weighted_option(
             [
                 [0, 10],
                 [1, 30],
@@ -2698,7 +2690,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
             uni_tags
         )
     elif character_limit == 2:
-        body_feature_num = weighted_op(
+        body_feature_num = select_weighted_option(
             [
                 [0, 20],
                 [1, 40],
@@ -2707,7 +2699,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
             uni_tags
         )
     else:
-        body_feature_num = weighted_op(
+        body_feature_num = select_weighted_option(
             [
                 [0, 30],
                 [1, 30],
@@ -2716,16 +2708,16 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
         )
 
     for _ in range(body_feature_num):
-        selected_attributes.append(weighted_op(bodyFeaturesL, uni_tags))
+        selected_attributes.append(select_weighted_option(bodyFeaturesL, uni_tags))
 
     if random.random() < 0.2:
-        selected_attributes.append(weighted_op(hatsAndHeadwearL, uni_tags))
+        selected_attributes.append(select_weighted_option(hatsAndHeadwearL, uni_tags))
         if random.random() < 0.2:
-            selected_attributes.append(weighted_op(hatDecorationsL, uni_tags))
+            selected_attributes.append(select_weighted_option(hatDecorationsL, uni_tags))
     elif random.random() < 0.3:
-        selected_attributes.append(weighted_op(hairAccessoriesL, uni_tags))
+        selected_attributes.append(select_weighted_option(hairAccessoriesL, uni_tags))
 
-    outfit_type = weighted_op(
+    outfit_type = select_weighted_option(
         [
             ["uniform", 25],
             ["swimsuit", 5],
@@ -2736,55 +2728,55 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
     )
 
     if outfit_type == "uniform":
-        selected_attributes.append(weighted_op(armorsAndUniformsL, uni_tags))
+        selected_attributes.append(select_weighted_option(armorsAndUniformsL, uni_tags))
     elif outfit_type == "swimsuit":
-        selected_attributes.append(weighted_op(swimwearL, uni_tags))
+        selected_attributes.append(select_weighted_option(swimwearL, uni_tags))
     elif outfit_type == "bodysuit":
-        selected_attributes.append(weighted_op(zipperedOutfitsL, uni_tags))
+        selected_attributes.append(select_weighted_option(zipperedOutfitsL, uni_tags))
     elif outfit_type == "normal clothes":
         # 生产袜子
         if gender.startswith("f") and random.random() < 0.5:
-            selected_attributes.append(weighted_op(socksAndStockingsL, uni_tags))
+            selected_attributes.append(select_weighted_option(socksAndStockingsL, uni_tags))
             if random.random() < 0.2:
-                selected_attributes.append(weighted_op(legwearStylesL, uni_tags))
+                selected_attributes.append(select_weighted_option(legwearStylesL, uni_tags))
         # 生产套装
         if gender.startswith("f") and random.random() < 0.2:
             use_color = random.random() < 0.5
-            color = weighted_op(colorsL, uni_tags)
-            attire = weighted_op(dressesAndAttireL, uni_tags)
+            color = select_weighted_option(colorsL, uni_tags)
+            attire = select_weighted_option(dressesAndAttireL, uni_tags)
             selected_attributes.append(f"{color} {attire}" if use_color and attire else attire)
         else:
             # 生产上衣
             if random.random() < 0.85:
                 use_color = random.random() < 0.5
-                color = weighted_op(colorsL, uni_tags)
-                top = weighted_op(topsAndShirtsL, uni_tags)
+                color = select_weighted_option(colorsL, uni_tags)
+                top = select_weighted_option(topsAndShirtsL, uni_tags)
                 selected_attributes.append(f"{color} {top}" if use_color and top else top)
             # 生产下衣
             if "legs" in uni_tags:
                 if random.random() < 0.85:
                     use_color = random.random() < 0.5
-                    color = weighted_op(colorsL, uni_tags)
-                    bottom = weighted_op(pantsAndBottomsL, uni_tags)
+                    color = select_weighted_option(colorsL, uni_tags)
+                    bottom = select_weighted_option(pantsAndBottomsL, uni_tags)
                     selected_attributes.append(f"{color} {bottom}" if use_color and bottom else bottom)
                 # 生产鞋子
                 if "feet" in uni_tags and random.random() < 0.6:
                     use_color = random.random() < 0.5
-                    color = weighted_op(colorsL, uni_tags)
-                    footwear = weighted_op(bootsAndFootwearL, uni_tags)
+                    color = select_weighted_option(colorsL, uni_tags)
+                    footwear = select_weighted_option(bootsAndFootwearL, uni_tags)
                     selected_attributes.append(f"{color} {footwear}" if use_color and footwear else footwear)
 
     # 生产面部
     if random.random() < 0.6:
-        selected_attributes.append(weighted_op(facialExpressionsL, uni_tags))
+        selected_attributes.append(select_weighted_option(facialExpressionsL, uni_tags))
 
     # 生产动作
     if random.random() < 0.4:
-        selected_attributes.append(weighted_op(bodyPosesAndActionsL, uni_tags))
+        selected_attributes.append(select_weighted_option(bodyPosesAndActionsL, uni_tags))
 
     # 根据人物数量生产配饰
     if character_limit == 1:
-        accessory_iterations = weighted_op(
+        accessory_iterations = select_weighted_option(
             [
                 [0, 10],
                 [1, 30],
@@ -2794,7 +2786,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
             uni_tags
         )
     elif character_limit == 2:
-        accessory_iterations = weighted_op(
+        accessory_iterations = select_weighted_option(
             [
                 [0, 20],
                 [1, 40],
@@ -2803,7 +2795,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
             uni_tags
         )
     else:
-        accessory_iterations = weighted_op(
+        accessory_iterations = select_weighted_option(
             [
                 [0, 30],
                 [1, 30],
@@ -2812,7 +2804,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
         )
 
     for _ in range(accessory_iterations):
-        selected_attributes.append(weighted_op(accessoriesAndOuterwearL, uni_tags))
+        selected_attributes.append(select_weighted_option(accessoriesAndOuterwearL, uni_tags))
 
     return [attribute for attribute in selected_attributes if attribute != ""]
 
@@ -2822,14 +2814,7 @@ def generate_scene_composition():
     condition_set = Conditions(tags=[])
     character_details = []
 
-    def append_tags(required: List[str]):
-        for tag in required:
-            condition_set.add(tag)
-
-    def weighted_op(options: WeightedOptions | WeightedSimpleOptions, conditions: Conditions):
-        return select_weighted_option(options, conditions, append_tags)
-
-    character_count = weighted_op(
+    character_count = select_weighted_option(
         [
             [1, 70],
             [2, 20],
@@ -2842,10 +2827,10 @@ def generate_scene_composition():
     if character_count == 0:
         scene_tags.append("no humans")
         if random.random() < 0.5:
-            scene_tags.append(weighted_op(artStylesL, condition_set))
-        scene_tags.append(weighted_op(sceneTypesL, condition_set))
+            scene_tags.append(select_weighted_option(artStylesL, condition_set))
+        scene_tags.append(select_weighted_option(sceneTypesL, condition_set))
 
-        scene_element_count = weighted_op(
+        scene_element_count = select_weighted_option(
             [
                 [2, 15],
                 [3, 50],
@@ -2856,9 +2841,9 @@ def generate_scene_composition():
         )
 
         for _ in range(scene_element_count):
-            scene_tags.append(weighted_op(sceneElementsL, condition_set))
+            scene_tags.append(select_weighted_option(sceneElementsL, condition_set))
 
-        object_count = weighted_op(
+        object_count = select_weighted_option(
             [
                 [0, 15],
                 [1, 10],
@@ -2873,19 +2858,19 @@ def generate_scene_composition():
         object_count = max(0, object_count)
 
         for _ in range(object_count):
-            scene_tags.append(weighted_op(objectsAndStuffedAnimalsL, condition_set))
+            scene_tags.append(select_weighted_option(objectsAndStuffedAnimalsL, condition_set))
 
         return [", ".join(filter(None, scene_tags))]
 
     if random.random() < 0.5:
-        scene_tags.append(weighted_op(artStylesL, condition_set))
+        scene_tags.append(select_weighted_option(artStylesL, condition_set))
 
     male_count = 0
     female_count = 0
     other_count = 0
 
     for _ in range(character_count):
-        gender = weighted_op(
+        gender = select_weighted_option(
             [
                 ["m", 30],
                 ["f", 60],
@@ -2908,20 +2893,20 @@ def generate_scene_composition():
         scene_tags.insert(0, f"{other_count}other{'s' if other_count > 1 else ''}")
 
     if random.random() < 0.8:
-        background_type = weighted_op(backgroundTypesL, condition_set)
+        background_type = select_weighted_option(backgroundTypesL, condition_set)
         scene_tags.append(background_type)
         if background_type == "scenery" and random.random() < 0.5:
             scenery_elements_count = random.randint(1, 3)
             for _ in range(scenery_elements_count):
                 # Add scenery elements
-                scene_tags.append(weighted_op(sceneElementsL, condition_set))
+                scene_tags.append(select_weighted_option(sceneElementsL, condition_set))
 
     # 添加镜头角度
     if random.random() < 0.3:
-        scene_tags.append(weighted_op(cameraAnglesL, condition_set))
+        scene_tags.append(select_weighted_option(cameraAnglesL, condition_set))
 
     # 添加镜头构图
-    framing_type = weighted_op(framingTypesL, condition_set) if random.random() < 0.7 else None
+    framing_type = select_weighted_option(framingTypesL, condition_set) if random.random() < 0.7 else None
     if framing_type:
         scene_tags.append(framing_type)
 
@@ -2946,24 +2931,24 @@ def generate_scene_composition():
         if character_count == 2:
             object_count = random.randint(0, 3)
         for _ in range(object_count):
-            scene_tags.append(weighted_op(objectsAndStuffedAnimalsL, condition_set))
+            scene_tags.append(select_weighted_option(objectsAndStuffedAnimalsL, condition_set))
 
     # 添加特效
     if random.random() < 0.25:
         effects_count = random.randint(1, 3)
         for _ in range(effects_count):
-            scene_tags.append(weighted_op(effectsAndPatternsL, condition_set))
+            scene_tags.append(select_weighted_option(effectsAndPatternsL, condition_set))
 
     # 添加年份主题
     if random.random() < 0.2:
-        scene_tags.append(weighted_op(yearlyThemesL, condition_set))
+        scene_tags.append(select_weighted_option(yearlyThemesL, condition_set))
 
     # 添加物体焦点
     if random.random() < 0.1:
-        scene_tags.append(weighted_op(subjectFocusL, condition_set))
+        scene_tags.append(select_weighted_option(subjectFocusL, condition_set))
 
     # 去重
-    scene_tags = list(filter(None, set(scene_tags)))
+    scene_tags = list({tag: True for tag in scene_tags}.keys())
     return [
         ", ".join(scene_tags),
         *[", ".join(details) for details in character_details]

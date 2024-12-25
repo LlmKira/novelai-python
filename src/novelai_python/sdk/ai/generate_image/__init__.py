@@ -891,7 +891,8 @@ class GenerateImageInfer(ApiBaseModel):
                       override_headers: Optional[dict] = None,
                       ) -> ImageGenerateResp:
         """
-        生成图片
+        Generate images using NovelAI's diffusion models. According to our Terms of Service, all generation requests must be initiated by a human action. Automating text or image generation to create excessive load on our systems is not allowed.
+
         :param override_headers: the headers to override
         :param session:  session
         :return:

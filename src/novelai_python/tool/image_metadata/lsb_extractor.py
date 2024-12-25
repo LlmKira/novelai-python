@@ -1,9 +1,6 @@
 # MIT: https://github.com/NovelAI/novelai-image-metadata/blob/main/nai_meta.py
 import gzip
 import json
-from io import BytesIO
-from pathlib import Path
-from typing import Union
 
 import numpy as np
 from PIL import Image
@@ -19,6 +16,11 @@ class LSBExtractor(object):
         self.col = 0
 
     def _extract_next_bit(self):
+        """
+        Extract the next bit from the pixel's least significant bit (LSB).
+        Returns `True` if a bit was successfully extracted, `False`
+        if we have reached the end of the data.
+        """
         if self.row < self.rows and self.col < self.cols:
             bit = self.data[self.row, self.col, self.dim - 1] & 1
             self.bits += 1
@@ -28,25 +30,51 @@ class LSBExtractor(object):
             if self.row == self.rows:
                 self.row = 0
                 self.col += 1
+            return True
+        return False
 
     def get_one_byte(self):
+        """
+        Extract one byte (8 bits) from the image data using LSB.
+        Returns the byte if successfully extracted, otherwise `None` if the data ends prematurely.
+        """
         while self.bits < 8:
-            self._extract_next_bit()
+            if not self._extract_next_bit():
+                # If we run out of data before completing a byte, return None
+                if self.bits == 0:
+                    return None
+
+                # If we have partial bits, pad remaining bits with 0s and return
+                self.byte <<= (8 - self.bits)
+                padded_byte = bytearray([self.byte])
+                self.bits = 0
+                self.byte = 0
+                return padded_byte
+
         byte = bytearray([self.byte])
         self.bits = 0
         self.byte = 0
         return byte
 
     def get_next_n_bytes(self, n):
+        """
+        Extract the next `n` bytes sequentially from the image data.
+        Stops if not enough data is available.
+        """
         bytes_list = bytearray()
         for _ in range(n):
             byte = self.get_one_byte()
-            if not byte:
+            if byte is None:  # Stop if we run out of data
                 break
             bytes_list.extend(byte)
         return bytes_list
 
     def read_32bit_integer(self):
+        """
+        Attempt to read a 32-bit integer (4 bytes).
+        Returns the integer value if successfully extracted, otherwise `None`
+        if insufficient data is available.
+        """
         bytes_list = self.get_next_n_bytes(4)
         if len(bytes_list) == 4:
             integer_value = int.from_bytes(bytes_list, byteorder='big')
@@ -59,14 +87,14 @@ class ImageLsbDataExtractor(object):
     def __init__(self):
         self.magic = "stealth_pngcomp"
 
-    def extract_data(self, image: Union[BytesIO, bytes, Path], get_fec: bool = False) -> tuple:
-        if isinstance(image, (bytes, BytesIO, Path)):
-            img = Image.open(image)
-            img.convert("RGBA")
-            image = np.array(img)
-        else:
-            raise TypeError(f"Invalid image type: {type(image)}, only {type(BytesIO)} is supported")
-
+    def extract_data(self, image: Image.Image, get_fec: bool = False) -> tuple:
+        """
+        Get the data from the image
+        :param image: Pillow Image object
+        :param get_fec: bool
+        :return: json_data, fec_data
+        """
+        image = np.array(image.copy().convert("RGBA"))
         try:
             if not (image.shape[-1] == 4 and len(image.shape) == 3):
                 raise AssertionError('image format error, maybe image already be modified')
