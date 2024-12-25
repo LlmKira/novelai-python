@@ -23,8 +23,6 @@ the [NovelAI API service](https://api.novelai.net/docs).
 pip -U install novelai-python
 ```
 
-For security reasons, storing user credentials in plaintext is strongly discouraged.
-
 All API users must adhere to the NovelAI Terms of Service: https://novelai.net/terms.
 
 **More examples can be found in the [playground](https://github.com/LlmKira/novelai-python/tree/main/playground)
@@ -43,6 +41,7 @@ from novelai_python.sdk.ai.generate_image.schema import PositionMap
 
 load_dotenv()
 session = ApiCredential(api_token=SecretStr(os.getenv("NOVELAI_JWT")))  # pst-***
+# For security reasons, storing user credentials in plaintext is strongly discouraged.
 
 prompt = "1girl, year 2023,dynamic angle,  best quality, amazing quality, very aesthetic, absurdres"
 
