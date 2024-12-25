@@ -1,13 +1,13 @@
-import os
 from pathlib import Path
 
 from PIL import Image
 
-from novelai_python.tool.image_metadata import ImageMetadata
+from novelai_python.tool.image_metadata import ImageVerifier
 
 image = Path(__file__).parent.joinpath("sample-0316.png")
 try:
-    verify = ImageMetadata.verify_image_is_novelai(Image.open(image))
+    with Image.open(image) as img:
+        verify, have_latent = ImageVerifier().verify(image=img)
 except ValueError:
     raise LookupError("Cant find a MetaData")
 

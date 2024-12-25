@@ -1,8 +1,6 @@
-from novelai_python._enum import TextTokenizerGroup, get_tokenizer_model, TextLLMModel
-from novelai_python.tokenizer import NaiTokenizer
-from novelai_python.utils.encode import b64_to_tokens
 from novelai_python._enum import get_tokenizer_model, TextLLMModel, TextTokenizerGroup
 from novelai_python.tokenizer import NaiTokenizer
+from novelai_python.utils.encode import b64_to_tokens
 
 # !Through llm model name to get the tokenizer
 tokenizer_package = NaiTokenizer(get_tokenizer_model(TextLLMModel.ERATO))

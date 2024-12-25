@@ -115,7 +115,7 @@ class LLMGenerationParams(BaseModel):
     repetition_penalty_slope: Optional[Union[float, int]] = Field(default=None, ge=0, allow_inf_nan=False)
 
     eos_token_id: int = None
-    bad_words_ids: List[List[int]] = None
+    bad_words_ids: Optional[List[List[int]]] = None
     logit_bias_groups: Optional[List[LogitBiasGroup]] = Field(default_factory=list)
 
     repetition_penalty_frequency: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
