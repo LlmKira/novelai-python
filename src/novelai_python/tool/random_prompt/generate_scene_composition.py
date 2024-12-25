@@ -2570,7 +2570,7 @@ def random_range(a, b):
 def select_weighted_option(
         options: Union[WeightedOptions, WeightedSimpleOptions],
         conditions: Conditions,
-) -> str | int:
+) -> Union[str,int]:
     """
     选择一个加权选项
     :param options: 权重
@@ -2609,7 +2609,7 @@ def select_weighted_option(
     random.shuffle(filtered_options)
 
     # 计算总权重
-    def get_weight(item: str | int) -> int:
+    def get_weight(item: Union[str,int]) -> int:
         return len(item) if isinstance(item, str) else item
 
     total_weight = sum(get_weight(option[1]) for option in filtered_options)

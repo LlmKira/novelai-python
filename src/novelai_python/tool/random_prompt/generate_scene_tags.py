@@ -1777,7 +1777,7 @@ def generate_character_traits(
     """
     生成角色特性。
     :param gender: 性别 (例如 'f' 表示女性)。
-    :param portrait_type: word of intermediatePortraitsF |  fullLengthOnlyF
+    :param portrait_type: word of intermediatePortraitsF or  fullLengthOnlyF
     :param level: 等级 (影响特征和服饰数量)。
     :return: 包含 tags 和 flags。
     """
