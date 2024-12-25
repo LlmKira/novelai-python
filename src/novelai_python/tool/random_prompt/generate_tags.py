@@ -5,7 +5,7 @@ from typing import List, Optional, Any, Union
 
 from pydantic import BaseModel
 
-type Options = List[List[Union[str, int, Optional[List]]]]
+Options = List[List[Union[str, int, Optional[List]]]]
 
 cameraAngles = [
     ["dutch angle", 5],

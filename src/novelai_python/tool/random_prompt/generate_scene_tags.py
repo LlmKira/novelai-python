@@ -1,7 +1,7 @@
 import random
 from typing import Any, List, Optional, Union
 
-type Options = List[List[Union[str, int, Optional[List]]]]
+Options = List[List[Union[str, int, Optional[List]]]]
 
 viewF = [
     ["front view", 6],
