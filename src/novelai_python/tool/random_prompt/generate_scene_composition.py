@@ -1,12 +1,12 @@
 import random
-from typing import List
+from typing import List, Tuple
 
 from pydantic import dataclasses
 
-type WeightedOption = List[str, int, list, list, list]
-type WeightedSimpleOption = List[int]
-type WeightedOptions = List[WeightedOption]
-type WeightedSimpleOptions = List[WeightedSimpleOption]
+WeightedOption = Tuple[str, int, list, list, list]
+WeightedSimpleOption = List[int]
+WeightedOptions = List[WeightedOption]
+WeightedSimpleOptions = List[WeightedSimpleOption]
 
 cameraAnglesL = [
     ["dutch angle", 12, [], [], []],
