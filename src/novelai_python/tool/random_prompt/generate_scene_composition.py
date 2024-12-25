@@ -3,6 +3,11 @@ from typing import List
 
 from pydantic import dataclasses
 
+type WeightedOption = List[str, int, list, list, list]
+type WeightedSimpleOption = List[int]
+type WeightedOptions = List[WeightedOption]
+type WeightedSimpleOptions = List[WeightedSimpleOption]
+
 cameraAnglesL = [
     ["dutch angle", 12, [], [], []],
     ["from above", 12, ["above"], [], []],
@@ -2537,17 +2542,12 @@ colorsL = [
     ["rainbow", 2, [], [], []],
 ]
 
-type WeightedOption = List[str, int, list, list, list]
-type WeightedSimpleOption = List[int]
-type WeightedOptions = List[WeightedOption]
-type WeightedSimpleOptions = List[WeightedSimpleOption]
-
 
 @dataclasses.dataclass
 class Conditions:
     tags: List[str]
 
-    def add(self, v:str):
+    def add(self, v: str):
         if v not in self.tags:
             self.tags.append(v)
 
@@ -2577,6 +2577,7 @@ def select_weighted_option(
     :param conditions: 条件
     :return: 选项
     """
+
     # 如果 conditions 的元素存在于最后两个数组中，则不会被选中
     def get_fourth_array(item: WeightedOption) -> List[str]:
         if len(item) < 4:
