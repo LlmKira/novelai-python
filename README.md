@@ -142,8 +142,12 @@ loop.run_until_complete(chat("Hello"))
 ```python
 from novelai_python.tool.random_prompt import RandomPromptGenerator
 
-prompt = RandomPromptGenerator(nsfw_enabled=False).random_prompt()
-print(prompt)
+generator = RandomPromptGenerator()
+for i in range(10):
+    print(generator.generate_common_tags(nsfw=False))
+    print(generator.generate_scene_tags())
+    print(generator.generate_scene_composition())
+    print(generator.get_holiday_themed_tags())
 ```
 
 #### 📦 Run A Server
