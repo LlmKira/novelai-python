@@ -387,49 +387,95 @@ def get_model_group(model: ModelTypeAlias) -> ModelGroups:
     return mapping.get(model, ModelGroups.STABLE_DIFFUSION)
 
 
+@dataclass
+class UcPrompt:
+    category: str
+    name: str
+    text: str
+
+
+def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
+    if isinstance(model, Enum):
+        model = model.value
+    prompts: List[UcPrompt] = []
+    if model in [
+        Model.SAFE_DIFFUSION,
+        Model.NAI_DIFFUSION,
+        Model.NAI_DIFFUSION_INPAINTING,
+        Model.SAFE_DIFFUSION_INPAINTING,
+    ]:
+        prompts = [
+            UcPrompt(category="heavy", name="lowQualityPlusBadAnatomy",
+                     text="lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"),
+            UcPrompt(category="light", name="lowQuality",
+                     text="lowres, text, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"),
+            UcPrompt(category="none", name="none", text="lowres"),
+        ]
+    elif model in [
+        Model.NAI_DIFFUSION_FURRY,
+        Model.FURRY_DIFFUSION_INPAINTING,
+    ]:
+        prompts = [
+            UcPrompt(category="light", name="lowQuality",
+                     text="worst quality, low quality, what has science done, what, nightmare fuel, eldritch horror, where is your god now, why"),
+            UcPrompt(category="heavy", name="badAnatomy",
+                     text="{worst quality}, low quality, distracting watermark, [nightmare fuel], {{unfinished}}, deformed, outline, pattern, simple background"),
+            UcPrompt(category="none", name="none", text="low res"),
+        ]
+    elif model in [
+        Model.NAI_DIFFUSION_2,
+    ]:
+        prompts = [
+            UcPrompt(category="heavy", name="heavy",
+                     text="lowres, bad, text, error, missing, extra, fewer, cropped, jpeg artifacts, worst quality, bad quality, watermark, displeasing, unfinished, chromatic aberration, scan, scan artifacts"),
+            UcPrompt(category="light", name="light",
+                     text="lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"),
+            UcPrompt(category="none", name="none", text="lowres"),
+        ]
+    elif model in [
+        Model.NAI_DIFFUSION_3,
+        Model.NAI_DIFFUSION_3_INPAINTING,
+    ]:
+        prompts = [
+            UcPrompt(category="heavy", name="heavy",
+                     text="lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]"),
+            UcPrompt(category="light", name="light",
+                     text="lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"),
+            UcPrompt(category="human", name="humanFocus",
+                     text="lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, glowing eyes"),
+            UcPrompt(category="none", name="none", text="lowres"),
+        ]
+    elif model in [
+        Model.NAI_DIFFUSION_FURRY_3,
+        Model.NAI_DIFFUSION_FURRY_3_INPAINTING,
+    ]:
+        prompts = [
+            UcPrompt(category="heavy", name="heavy",
+                     text="{{worst quality}}, [displeasing], {unusual pupils}, guide lines, {{unfinished}}, {bad}, url, artist name, {{tall image}}, mosaic, {sketch page}, comic panel, impact (font), [dated], {logo}, ych, {what}, {where is your god now}, {distorted text}, repeated text, {floating head}, {1994}, {widescreen}, absolutely everyone, sequence, {compression artifacts}, hard translated, {cropped}, {commissioner name}, unknown text, high contrast"),
+            UcPrompt(category="light", name="light",
+                     text="{worst quality}, guide lines, unfinished, bad, url, tall image, widescreen, compression artifacts, unknown text"),
+            UcPrompt(category="none", name="none", text="lowres"),
+        ]
+    elif model in [
+        Model.CUSTOM,
+        Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
+    ]:
+        prompts = [
+            UcPrompt(category="heavy", name="heavy",
+                     text="blurry, lowres, error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, logo, dated, signature, multiple views, gigantic breasts"),
+            UcPrompt(category="light", name="light",
+                     text="blurry, lowres, error, worst quality, bad quality, jpeg artifacts, very displeasing, logo, dated, signature"),
+            UcPrompt(category="none", name="none", text=""),
+        ]
+    return prompts
+
+
 def get_default_uc_preset(model: ModelTypeAlias, uc_preset: int) -> str:
     if isinstance(model, Enum):
         model = model.value
     if isinstance(uc_preset, Enum):
         uc_preset = uc_preset.value
-
-    @dataclass
-    class UcPrompt:
-        label: str
-        text: str
-
-    mapper = {
-        ModelGroups.STABLE_DIFFUSION: [
-            UcPrompt("lowQualityPlusBadAnatomy",
-                     text="lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"),
-            UcPrompt("lowQuality",
-                     text="lowres, text, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"),
-            UcPrompt("none", text="lowres")
-        ],
-        ModelGroups.STABLE_DIFFUSION_GROUP_2: [
-            UcPrompt("heavy",
-                     text="lowres, bad, text, error, missing, extra, fewer, cropped, jpeg artifacts, worst quality, bad quality, watermark, displeasing, unfinished, chromatic aberration, scan, scan artifacts"),
-            UcPrompt("light", text="lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"),
-            UcPrompt("none", text="lowres")
-        ],
-        ModelGroups.STABLE_DIFFUSION_XL: [
-            UcPrompt("heavy",
-                     text="lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]"),
-            UcPrompt("light", text="lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"),
-            UcPrompt("humanFocus",
-                     text="lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, glowing eyes"),
-            UcPrompt("none", text="lowres")
-        ],
-        ModelGroups.STABLE_DIFFUSION_XL_FURRY: [
-            UcPrompt("heavy",
-                     text="{{worst quality}}, [displeasing], {unusual pupils}, guide lines, {{unfinished}}, {bad}, url, artist name, {{tall image}}, mosaic, {sketch page}, comic panel, impact (font), [dated], {logo}, ych, {what}, {where is your god now}, {distorted text}, repeated text, {floating head}, {1994}, {widescreen}, absolutely everyone, sequence, {compression artifacts}, hard translated, {cropped}, {commissioner name}, unknown text, high contrast"),
-            UcPrompt("light",
-                     text="{worst quality}, guide lines, unfinished, bad, url, tall image, widescreen, compression artifacts, unknown text"),
-            UcPrompt("none", text="lowres")
-        ],
-    }
-    model_group = get_model_group(model)
-    prompts: List[UcPrompt] = mapper.get(model_group, [UcPrompt("none", "lowres")])
+    prompts = get_uc_preset(model)
     if 0 <= uc_preset < len(prompts):
         return prompts[uc_preset].text
     else:
