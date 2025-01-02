@@ -471,8 +471,6 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
 
 def get_default_uc_preset(model: ModelTypeAlias, uc_preset: int) -> str:
     prompts = get_uc_preset(model)
-    if isinstance(uc_preset, Enum):
-        uc_preset = uc_preset.value
     if 0 <= uc_preset < len(prompts):
         return prompts[uc_preset].text
     else:

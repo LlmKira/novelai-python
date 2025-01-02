@@ -8,6 +8,7 @@ import math
 import random
 import re
 from copy import deepcopy
+from enum import Enum
 from io import BytesIO
 from typing import Optional, Union, Tuple, List
 from urllib.parse import urlparse
@@ -372,7 +373,11 @@ class GenerateImageInfer(ApiBaseModel):
 
         # Add negative prompt based on ucPreset
         if self.parameters.ucPreset is not None:
-            default_negative_prompt = get_default_uc_preset(self.model, self.parameters.ucPreset)
+            uc_preset = self.parameters.ucPreset
+            # If ucPreset is Enum, get the value
+            if isinstance(self.parameters.ucPreset, Enum):
+                uc_preset = self.parameters.ucPreset.value
+            default_negative_prompt = get_default_uc_preset(self.model, uc_preset)
             self.parameters.negative_prompt = ", ".join(
                 filter(None, [default_negative_prompt, self.parameters.negative_prompt])
             )
