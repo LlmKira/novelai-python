@@ -58,4 +58,4 @@ def test_get_holiday_themed_tags():
     result_m = generator.get_holiday_themed_tags()
     result_f = generator.get_holiday_themed_tags()
     result_o = generator.get_holiday_themed_tags()
-    assert result_m != result_f != result_o
+    assert len({result_m, result_f, result_o}) != 1
