@@ -6,7 +6,9 @@ import base64
 import json
 import math
 import random
+import re
 from copy import deepcopy
+from enum import Enum
 from io import BytesIO
 from typing import Optional, Union, Tuple, List
 from urllib.parse import urlparse
@@ -28,7 +30,7 @@ from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, ControlNe
     INPAINTING_MODEL_LIST, get_default_uc_preset, \
     ModelTypeAlias, UCPresetTypeAlias, get_default_noise_schedule, get_supported_noise_schedule, \
     get_model_group, ModelGroups, get_supported_params, get_modifiers, ImageBytesTypeAlias
-from .schema import Character, V4Prompt, V4NegativePrompt
+from .schema import Character, V4Prompt, V4NegativePrompt, PositionMap
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
@@ -110,7 +112,7 @@ class Params(BaseModel):
     Overlay Original Image.Prevents the existing image from changing,
     but can introduce seams along the edge of the mask.
     """
-    use_coords: bool = Field(True, description="Use Coordinates")
+    use_coords: bool = Field(False, description="Use Coordinates")
     """Use Coordinates"""
     characterPrompts: List[Character] = Field(default_factory=list)
     """Character Prompts"""
@@ -371,15 +373,63 @@ class GenerateImageInfer(ApiBaseModel):
 
         # Add negative prompt based on ucPreset
         if self.parameters.ucPreset is not None:
-            default_negative_prompt = get_default_uc_preset(self.model, self.parameters.ucPreset)
+            uc_preset = self.parameters.ucPreset
+            # If ucPreset is Enum, get the value
+            if isinstance(self.parameters.ucPreset, Enum):
+                uc_preset = self.parameters.ucPreset.value
+            default_negative_prompt = get_default_uc_preset(self.model, uc_preset)
             self.parameters.negative_prompt = ", ".join(
                 filter(None, [default_negative_prompt, self.parameters.negative_prompt])
             )
 
-        # Add quality prompt
+        # Add quality prompt based on qualityToggle
         modifier = get_modifiers(self.model)
-        if self.parameters.qualityToggle:
-            self.input += modifier.qualityTags
+        quality_tags, suffix = modifier.qualityTags, modifier.suffix
+
+        def enhance_text_part(_part, _quality_tags, _suffix):
+            text_parts = _part.split(" Text:")
+            enhanced_text_parts = [
+                _quality_tags + text_part + _suffix + ('.' if _suffix and len(text_parts) > 1 else '')
+                if index == 0
+                else text_part
+                for index, text_part in enumerate(text_parts)
+            ]
+            return " Text:".join(enhanced_text_parts)
+
+        def enhance_simple_part(_part, _quality_tags, _suffix):
+            match = re.search(r"(:[\d.]+$)", _part)
+            matched_value = match.group(0) if match else None
+            core_part = _part[:-len(matched_value)] if matched_value else _part
+            return _quality_tags + core_part + _suffix + (matched_value or "")
+
+        def enhance_message(_prompt):
+            try:
+                if get_supported_params(self.model).characterPrompts:
+                    parts = _prompt.split("|")
+                    enhanced_parts = [
+                        quality_tags + part + suffix
+                        if index == 0 and not get_supported_params(self.model).text
+                        else enhance_text_part(part, quality_tags, suffix)
+                        if index == 0
+                        else part
+                        for index, part in enumerate(parts)
+                    ]
+                    return "|".join(enhanced_parts)
+                else:
+                    parts = _prompt.split("|")
+                    enhanced_parts = [
+                        enhance_simple_part(part, quality_tags, suffix)
+                        for part in parts
+                    ]
+                    return "|".join(enhanced_parts)
+            except Exception as e:
+                logger.error(
+                    f"Failed to enhance `{_prompt}` because {e},"
+                    f"Report this issue to https://github.com/LLMKIRA/novelai-python/issues"
+                )
+                return _prompt
+
+        self.input = enhance_message(self.input)
 
     @model_validator(mode="after")
     def _build_nai4_prompt(self):
@@ -464,7 +514,30 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.sm_dyn = True
 
         if self.parameters.sm_dyn and (not self.parameters.sm):
-            self.parameters.sm_dyn = False
+            self.parameters.sm = True
+
+        # AUTO SMEA SETTING
+        """
+        def sm_size_cast(model: Model):
+            if model in [
+                Model.NAI_DIFFUSION_V3,
+                Model.NAI_DIFFUSION_V3_INPAINTING,
+                Model.NAI_DIFFUSION_FURRY_V3,
+                Model.NAI_DIFFUSION_FURRY_V3_INPAINTING,
+                Model.CUSTOM
+            ]:
+                return 2166785
+            return 1064961
+        if self.parameters.autoSmea and (self.parameters.width * self.parameters.height < sm_size_cast(self.model)):
+            self.parameters.autoSmea = False
+        """
+
+        if self.parameters.characterPrompts:
+            self.parameters.use_coords = any([c.center != PositionMap.AUTO for c in self.parameters.characterPrompts])
+
+        # Mix Prompt Warning
+        if self.input.count('|') > 6:
+            logger.warning("Maximum prompt mixes exceeded. Extra will be ignored.")
 
         if self.parameters.sampler in [
             Sampler.DDIM,
@@ -572,7 +645,6 @@ class GenerateImageInfer(ApiBaseModel):
             prompt: str,
             *,
             model: Union[Model, str],
-            qualitySuffix: bool = True,
             negative_prompt: str = "",
             ucPreset: UCPresetTypeAlias = UCPreset.TYPE0,
             sm: bool = False,
@@ -602,7 +674,6 @@ class GenerateImageInfer(ApiBaseModel):
         :param prompt: Given prompt.
         :param model: Model for generation.
         :param negative_prompt: The things you don't want to see in the image.
-        :param qualitySuffix: Add quality suffix to prompt
         :param ucPreset: The negative prompt preset.
         :param steps: The steps for generation.
         :param seed: The seed for generation.
@@ -619,9 +690,6 @@ class GenerateImageInfer(ApiBaseModel):
         """
         if character_prompts is None:
             character_prompts = []
-        if qualitySuffix:
-            modifier = get_modifiers(model)
-            prompt += modifier.suffix
         if seed is None:
             seed = random.randint(0, 4294967295 - 7)
         if reference_strength_multiple is None:
@@ -668,7 +736,6 @@ class GenerateImageInfer(ApiBaseModel):
             seed: int = None,
             extra_noise_seed: int = None,
             model: Union[Model, str] = Model.NAI_DIFFUSION_3,
-            qualitySuffix: bool = True,
             negative_prompt: str = "",
             ucPreset: UCPresetTypeAlias = UCPreset.TYPE0,
             steps: int = 23,
@@ -699,7 +766,6 @@ class GenerateImageInfer(ApiBaseModel):
         :param prompt: Given prompt.
         :param model: Model for generation.
         :param negative_prompt: The things you don't want to see in the image.
-        :param qualitySuffix: Add quality suffix to prompt
         :param ucPreset: The negative prompt preset.
         :param steps: The steps for generation.
         :param seed: The seed for generation.
@@ -716,9 +782,6 @@ class GenerateImageInfer(ApiBaseModel):
         """
         if character_prompts is None:
             character_prompts = []
-        if qualitySuffix:
-            modifier = get_modifiers(model)
-            prompt += modifier.suffix
         if seed is None:
             seed = random.randint(0, 4294967295 - 7)
         if extra_noise_seed is None:
@@ -768,7 +831,6 @@ class GenerateImageInfer(ApiBaseModel):
             mask: Union[bytes, str],
             strength: float = 0.7,
             model: Union[Model, str] = Model.NAI_DIFFUSION_3,
-            qualitySuffix: bool = True,
             negative_prompt: str = "",
             ucPreset: UCPresetTypeAlias = UCPreset.TYPE0,
             steps: int = 23,
@@ -799,7 +861,6 @@ class GenerateImageInfer(ApiBaseModel):
         :param prompt: Given prompt.
         :param model: Model for generation.
         :param negative_prompt: The things you don't want to see in the image.
-        :param qualitySuffix: Add quality suffix to prompt
         :param ucPreset: The negative prompt preset.
         :param steps: The steps for generation.
         :param seed: The seed for generation.
@@ -816,9 +877,6 @@ class GenerateImageInfer(ApiBaseModel):
         """
         if character_prompts is None:
             character_prompts = []
-        if qualitySuffix:
-            modifier = get_modifiers(model)
-            prompt += modifier.suffix
         if seed is None:
             seed = random.randint(0, 4294967295 - 7)
         if reference_strength_multiple is None:
