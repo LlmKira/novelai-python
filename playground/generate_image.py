@@ -6,13 +6,14 @@
 import asyncio
 import os
 import pathlib
+import random
 
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
 from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
-from novelai_python.sdk.ai.generate_image import Action, Model, Sampler, Character, UCPreset
+from novelai_python.sdk.ai.generate_image import Action, Model, Sampler, Character, UCPreset, Params
 from novelai_python.sdk.ai.generate_image.schema import PositionMap
 from novelai_python.utils.useful import enum_to_list
 
@@ -78,6 +79,33 @@ async def generate(
     file = result.files[0]
     with open(f"{pathlib.Path(__file__).stem}.png", "wb") as f:
         f.write(file[1])
+
+
+async def direct_use():
+    """
+    Don't like use build-in method? you can directly initialize the class.
+    that's pydantic!
+    :return:
+    """
+    credential = JwtCredential(jwt_token=SecretStr("pst-5555"))
+    result = await GenerateImageInfer(
+        input="1girl",
+        model=Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
+        parameters=Params(
+            width=832,
+            height=1216,
+            characterPrompts=[],
+            seed=random.randint(0, 4294967295 - 7),
+            scale=5,
+            negative_prompt="lowres",
+            qualityToggle=True,
+            sampler=Sampler.K_EULER_ANCESTRAL,
+            ucPreset=UCPreset.TYPE0,
+            steps=23,
+            n_samples=1,
+        )
+    ).request(session=credential)
+    print(f"Meta: {result.meta}")
 
 
 load_dotenv()
