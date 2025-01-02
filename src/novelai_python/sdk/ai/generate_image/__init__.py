@@ -6,6 +6,7 @@ import base64
 import json
 import math
 import random
+import re
 from copy import deepcopy
 from io import BytesIO
 from typing import Optional, Union, Tuple, List
@@ -28,7 +29,7 @@ from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, ControlNe
     INPAINTING_MODEL_LIST, get_default_uc_preset, \
     ModelTypeAlias, UCPresetTypeAlias, get_default_noise_schedule, get_supported_noise_schedule, \
     get_model_group, ModelGroups, get_supported_params, get_modifiers, ImageBytesTypeAlias
-from .schema import Character, V4Prompt, V4NegativePrompt
+from .schema import Character, V4Prompt, V4NegativePrompt, PositionMap
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
@@ -110,7 +111,7 @@ class Params(BaseModel):
     Overlay Original Image.Prevents the existing image from changing,
     but can introduce seams along the edge of the mask.
     """
-    use_coords: bool = Field(True, description="Use Coordinates")
+    use_coords: bool = Field(False, description="Use Coordinates")
     """Use Coordinates"""
     characterPrompts: List[Character] = Field(default_factory=list)
     """Character Prompts"""
@@ -376,11 +377,54 @@ class GenerateImageInfer(ApiBaseModel):
                 filter(None, [default_negative_prompt, self.parameters.negative_prompt])
             )
 
-        # Add quality prompt
+        # Add quality prompt based on qualityToggle
         modifier = get_modifiers(self.model)
-        if self.parameters.qualityToggle:
-            self.input += modifier.qualityTags
-            self.input += modifier.suffix
+        quality_tags, suffix = modifier.qualityTags, modifier.suffix
+
+        def enhance_text_part(_part, _quality_tags, _suffix):
+            text_parts = _part.split(" Text:")
+            enhanced_text_parts = [
+                _quality_tags + text_part + _suffix + ('.' if _suffix and len(text_parts) > 1 else '')
+                if index == 0
+                else text_part
+                for index, text_part in enumerate(text_parts)
+            ]
+            return " Text:".join(enhanced_text_parts)
+
+        def enhance_simple_part(_part, _quality_tags, _suffix):
+            match = re.search(r"(:[\d.]+$)", _part)
+            matched_value = match.group(0) if match else None
+            core_part = _part[:-len(matched_value)] if matched_value else _part
+            return _quality_tags + core_part + _suffix + (matched_value or "")
+
+        def enhance_message(_prompt):
+            try:
+                if get_supported_params(self.model).characterPrompts:
+                    parts = _prompt.split("|")
+                    enhanced_parts = [
+                        quality_tags + part + suffix
+                        if index == 0 and not get_supported_params(self.model).text
+                        else enhance_text_part(part, quality_tags, suffix)
+                        if index == 0
+                        else part
+                        for index, part in enumerate(parts)
+                    ]
+                    return "|".join(enhanced_parts)
+                else:
+                    parts = _prompt.split("|")
+                    enhanced_parts = [
+                        enhance_simple_part(part, quality_tags, suffix)
+                        for part in parts
+                    ]
+                    return "|".join(enhanced_parts)
+            except Exception as e:
+                logger.error(
+                    f"Failed to enhance `{_prompt}` because {e},"
+                    f"Report this issue to https://github.com/LLMKIRA/novelai-python/issues"
+                )
+                return _prompt
+
+        self.input = enhance_message(self.input)
 
     @model_validator(mode="after")
     def _build_nai4_prompt(self):
@@ -465,7 +509,30 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.sm_dyn = True
 
         if self.parameters.sm_dyn and (not self.parameters.sm):
-            self.parameters.sm_dyn = False
+            self.parameters.sm = True
+
+        # AUTO SMEA SETTING
+        """
+        def sm_size_cast(model: Model):
+            if model in [
+                Model.NAI_DIFFUSION_V3,
+                Model.NAI_DIFFUSION_V3_INPAINTING,
+                Model.NAI_DIFFUSION_FURRY_V3,
+                Model.NAI_DIFFUSION_FURRY_V3_INPAINTING,
+                Model.CUSTOM
+            ]:
+                return 2166785
+            return 1064961
+        if self.parameters.autoSmea and (self.parameters.width * self.parameters.height < sm_size_cast(self.model)):
+            self.parameters.autoSmea = False
+        """
+
+        if self.parameters.characterPrompts:
+            self.parameters.use_coords = any([c.center != PositionMap.AUTO for c in self.parameters.characterPrompts])
+
+        # Mix Prompt Warning
+        if self.input.count('|') > 6:
+            logger.warning("Maximum prompt mixes exceeded. Extra will be ignored.")
 
         if self.parameters.sampler in [
             Sampler.DDIM,
