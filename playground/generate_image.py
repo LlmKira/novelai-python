@@ -34,6 +34,7 @@ async def generate(
     print(f"Action List:{enum_to_list(Action)}")
     print(
         """
+        PositionMap
         .1 .3 .5 .7 .9
         A1 B1 C1 D1 E1
         A2 B2 C2 D2 E2
