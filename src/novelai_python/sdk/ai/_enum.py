@@ -361,6 +361,7 @@ def get_default_noise_schedule(sample_type: Sampler) -> NoiseSchedule:
 
 
 def get_model_group(model: ModelTypeAlias) -> ModelGroups:
+    # 一般情况禁止转换
     if isinstance(model, Enum):
         model = model.value
     else:
@@ -395,8 +396,6 @@ class UcPrompt:
 
 
 def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
-    if isinstance(model, Enum):
-        model = model.value
     prompts: List[UcPrompt] = []
     if model in [
         Model.SAFE_DIFFUSION,
@@ -471,11 +470,9 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
 
 
 def get_default_uc_preset(model: ModelTypeAlias, uc_preset: int) -> str:
-    if isinstance(model, Enum):
-        model = model.value
+    prompts = get_uc_preset(model)
     if isinstance(uc_preset, Enum):
         uc_preset = uc_preset.value
-    prompts = get_uc_preset(model)
     if 0 <= uc_preset < len(prompts):
         return prompts[uc_preset].text
     else:
