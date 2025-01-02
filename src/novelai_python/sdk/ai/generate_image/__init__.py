@@ -380,6 +380,7 @@ class GenerateImageInfer(ApiBaseModel):
         modifier = get_modifiers(self.model)
         if self.parameters.qualityToggle:
             self.input += modifier.qualityTags
+            self.input += modifier.suffix
 
     @model_validator(mode="after")
     def _build_nai4_prompt(self):
@@ -572,7 +573,6 @@ class GenerateImageInfer(ApiBaseModel):
             prompt: str,
             *,
             model: Union[Model, str],
-            qualitySuffix: bool = True,
             negative_prompt: str = "",
             ucPreset: UCPresetTypeAlias = UCPreset.TYPE0,
             sm: bool = False,
@@ -602,7 +602,6 @@ class GenerateImageInfer(ApiBaseModel):
         :param prompt: Given prompt.
         :param model: Model for generation.
         :param negative_prompt: The things you don't want to see in the image.
-        :param qualitySuffix: Add quality suffix to prompt
         :param ucPreset: The negative prompt preset.
         :param steps: The steps for generation.
         :param seed: The seed for generation.
@@ -619,9 +618,6 @@ class GenerateImageInfer(ApiBaseModel):
         """
         if character_prompts is None:
             character_prompts = []
-        if qualitySuffix:
-            modifier = get_modifiers(model)
-            prompt += modifier.suffix
         if seed is None:
             seed = random.randint(0, 4294967295 - 7)
         if reference_strength_multiple is None:
@@ -668,7 +664,6 @@ class GenerateImageInfer(ApiBaseModel):
             seed: int = None,
             extra_noise_seed: int = None,
             model: Union[Model, str] = Model.NAI_DIFFUSION_3,
-            qualitySuffix: bool = True,
             negative_prompt: str = "",
             ucPreset: UCPresetTypeAlias = UCPreset.TYPE0,
             steps: int = 23,
@@ -699,7 +694,6 @@ class GenerateImageInfer(ApiBaseModel):
         :param prompt: Given prompt.
         :param model: Model for generation.
         :param negative_prompt: The things you don't want to see in the image.
-        :param qualitySuffix: Add quality suffix to prompt
         :param ucPreset: The negative prompt preset.
         :param steps: The steps for generation.
         :param seed: The seed for generation.
@@ -716,9 +710,6 @@ class GenerateImageInfer(ApiBaseModel):
         """
         if character_prompts is None:
             character_prompts = []
-        if qualitySuffix:
-            modifier = get_modifiers(model)
-            prompt += modifier.suffix
         if seed is None:
             seed = random.randint(0, 4294967295 - 7)
         if extra_noise_seed is None:
@@ -768,7 +759,6 @@ class GenerateImageInfer(ApiBaseModel):
             mask: Union[bytes, str],
             strength: float = 0.7,
             model: Union[Model, str] = Model.NAI_DIFFUSION_3,
-            qualitySuffix: bool = True,
             negative_prompt: str = "",
             ucPreset: UCPresetTypeAlias = UCPreset.TYPE0,
             steps: int = 23,
@@ -799,7 +789,6 @@ class GenerateImageInfer(ApiBaseModel):
         :param prompt: Given prompt.
         :param model: Model for generation.
         :param negative_prompt: The things you don't want to see in the image.
-        :param qualitySuffix: Add quality suffix to prompt
         :param ucPreset: The negative prompt preset.
         :param steps: The steps for generation.
         :param seed: The seed for generation.
@@ -816,9 +805,6 @@ class GenerateImageInfer(ApiBaseModel):
         """
         if character_prompts is None:
             character_prompts = []
-        if qualitySuffix:
-            modifier = get_modifiers(model)
-            prompt += modifier.suffix
         if seed is None:
             seed = random.randint(0, 4294967295 - 7)
         if reference_strength_multiple is None:
