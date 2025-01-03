@@ -466,7 +466,7 @@ class GenerateImageInfer(ApiBaseModel):
             logger.trace("Mutual exclusion is enabled, will modify negative prompt.")
             input_prompt = {x.strip(): x for x in self.input.split(",")}
             uc_prompt = {x.strip(): x for x in self.parameters.negative_prompt.split(",")}
-            # 以 input 为主，如果 uc_prompt 有 input 中的内容，就删除
+            # Remove conflicting negative words
             for key in input_prompt:
                 if key in uc_prompt:
                     uc_prompt.pop(key)
