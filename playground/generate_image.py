@@ -46,7 +46,7 @@ async def generate(
     try:
         agent = GenerateImageInfer.build_generate(
             prompt=prompt,
-            model=Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
+            model=Model.NAI_DIFFUSION_3,
             character_prompts=[
                 Character(
                     prompt="1girl",
@@ -65,7 +65,7 @@ async def generate(
             decrisp_mode=False,
             variety_boost=True,
             # Checkbox in novelai.net
-        )
+        ).set_mutual_exclusion(True)
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
         result = await agent.request(
