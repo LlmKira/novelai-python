@@ -65,7 +65,7 @@ async def generate(
             decrisp_mode=False,
             variety_boost=True,
             # Checkbox in novelai.net
-        )
+        ).set_mutual_exclusion(True)
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
         result = await agent.request(

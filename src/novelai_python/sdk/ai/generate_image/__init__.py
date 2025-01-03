@@ -344,6 +344,35 @@ class Params(BaseModel):
 
 class GenerateImageInfer(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://image.novelai.net")
+    _mutual_exclusion: bool = PrivateAttr(False)
+    """Positive words and negative words are mutually exclusive, and conflicting negative words are deleted first."""
+    _quality_modifier: bool = PrivateAttr(True)
+    """Add Quality Modifier To Input"""
+
+    def set_mutual_exclusion(self, value: bool):
+        """
+        **Enable This will modify the negative prompt.**
+        Default is False.
+
+        Positive words and negative words are mutually exclusive, and conflicting negative words are deleted first.
+        :param value: bool
+        :return: self
+        """
+        self._mutual_exclusion = bool(value)
+        return self
+
+    def set_quality_modifier(self, value: bool):
+        """
+        **Enable This will modify the input prompt.**
+        Default is True.
+
+        Add Quality Modifier To Input.
+        Whether to add the quality vocabulary used by the web application.
+        :param value:
+        :return:
+        """
+        self._quality_modifier = bool(value)
+        return self
 
     @property
     def endpoint(self):
@@ -429,7 +458,19 @@ class GenerateImageInfer(ApiBaseModel):
                 )
                 return _prompt
 
-        self.input = enhance_message(self.input)
+        if self._quality_modifier:
+            logger.trace("Enhancing input with quality modifier, will modify input prompt.")
+            self.input = enhance_message(self.input)
+
+        if self._mutual_exclusion:
+            logger.trace("Mutual exclusion is enabled, will modify negative prompt.")
+            input_prompt = {x.strip(): x for x in self.input.split(",")}
+            uc_prompt = {x.strip(): x for x in self.parameters.negative_prompt.split(",")}
+            # Remove conflicting negative words
+            for key in input_prompt:
+                if key in uc_prompt:
+                    uc_prompt.pop(key)
+            self.parameters.negative_prompt = ",".join(uc_prompt.values())
 
     @model_validator(mode="after")
     def _build_nai4_prompt(self):
@@ -467,7 +508,9 @@ class GenerateImageInfer(ApiBaseModel):
     @model_validator(mode="after")
     def _backend_logic(self):
         """
-        Backend logic for GenerateImageInfer.
+        Calibration results.
+
+        **NOTE: It is forbidden to write logic that does not belong to novelai.net here**
         :return: self
         """
         if self.action == Action.GENERATE:
@@ -949,7 +992,9 @@ class GenerateImageInfer(ApiBaseModel):
                       override_headers: Optional[dict] = None,
                       ) -> ImageGenerateResp:
         """
-        Generate images using NovelAI's diffusion models. According to our Terms of Service, all generation requests must be initiated by a human action. Automating text or image generation to create excessive load on our systems is not allowed.
+        **Generate images using NovelAI's diffusion models.**
+
+        According to our Terms of Service, all generation requests must be initiated by a human action. Automating text or image generation to create excessive load on our systems is not allowed.
 
         :param override_headers: the headers to override
         :param session:  session
