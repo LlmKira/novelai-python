@@ -407,6 +407,12 @@ class GenerateImageInfer(ApiBaseModel):
             if isinstance(self.parameters.ucPreset, Enum):
                 uc_preset = self.parameters.ucPreset.value
             default_negative_prompt = get_default_uc_preset(self.model, uc_preset)
+            if self.parameters.negative_prompt and default_negative_prompt == "lowres":
+                # Lowres means we don't found any negative prompt.
+                # If the default negative prompt is lowres, and the user has set a negative prompt,
+                # then the default negative prompt is not added.
+                default_negative_prompt = ""
+            # Combine the negative prompt preset and the user's negative prompt
             self.parameters.negative_prompt = ", ".join(
                 filter(None, [default_negative_prompt, self.parameters.negative_prompt])
             )
