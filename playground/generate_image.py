@@ -46,7 +46,7 @@ async def generate(
     try:
         agent = GenerateImageInfer.build_generate(
             prompt=prompt,
-            model=Model.NAI_DIFFUSION_3,
+            model=Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
             character_prompts=[
                 Character(
                     prompt="1girl",
