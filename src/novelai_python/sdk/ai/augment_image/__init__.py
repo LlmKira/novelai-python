@@ -32,6 +32,9 @@ from ....utils import try_jsonfy
 
 
 class AugmentImageInfer(ApiBaseModel):
+    """
+    https://docs.novelai.net/image/directortools.html
+    """
     _endpoint: str = PrivateAttr("https://image.novelai.net")
 
     @property
