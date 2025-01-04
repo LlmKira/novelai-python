@@ -74,6 +74,14 @@ class ConcurrentGenerationError(APIError):
     pass
 
 
+class DataSerializationError(APIError):
+    """
+    DataSerializationError is raised when the API returns an error.
+    """
+
+    pass
+
+
 class AuthError(APIError):
     """
     AuthError is raised when the API returns an error.

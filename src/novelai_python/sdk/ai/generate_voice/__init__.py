@@ -141,35 +141,24 @@ class VoiceGenerate(ApiBaseModel):
             logger.debug(f"Voice request data: {request_data}")
             # Request
             try:
-                assert hasattr(sess, "post"), "session must have get method."
+                self.ensure_session_has_post_method(sess)
                 response = await sess.post(
                     url=self.base_url,
                     json=request_data
                 )
                 header_type = response.headers.get('Content-Type')
-                if header_type not in ['audio/mpeg', 'audio/ogg', 'audio/opus', 'audio/wav', 'audio/webm']:
-                    logger.warning(
-                        f"Error with content type: {header_type} and code: {response.status_code}"
-                    )
-                    try:
-                        _msg = response.json()
-                    except Exception as e:
-                        logger.warning(e)
-                        if not isinstance(response.content, str) and len(response.content) < 50:
-                            raise APIError(
-                                message=f"Unexpected content: {header_type} with code: {response.status_code}",
-                                request=request_data,
-                                code=response.status_code,
-                                response="UnJsoned content"
-                            )
-                        else:
-                            _msg = {"statusCode": response.status_code, "message": response.content}
-                    status_code = _msg.get("statusCode", response.status_code)
-                    message = _msg.get("message", "Unknown error")
+                if (
+                        header_type not in ['audio/mpeg', 'audio/ogg', 'audio/opus', 'audio/wav', 'audio/webm']
+                        or response.status_code >= 400
+                ):
+
+                    error_message = await self.handle_error_response(response=response, request_data=request_data)
+                    status_code = error_message.get("statusCode", response.status_code)
+                    message = error_message.get("message", "Unknown error")
                     if status_code in [400]:
                         # Validation tts version error
-                        raise APIError(message, request=request_data, code=status_code, response=_msg)
-                    raise APIError(message, request=request_data, code=status_code, response=_msg)
+                        raise APIError(message, request=request_data, code=status_code, response=error_message)
+                    raise APIError(message, request=request_data, code=status_code, response=error_message)
                 return VoiceResponse(
                     meta=request_data,
                     audio=response.content,
