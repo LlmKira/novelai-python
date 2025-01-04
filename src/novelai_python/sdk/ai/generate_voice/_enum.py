@@ -7,30 +7,30 @@ class Speaker(BaseModel):
     """
     Speaker for /ai/generated_voice
     """
-    voice: int = -1
+    sid: int = -1
     seed: str = "kurumuz12"
     name: str
     category: str
 
     @property
     def version(self):
-        return "v2" if self.voice == -1 else "v1"
+        return "v2" if self.sid == -1 else "v1"
 
 
 class VoiceSpeakerV1(Enum):
     """
     Speaker for /ai/generated_voice
     """
-    Cyllene = Speaker(voice=17, name="Cyllene", category="female")
-    Leucosia = Speaker(voice=95, name="Leucosia", category="female")
-    Crina = Speaker(voice=44, name="Crina", category="female")
-    Hespe = Speaker(voice=80, name="Hespe", category="female")
-    Ida = Speaker(voice=106, name="Ida", category="female")
-    Alseid = Speaker(voice=6, name="Alseid", category="male")
-    Daphnis = Speaker(voice=10, name="Daphnis", category="male")
-    Echo = Speaker(voice=16, name="Echo", category="male")
-    Thel = Speaker(voice=41, name="Thel", category="male")
-    Nomios = Speaker(voice=77, name="Nomios", category="male")
+    Cyllene = Speaker(sid=17, name="Cyllene", category="female")
+    Leucosia = Speaker(sid=95, name="Leucosia", category="female")
+    Crina = Speaker(sid=44, name="Crina", category="female")
+    Hespe = Speaker(sid=80, name="Hespe", category="female")
+    Ida = Speaker(sid=106, name="Ida", category="female")
+    Alseid = Speaker(sid=6, name="Alseid", category="male")
+    Daphnis = Speaker(sid=10, name="Daphnis", category="male")
+    Echo = Speaker(sid=16, name="Echo", category="male")
+    Thel = Speaker(sid=41, name="Thel", category="male")
+    Nomios = Speaker(sid=77, name="Nomios", category="male")
     # SeedInput = Speaker(sid=-1, name="Seed Input", category="custom")
 
 
