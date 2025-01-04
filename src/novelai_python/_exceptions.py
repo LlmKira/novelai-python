@@ -76,7 +76,7 @@ class ConcurrentGenerationError(APIError):
 
 class DataSerializationError(APIError):
     """
-    DataSerializationError is raised when the API returns an error.
+    DataSerializationError is raised when the API data is not serializable.
     """
 
     pass

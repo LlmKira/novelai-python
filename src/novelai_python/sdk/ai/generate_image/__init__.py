@@ -1010,6 +1010,11 @@ class GenerateImageInfer(ApiBaseModel):
         :param override_headers: Headers to override the default headers.
         :param session: Async session object or credential-based session.
         :return: ImageGenerateResp containing the response data and metadata.
+        :raises AuthError: If the request is unauthorized.
+        :raises APIError: If the API returns an error.
+        :raises ConcurrentGenerationError: If the request is rate-limited.
+        :raises SessionHttpError: If an HTTP error occurs.
+        :raises DataSerializationError: If an error occurs while processing the response data.
         """
         # Prepare request data
         request_data = self.model_dump(mode="json", exclude_none=True)
