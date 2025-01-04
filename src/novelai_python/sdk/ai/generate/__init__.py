@@ -369,7 +369,7 @@ class LLM(ApiBaseModel):
             logger.debug(f"LLM request data: {json.dumps(request_data)}")
             # Request
             try:
-                assert hasattr(sess, "post"), "session must have post method."
+                self.ensure_session_has_post_method(sess)
                 response = await sess.post(
                     self.base_url,
                     json=request_data,

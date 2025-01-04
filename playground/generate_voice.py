@@ -23,7 +23,7 @@ async def generate_voice(text: str):
     try:
         voice_gen = VoiceGenerate.build(
             text=text,
-            voice_engine=VoiceSpeakerV1.Crina,  # VoiceSpeakerV2.Ligeia,
+            speaker=VoiceSpeakerV2.Ligeia,  # VoiceSpeakerV2.Ligeia,
         )
         result = await voice_gen.request(
             session=credential

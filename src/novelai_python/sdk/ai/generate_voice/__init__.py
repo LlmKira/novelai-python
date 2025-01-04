@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # @Author  : sudoskys
+from enum import Enum
 from typing import Optional, Union, Literal
 from urllib.parse import urlparse
 
@@ -11,7 +12,7 @@ from loguru import logger
 from pydantic import ConfigDict, PrivateAttr, Field, model_validator
 from tenacity import wait_random, retry, stop_after_attempt, retry_if_exception
 
-from ._enum import VoiceSpeakerV1, VoiceSpeakerV2
+from ._enum import VoiceSpeakerV1, VoiceSpeakerV2, Speaker
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, SessionHttpError
 from ...._response.ai.generate_voice import VoiceResponse
@@ -80,43 +81,36 @@ class VoiceGenerate(ApiBaseModel):
     @classmethod
     def build(cls,
               text: str,
-              voice_engine: Union[VoiceSpeakerV1, VoiceSpeakerV2, str],
+              speaker: Union[VoiceSpeakerV2, VoiceSpeakerV1, Speaker, str],
               *,
-              opus: bool = False
+              opus: bool = True
               ) -> "VoiceGenerate":
         """
         生成图片
         :param opus: unknown
         :param text: str
-        :param voice_engine: VoiceSpeakerV1 or VoiceSpeakerV2 or str
+        :param speaker: Speaker import from novelai_python.sdk.ai.generate_voice._enum
         :return: VoiceGenerate instance
         :raises: ValueError
         """
-        if isinstance(voice_engine, str):
+        if isinstance(speaker, Enum):
+            speaker = speaker.value
+
+        if isinstance(speaker, str):
             return cls(
                 text=text,
                 voice=-1,
-                seed=voice_engine,
+                seed=speaker,
                 opus=opus,
                 version="v2"
             )
-        if isinstance(voice_engine, VoiceSpeakerV2):
-            return cls(
-                text=text,
-                seed=voice_engine.value.seed,
-                voice=voice_engine.value.sid,
-                opus=opus,
-                version="v2"
-            )
-        if isinstance(voice_engine, VoiceSpeakerV1):
-            return cls(
-                text=text,
-                seed=voice_engine.value.seed,
-                voice=voice_engine.value.sid,
-                opus=opus,
-                version="v1"
-            )
-        raise ValueError("Invalid voice engine")
+        return cls(
+            text=text,
+            seed=speaker.seed,
+            voice=speaker.voice,
+            opus=opus,
+            version=speaker.version
+        )
 
     @retry(
         wait=wait_random(min=1, max=3),
@@ -147,35 +141,24 @@ class VoiceGenerate(ApiBaseModel):
             logger.debug(f"Voice request data: {request_data}")
             # Request
             try:
-                assert hasattr(sess, "get"), "session must have get method."
-                response = await sess.get(
-                    self.base_url,
-                    params=request_data
+                self.ensure_session_has_post_method(sess)
+                response = await sess.post(
+                    url=self.base_url,
+                    json=request_data
                 )
                 header_type = response.headers.get('Content-Type')
-                if header_type not in ['audio/mpeg', 'audio/ogg', 'audio/opus']:
-                    logger.warning(
-                        f"Error with content type: {header_type} and code: {response.status_code}"
-                    )
-                    try:
-                        _msg = response.json()
-                    except Exception as e:
-                        logger.warning(e)
-                        if not isinstance(response.content, str) and len(response.content) < 50:
-                            raise APIError(
-                                message=f"Unexpected content: {header_type} with code: {response.status_code}",
-                                request=request_data,
-                                code=response.status_code,
-                                response="UnJsoned content"
-                            )
-                        else:
-                            _msg = {"statusCode": response.status_code, "message": response.content}
-                    status_code = _msg.get("statusCode", response.status_code)
-                    message = _msg.get("message", "Unknown error")
+                if (
+                        header_type not in ['audio/mpeg', 'audio/ogg', 'audio/opus', 'audio/wav', 'audio/webm']
+                        or response.status_code >= 400
+                ):
+
+                    error_message = await self.handle_error_response(response=response, request_data=request_data)
+                    status_code = error_message.get("statusCode", response.status_code)
+                    message = error_message.get("message", "Unknown error")
                     if status_code in [400]:
                         # Validation tts version error
-                        raise APIError(message, request=request_data, code=status_code, response=_msg)
-                    raise APIError(message, request=request_data, code=status_code, response=_msg)
+                        raise APIError(message, request=request_data, code=status_code, response=error_message)
+                    raise APIError(message, request=request_data, code=status_code, response=error_message)
                 return VoiceResponse(
                     meta=request_data,
                     audio=response.content,

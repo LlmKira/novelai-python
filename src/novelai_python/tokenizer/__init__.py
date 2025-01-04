@@ -25,7 +25,15 @@ def download_file(url, destination_path, session):
     :return: None
     :raises ValueError: If the downloaded file size doesn't match the Content-Length header.
     """
-    response = session.get(url, headers={"Content-Type": "application/json"})
+    response = session.get(
+        url,
+        timeout=30,
+        headers={
+            "User-Agent": "novelai-python/0.1.0",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        }
+    )
     response.raise_for_status()
     with open(destination_path, "wb") as f:
         f.write(response.content)

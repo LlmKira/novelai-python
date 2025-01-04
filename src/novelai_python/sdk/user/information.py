@@ -16,7 +16,6 @@ from ..schema import ApiBaseModel
 from ..._exceptions import APIError, AuthError, SessionHttpError
 from ..._response.user.information import InformationResp
 from ...credential import CredentialBase
-from ...utils import try_jsonfy
 
 
 class Information(ApiBaseModel):
@@ -65,39 +64,25 @@ class Information(ApiBaseModel):
                 sess.headers.update(override_headers)
             logger.debug("Information")
             try:
-                assert hasattr(sess, "get"), "session must have get method."
+                self.ensure_session_has_get_method(sess)
                 response = await sess.get(
                     self.base_url
                 )
                 if "application/json" not in response.headers.get('Content-Type') or response.status_code != 200:
-                    logger.warning(
-                        f"Error with content type: {response.headers.get('Content-Type')} and code: {response.status_code}"
-                    )
-                    try:
-                        _msg = response.json()
-                    except Exception as e:
-                        logger.warning(e)
-                        if not isinstance(response.content, str) and len(response.content) < 50:
-                            raise APIError(
-                                message=f"Unexpected content type: {response.headers.get('Content-Type')}",
-                                request=request_data,
-                                code=response.status_code,
-                                response=try_jsonfy(response.content)
-                            )
-                        else:
-                            _msg = {"statusCode": response.status_code, "message": response.content}
-                    status_code = _msg.get("statusCode", response.status_code)
-                    message = _msg.get("message", "Unknown error")
+                    error_message = await self.handle_error_response(response=response, request_data=request_data)
+                    status_code = error_message.get("statusCode", response.status_code)
+                    message = error_message.get("message", "Unknown error")
                     if status_code in [400, 401, 402]:
                         # 400 : validation error
                         # 401 : unauthorized
                         # 402 : payment required
                         # 409 : conflict
-                        raise AuthError(message, request=request_data, code=status_code, response=_msg)
+                        raise AuthError(message, request=request_data, code=status_code, response=error_message)
                     if status_code in [500]:
                         # An unknown error occured.
-                        raise APIError(message, request=request_data, code=status_code, response=_msg)
-                    raise APIError(message, request=request_data, code=status_code, response=_msg)
+                        raise APIError(message, request=request_data, code=status_code, response=error_message)
+                    raise APIError(message, request=request_data, code=status_code, response=error_message)
+
                 return InformationResp.model_validate(response.json())
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
