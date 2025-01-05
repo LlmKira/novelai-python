@@ -57,7 +57,7 @@ async def generate(
                 ),
                 Character(
                     prompt="1girl, fox ears, fox tail, white hair, white tail, white ears",
-                    uc="white hair",
+                    uc="black hair",
                     center=PositionMap.D2
                 )
             ],
