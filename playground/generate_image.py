@@ -19,7 +19,7 @@ from novelai_python.utils.useful import enum_to_list
 
 
 async def generate(
-        prompt="1girl, year 2023, dynamic angle, best quality, amazing quality, very aesthetic, absurdres"
+        prompt="1girl, year 2023, dynamic angle"
 ):
     jwt = os.getenv("NOVELAI_JWT", None)
     if jwt is None:
