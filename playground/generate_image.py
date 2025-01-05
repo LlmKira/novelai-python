@@ -91,7 +91,7 @@ async def direct_use():
     that's pydantic!
     :return:
     """
-    credential = JwtCredential(jwt_token=SecretStr("pst-5555"))
+    credential = ApiCredential(api_token=SecretStr("pst-5555"))
     result = await GenerateImageInfer(
         input="1girl",
         model=Model.NAI_DIFFUSION_4_CURATED_PREVIEW,

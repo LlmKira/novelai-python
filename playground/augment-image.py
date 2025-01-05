@@ -32,7 +32,7 @@ async def generate(
         agent = AugmentImageInfer.build(
             req_type=request_type,
             image=image,
-            mood=Moods.Shy,
+            # mood=Moods.Shy,
             prompt="",
             defry=0,
         )
@@ -45,7 +45,7 @@ async def generate(
         print(f"Error: {e.message}")
         return None
     else:
-        print(f"Meta: {result.meta}")
+        print(f"Meta: {result.meta.endpoint}")
     _res: ImageGenerateResp
     file = result.files[0]
     with open(f"{pathlib.Path(__file__).stem}.png", "wb") as f:
