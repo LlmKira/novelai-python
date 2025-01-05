@@ -344,10 +344,18 @@ class Params(BaseModel):
 
 class GenerateImageInfer(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://image.novelai.net")
+    """Endpoint"""
+
+    @property
+    def endpoint(self):
+        return self._endpoint
+
+    @endpoint.setter
+    def endpoint(self, value):
+        self._endpoint = value
+
     _mutual_exclusion: bool = PrivateAttr(False)
     """Positive words and negative words are mutually exclusive, and conflicting negative words are deleted first."""
-    _quality_modifier: bool = PrivateAttr(True)
-    """Add Quality Modifier To Input"""
 
     def set_mutual_exclusion(self, value: bool):
         """
@@ -360,27 +368,6 @@ class GenerateImageInfer(ApiBaseModel):
         """
         self._mutual_exclusion = bool(value)
         return self
-
-    def set_quality_modifier(self, value: bool):
-        """
-        **Enable This will modify the input prompt.**
-        Default is True.
-
-        Add Quality Modifier To Input.
-        Whether to add the quality vocabulary used by the web application.
-        :param value:
-        :return:
-        """
-        self._quality_modifier = bool(value)
-        return self
-
-    @property
-    def endpoint(self):
-        return self._endpoint
-
-    @endpoint.setter
-    def endpoint(self, value):
-        self._endpoint = value
 
     action: Union[str, Action] = Field(Action.GENERATE, description="Mode for img generate")
     input: str = "1girl, best quality, amazing quality, very aesthetic, absurdres"
@@ -467,8 +454,8 @@ class GenerateImageInfer(ApiBaseModel):
                 )
                 return _prompt
 
-        if self._quality_modifier:
-            logger.trace("Enhancing input with quality modifier, will modify input prompt.")
+        if self.parameters.qualityToggle:
+            logger.trace("Enhancing input with qualityToggle, will modify input prompt.")
             self.input = enhance_message(self.input)
 
         if self._mutual_exclusion:
