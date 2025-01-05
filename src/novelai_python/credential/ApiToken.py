@@ -42,5 +42,5 @@ class ApiCredential(CredentialBase):
     @field_validator('api_token')
     def check_api_token(cls, v: SecretStr):
         if not v.get_secret_value().startswith("pst"):
-            logger.warning("api token should start with pst-")
+            logger.warning("api token should start with `pst-`")
         return v

@@ -13,7 +13,7 @@ from loguru import logger
 from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
-from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
+from novelai_python import GenerateImageInfer, ImageGenerateResp, ApiCredential
 from novelai_python.sdk.ai.generate_image import Action, Sampler
 from novelai_python.utils.useful import enum_to_list
 
@@ -25,7 +25,7 @@ async def generate(
     jwt = os.getenv("NOVELAI_JWT", None)
     if jwt is None:
         raise ValueError("NOVELAI_JWT is not set in `.env` file, please create one and set it")
-    credential = JwtCredential(jwt_token=SecretStr(jwt))
+    credential = ApiCredential(api_token=SecretStr(jwt))
     """Or you can use the login credential to get the jwt token"""
     _login_credential = LoginCredential(
         username=os.getenv("NOVELAI_USER"),
