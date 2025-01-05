@@ -19,7 +19,7 @@ from novelai_python.utils.useful import enum_to_list
 
 
 async def generate(
-        prompt="1girl, year 2023, dynamic angle"
+        prompt="2girls, fisheye, closeup, from above"
 ):
     jwt = os.getenv("NOVELAI_JWT", None)
     if jwt is None:
@@ -46,16 +46,19 @@ async def generate(
     try:
         agent = GenerateImageInfer.build_generate(
             prompt=prompt,
+            width=1216,
+            height=832,
             model=Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
             character_prompts=[
                 Character(
-                    prompt="1girl",
+                    prompt="1girl, head tilt, short hair, black hair, grey eyes, small breasts, looking at viewer",
                     uc="red hair",
-                    center=PositionMap.AUTO
+                    center=PositionMap.B2
                 ),
                 Character(
-                    prompt="1boy",
-                    center=PositionMap.E5
+                    prompt="1girl, fox ears, fox tail, kitsunemimi, kitsune, white hair, white tail, white ears, white kitsune, white kitsunemimi",
+                    uc="white hair",
+                    center=PositionMap.D2
                 )
             ],
             sampler=Sampler.K_EULER_ANCESTRAL,

@@ -43,7 +43,7 @@ load_dotenv()
 session = ApiCredential(api_token=SecretStr(os.getenv("NOVELAI_JWT")))  # pst-***
 # For security reasons, storing user credentials in plaintext is strongly discouraged.
 
-prompt = "1girl, year 2023, dynamic angle"
+prompt = "1girl, fisheye, closeup, from above, head tilt, short hair, black hair, grey eyes, small breasts"
 
 
 async def main():
