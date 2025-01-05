@@ -19,7 +19,7 @@ from novelai_python.utils.useful import enum_to_list
 
 
 async def generate(
-        prompt="2girls, closeup, from above"
+        prompt="2girls, fisheye, closeup, from above"
 ):
     jwt = os.getenv("NOVELAI_JWT", None)
     if jwt is None:
