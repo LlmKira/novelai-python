@@ -43,7 +43,7 @@ load_dotenv()
 session = ApiCredential(api_token=SecretStr(os.getenv("NOVELAI_JWT")))  # pst-***
 # For security reasons, storing user credentials in plaintext is strongly discouraged.
 
-prompt = "1girl, fisheye, closeup, from above, head tilt, short hair, black hair, grey eyes, small breasts"
+prompt = "2girls, closeup, from above"
 
 
 async def main():
@@ -52,13 +52,14 @@ async def main():
         model=Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
         character_prompts=[
             Character(
-                prompt="1girl",
+                prompt="1girl, head tilt, short hair, black hair, grey eyes, small breasts, looking at viewer",
                 uc="red hair",
-                center=PositionMap.AUTO
+                center=PositionMap.B2
             ),
             Character(
-                prompt="1boy",
-                center=PositionMap.E5
+                prompt="1girl, fox ears, fox tail, white hair, white tail, white ears",
+                uc="white hair",
+                center=PositionMap.D2
             )
         ],
         sampler=Sampler.K_EULER_ANCESTRAL,
