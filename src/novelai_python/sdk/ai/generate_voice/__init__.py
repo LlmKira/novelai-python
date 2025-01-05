@@ -107,7 +107,7 @@ class VoiceGenerate(ApiBaseModel):
         return cls(
             text=text,
             seed=speaker.seed,
-            voice=speaker.voice,
+            voice=speaker.sid,
             opus=opus,
             version=speaker.version
         )

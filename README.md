@@ -64,7 +64,6 @@ async def main():
         sampler=Sampler.K_EULER_ANCESTRAL,
         ucPreset=UCPreset.TYPE0,
         # Recommended, using preset negative_prompt depends on selected model
-        qualitySuffix=True,
         qualityToggle=True,
         decrisp_mode=False,
         variety_boost=True,

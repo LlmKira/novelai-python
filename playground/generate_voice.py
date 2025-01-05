@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from pydantic import SecretStr
 
 from novelai_python import VoiceGenerate, VoiceResponse, JwtCredential, APIError
-from novelai_python.sdk.ai.generate_voice import VoiceSpeakerV2, VoiceSpeakerV1
+from novelai_python.sdk.ai.generate_voice import VoiceSpeakerV2
 from novelai_python.utils.useful import enum_to_list
 
 load_dotenv()
