@@ -281,7 +281,7 @@ def get_modifiers(model: Model) -> Modifier:
     if model in [Model.CUSTOM, Model.NAI_DIFFUSION_4_CURATED_PREVIEW]:
         return Modifier(
             qualityTags="",
-            suffix=", rating:general, amazing quality, very aesthetic, absurdres"
+            suffix=", rating:general, best quality, very aesthetic, absurdres"
         )
     if model in [Model.NAI_DIFFUSION_2]:
         return Modifier(
