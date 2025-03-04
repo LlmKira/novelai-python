@@ -15,15 +15,17 @@ from novelai_python import APIError, LoginCredential
 from novelai_python import GenerateImageInfer, ImageGenerateResp, ApiCredential
 from novelai_python.sdk.ai.generate_image import Action, Model, Sampler, Character, UCPreset, Params
 from novelai_python.sdk.ai.generate_image.schema import PositionMap
+from novelai_python.tool.random_prompt import RandomPromptGenerator
 from novelai_python.utils.useful import enum_to_list
 
 
 async def generate(
-        prompt="2girls, fisheye, closeup, from above"
+        prompt=None,
 ):
     jwt = os.getenv("NOVELAI_JWT", None)
     if jwt is None:
         raise ValueError("NOVELAI_JWT is not set in `.env` file, please create one and set it")
+
     credential = ApiCredential(api_token=SecretStr(jwt))
     """Or you can use the login credential to get the renewable jwt token"""
     _login_credential = LoginCredential(
@@ -43,24 +45,29 @@ async def generate(
         A5 B5 C5 D5 E5
         """
     )
+
+    # Randomly generate a scene
+    prompt_generator = RandomPromptGenerator()
+    scene = prompt_generator.generate_scene_composition()
+    if prompt is None:
+        prompt = scene.pop(0) + ','.join([
+            'muelsyse (arknights) '
+        ])
+    character = [
+        Character(
+            prompt=c_prompt,
+            uc="red hair",
+            center=PositionMap.B2
+        ) for c_prompt in scene
+    ]
+
     try:
         agent = GenerateImageInfer.build_generate(
             prompt=prompt,
-            width=1216,
-            height=832,
-            model=Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
-            character_prompts=[
-                Character(
-                    prompt="1girl, head tilt, short hair, black hair, grey eyes, small breasts, looking at viewer",
-                    uc="red hair",
-                    center=PositionMap.B2
-                ),
-                Character(
-                    prompt="1girl, fox ears, fox tail, white hair, white tail, white ears",
-                    uc="black hair",
-                    center=PositionMap.D2
-                )
-            ],
+            width=832,
+            height=1216,
+            model=Model.NAI_DIFFUSION_4_FULL,
+            character_prompts=character,
             sampler=Sampler.K_EULER_ANCESTRAL,
             ucPreset=UCPreset.TYPE0,
             # Recommended, using preset negative_prompt depends on selected model

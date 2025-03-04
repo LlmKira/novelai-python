@@ -509,33 +509,13 @@ class GenerateImageInfer(ApiBaseModel):
         **NOTE: It is forbidden to write logic that does not belong to novelai.net here**
         :return: self
         """
-        if self.action == Action.GENERATE:
-            if self.parameters.image is not None:
-                raise ValueError("You are using generate action, image is not required for non-generate mode.")
-            if self.parameters.mask is not None:
-                raise ValueError("You are using generate action, mask is not required for non-generate mode.")
+        if self.parameters.characterPrompts:
+            self.parameters.use_coords = any([c.center != PositionMap.AUTO for c in self.parameters.characterPrompts])
+        # Mix Prompt Warning
+        if self.input.count('|') > 6:
+            logger.warning("Maximum prompt mixes exceeded. Extra will be ignored.")
 
-        if self.action == Action.INFILL:
-            if self.model not in INPAINTING_MODEL_LIST:
-                raise ValueError(f"You must use {INPAINTING_MODEL_LIST}")
-            if not self.parameters.mask:
-                logger.warning("Mask maybe required for infill mode!")
-
-        if self.action == Action.IMG2IMG:
-            if self.parameters.extra_noise_seed is None:
-                self.parameters.extra_noise_seed = self.parameters.seed
-
-        if self.action == Action.IMG2IMG:
-            if self.parameters.sm_dyn is True:
-                logger.warning("sm_dyn be disabled when sm in Img2Img mode.")
-            if self.parameters.sm is True:
-                logger.warning("sm be disabled when sm_dyn in Img2Img mode.")
-            self.parameters.sm = False
-            self.parameters.sm_dyn = False
-            if self.parameters.image is None:
-                raise ValueError("image is must required for img2img mode.")
-
-        # Check Image
+        # Remove the image if the model does not support it
         if self.parameters.image is None:
             self.parameters.strength = None
             self.parameters.noise = None
@@ -553,7 +533,34 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.sm_dyn = True
 
         if self.parameters.sm_dyn and (not self.parameters.sm):
-            self.parameters.sm = True
+            logger.warning("sm_dyn is disabled when sm is disabled.")
+            self.parameters.sm_dyn = False
+
+        # DDIM DON'T SUPPORT sm and sm_dyn
+        if self.parameters.sampler in [
+            Sampler.DDIM,
+            Sampler.DDIM_V3
+        ]:
+            if self.parameters.sm_dyn or self.parameters.sm:
+                logger.warning("sm and sm_dyn is disabled when using ddim sampler.")
+            self.parameters.sm = False
+            self.parameters.sm_dyn = False
+
+        if self.action != Action.INFILL:
+            self.parameters.mask = None
+
+        if self.parameters.uncond_scale == 0:
+            self.parameters.uncond_scale = 0.00001
+        if get_model_group(self.model) == ModelGroups.STABLE_DIFFUSION:
+            self.parameters.uncond_scale = None
+
+        # Remove noise_schedule and cfg_rescale if not supported
+        if not get_supported_params(self.model).noiseSchedule:
+            self.parameters.cfg_rescale = None
+            self.parameters.noise_schedule = None
+
+        if (self.model in INPAINTING_MODEL_LIST) and (self.parameters.sampler in [Sampler.DDIM, Sampler.DDIM_V3]):
+            self.parameters.sampler = Sampler.K_EULER_ANCESTRAL
 
         # AUTO SMEA SETTING
         """
@@ -570,38 +577,6 @@ class GenerateImageInfer(ApiBaseModel):
         if self.parameters.autoSmea and (self.parameters.width * self.parameters.height < sm_size_cast(self.model)):
             self.parameters.autoSmea = False
         """
-
-        if self.parameters.characterPrompts:
-            self.parameters.use_coords = any([c.center != PositionMap.AUTO for c in self.parameters.characterPrompts])
-
-        # Mix Prompt Warning
-        if self.input.count('|') > 6:
-            logger.warning("Maximum prompt mixes exceeded. Extra will be ignored.")
-
-        if self.parameters.sampler in [
-            Sampler.DDIM,
-            Sampler.DDIM_V3
-        ]:
-            if self.parameters.sm_dyn or self.parameters.sm:
-                logger.warning("sm and sm_dyn is disabled when using ddim sampler.")
-            self.parameters.sm = False
-            self.parameters.sm_dyn = False
-
-        if self.action != Action.INFILL:
-            self.parameters.mask = None
-
-        if self.parameters.uncond_scale == 0:
-            self.parameters.uncond_scale = 0.00001
-
-        if get_model_group(self.model) == ModelGroups.STABLE_DIFFUSION:
-            self.parameters.uncond_scale = None
-
-        if not get_supported_params(self.model).noiseSchedule:
-            self.parameters.noise_schedule = None
-            self.parameters.cfg_rescale = None
-
-        if (self.model in INPAINTING_MODEL_LIST) and (self.parameters.sampler in [Sampler.DDIM, Sampler.DDIM_V3]):
-            self.parameters.sampler = Sampler.K_EULER_ANCESTRAL
 
         if self.parameters.sampler in [
             Sampler.DDIM,
@@ -638,15 +613,45 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.sm = None
             self.parameters.sm_dyn = None
 
+        if not get_supported_params(self.model).dynamicThresholding:
+            self.parameters.dynamic_thresholding = False
+
+        if self.model == Model.CUSTOM and self.action == Action.INFILL:
+            self.endpoint = "http://custom-exposed-full-inpaint-anime-v4-staging.ai.svc.cluster.local/"
+
         # == Noise Schedule ==
         if self.parameters.noise_schedule is None:
             self.parameters.noise_schedule = get_default_noise_schedule(self.parameters.sampler)
-        supported_noise_schedule = get_supported_noise_schedule(self.parameters.sampler)
+        supported_noise_schedule = get_supported_noise_schedule(sample_type=self.parameters.sampler, model=self.model)
         if supported_noise_schedule:
             if self.parameters.noise_schedule not in supported_noise_schedule:
                 raise ValueError(f"Invalid noise_schedule, must be one of {supported_noise_schedule}")
         else:
             logger.warning(f"Inactive sampler {self.parameters.sampler} does not support noise_schedule.")
+
+        # == Action ==
+        if self.action == Action.GENERATE:
+            if self.parameters.image is not None:
+                raise ValueError("You are using generate action, image is not required for non-generate mode.")
+            if self.parameters.mask is not None:
+                raise ValueError("You are using generate action, mask is not required for non-generate mode.")
+        if self.action == Action.INFILL:
+            if self.model not in INPAINTING_MODEL_LIST:
+                raise ValueError(f"You must use {INPAINTING_MODEL_LIST}")
+            if not self.parameters.mask:
+                logger.warning("Mask maybe required for infill mode!")
+        if self.action == Action.IMG2IMG:
+            if self.parameters.extra_noise_seed is None:
+                self.parameters.extra_noise_seed = self.parameters.seed
+        if self.action == Action.IMG2IMG:
+            if self.parameters.sm_dyn is True:
+                logger.warning("sm_dyn be disabled when sm in Img2Img mode.")
+            if self.parameters.sm is True:
+                logger.warning("sm be disabled when sm_dyn in Img2Img mode.")
+            self.parameters.sm = False
+            self.parameters.sm_dyn = False
+            if self.parameters.image is None:
+                raise ValueError("image is must required for img2img mode.")
 
         return self
 
