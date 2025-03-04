@@ -12,7 +12,7 @@ from nacl.encoding import Base64Encoder
 from nacl.signing import VerifyKey
 from pydantic import BaseModel, ConfigDict
 
-from novelai_python.sdk.ai._enum import PROMOTION, Model
+from novelai_python.sdk.ai._enum import PROMOTION, Model, find_model_by_hashcode
 from .bch_utils import fec_decode
 from .lsb_extractor import ImageLsbDataExtractor
 from .lsb_injector import inject_data
@@ -125,7 +125,7 @@ class ImageMetadata(BaseModel):
         Get the model used to generate the image from the Model code
         :return:  Model or None
         """
-        return PROMOTION.get(self.Source, None)
+        return find_model_by_hashcode(self.Source)
 
     @staticmethod
     def reset_alpha(image: Image.Image) -> BytesIO:
