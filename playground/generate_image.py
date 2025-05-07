@@ -15,6 +15,7 @@ from novelai_python import APIError, LoginCredential
 from novelai_python import GenerateImageInfer, ImageGenerateResp, ApiCredential
 from novelai_python.sdk.ai.generate_image import Action, Model, Sampler, Character, UCPreset, Params
 from novelai_python.sdk.ai.generate_image.schema import PositionMap
+from novelai_python.sdk.ai.generate_image.tokenizer import get_prompt_tokenizer
 from novelai_python.tool.random_prompt import RandomPromptGenerator
 from novelai_python.utils.useful import enum_to_list
 
@@ -22,16 +23,19 @@ from novelai_python.utils.useful import enum_to_list
 async def generate(
         prompt=None,
 ):
-    jwt = os.getenv("NOVELAI_JWT", None)
-    if jwt is None:
+    jwt_token = os.getenv("NOVELAI_JWT", None)
+    if jwt_token is None:
         raise ValueError("NOVELAI_JWT is not set in `.env` file, please create one and set it")
+    jwt_credential = ApiCredential(api_token=SecretStr(jwt_token))
 
-    credential = ApiCredential(api_token=SecretStr(jwt))
     """Or you can use the login credential to get the renewable jwt token"""
-    _login_credential = LoginCredential(
+    login_credential = LoginCredential(
         username=os.getenv("NOVELAI_USER"),
         password=SecretStr(os.getenv("NOVELAI_PASS"))
     )
+
+    model = Model.NAI_DIFFUSION_4_5_CURATED
+
     # await _login_credential.request()
     print(f"Action List:{enum_to_list(Action)}")
     print(
@@ -61,12 +65,19 @@ async def generate(
         ) for c_prompt in scene
     ]
 
+    # Length
+    tokenizer = get_prompt_tokenizer(model=model)
+    print(
+        f"Prompt Length {len(tokenizer.encode(prompt))}"
+    )
+
+    # Generate
     try:
         agent = GenerateImageInfer.build_generate(
             prompt=prompt,
             width=832,
             height=1216,
-            model=Model.NAI_DIFFUSION_4_5_CURATED,
+            model=model,
             character_prompts=character,
             sampler=Sampler.K_EULER_ANCESTRAL,
             ucPreset=UCPreset.TYPE0,
@@ -79,7 +90,7 @@ async def generate(
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
         result = await agent.request(
-            session=_login_credential
+            session=login_credential
         )
     except APIError as e:
         print(f"Error: {e.message}")

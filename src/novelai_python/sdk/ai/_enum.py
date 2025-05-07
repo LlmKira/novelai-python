@@ -91,6 +91,9 @@ class Resolution(Enum):
 
 
 class Model(Enum):
+    """
+    Nai Diffusion series
+    """
     NAI_DIFFUSION_4_5_CURATED = 'nai-diffusion-4-5-curated'
     NAI_DIFFUSION_4_5_CURATED_INPAINTING = 'nai-diffusion-4-5-curated-inpainting'
 

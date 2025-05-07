@@ -32,9 +32,11 @@ from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, ControlNe
     get_model_group, ModelGroups, get_supported_params, get_modifiers, ImageBytesTypeAlias
 from .schema import Character, V4Prompt, V4NegativePrompt, PositionMap
 from ...schema import ApiBaseModel
+from ...._enum import TextTokenizerGroup
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError, DataSerializationError
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
 from ....credential import CredentialBase
+from ....tokenizer import NaiTokenizer
 from ....utils import try_jsonfy
 
 
