@@ -66,7 +66,7 @@ async def generate(
             prompt=prompt,
             width=832,
             height=1216,
-            model=Model.NAI_DIFFUSION_4_FULL,
+            model=Model.NAI_DIFFUSION_4_5_CURATED,
             character_prompts=character,
             sampler=Sampler.K_EULER_ANCESTRAL,
             ucPreset=UCPreset.TYPE0,
