@@ -91,6 +91,9 @@ class Resolution(Enum):
 
 
 class Model(Enum):
+    NAI_DIFFUSION_4_5_CURATED = 'nai-diffusion-4-5-curated'
+    NAI_DIFFUSION_4_5_CURATED_INPAINTING = 'nai-diffusion-4-5-curated-inpainting'
+
     NAI_DIFFUSION_4_CURATED_PREVIEW = "nai-diffusion-4-curated-preview"
     NAI_DIFFUSION_4_FULL = "nai-diffusion-4-full"
     NAI_DIFFUSION_4_FULL_INPAINTING = "nai-diffusion-4-full-inpainting"
@@ -156,6 +159,10 @@ PROMOTION = {
     "Stable Diffusion XL 9CC2F394": Model.NAI_DIFFUSION_FURRY_3,
     'NovelAI Diffusion V4 4F49EC75': Model.NAI_DIFFUSION_4_FULL,
     'NovelAI Diffusion V4 CA4B7203': Model.NAI_DIFFUSION_4_FULL,
+    'NovelAI Diffusion V4.5 5AB81C7C': Model.NAI_DIFFUSION_4_5_CURATED,
+    "NovelAI Diffusion V4.5 B5A2A797": Model.NAI_DIFFUSION_4_5_CURATED,
+    "NovelAI Diffusion V4 5AB81C7C": Model.NAI_DIFFUSION_4_5_CURATED,
+    "NovelAI Diffusion V4 B5A2A797": Model.NAI_DIFFUSION_4_5_CURATED,
 }
 
 ModelTypeAlias = Optional[Union[Model, str]]
@@ -175,8 +182,16 @@ class SupportCondition:
     characterPrompts: bool
     v4Prompts: bool
     smea: bool
+    smeaDyn: bool
     text: bool
     dynamicThresholding: bool
+    autoSmea: bool
+    v4_0legacyUC: bool
+    scaleRecommendedMin: int
+    scaleRecommendedMax: Optional[int]
+    numericEmphasis: bool
+    encodedVibes: bool
+    cfgDelaySigma: int
 
 
 def get_supported_params(model: Model):
@@ -207,8 +222,16 @@ def get_supported_params(model: Model):
             characterPrompts=False,
             v4Prompts=False,
             smea=True,
+            smeaDyn=False,
             text=False,
-            dynamicThresholding=True
+            dynamicThresholding=True,
+            autoSmea=True,
+            v4_0legacyUC=False,
+            scaleRecommendedMin=6,
+            scaleRecommendedMax=25,
+            numericEmphasis=False,
+            encodedVibes=False,
+            cfgDelaySigma=19
         )
     if model in [Model.NAI_DIFFUSION_2]:
         return SupportCondition(
@@ -222,8 +245,16 @@ def get_supported_params(model: Model):
             characterPrompts=False,
             v4Prompts=False,
             smea=True,
+            smeaDyn=False,
             text=False,
-            dynamicThresholding=True
+            dynamicThresholding=True,
+            autoSmea=True,
+            v4_0legacyUC=False,
+            scaleRecommendedMin=6,
+            scaleRecommendedMax=25,
+            numericEmphasis=False,
+            encodedVibes=False,
+            cfgDelaySigma=19
         )
     if model in [
         Model.NAI_DIFFUSION_XL,
@@ -243,13 +274,20 @@ def get_supported_params(model: Model):
             characterPrompts=False,
             v4Prompts=False,
             smea=True,
+            smeaDyn=True,
             text=False,
-            dynamicThresholding=True
+            dynamicThresholding=True,
+            autoSmea=True,
+            v4_0legacyUC=False,
+            scaleRecommendedMin=2,
+            scaleRecommendedMax=8,
+            numericEmphasis=False,
+            encodedVibes=False,
+            cfgDelaySigma=19
         )
     if model in [
         Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
         Model.NAI_DIFFUSION_4_CURATED_INPAINTING,
-        Model.CUSTOM,
         Model.NAI_DIFFUSION_4_FULL,
         Model.NAI_DIFFUSION_4_FULL_INPAINTING,
     ]:
@@ -264,8 +302,65 @@ def get_supported_params(model: Model):
             characterPrompts=True,
             v4Prompts=True,
             smea=False,
+            smeaDyn=False,
             text=True,
-            dynamicThresholding=False
+            dynamicThresholding=False,
+            autoSmea=False,
+            v4_0legacyUC=True,
+            scaleRecommendedMin=2,
+            scaleRecommendedMax=6,
+            numericEmphasis=True,
+            encodedVibes=True,
+            cfgDelaySigma=19
+        )
+    if model in [Model.CUSTOM]:
+        return SupportCondition(
+            controlnet=False,
+            vibetransfer=True,
+            scaleMax=10,
+            negativePromptGuidance=True,
+            noiseSchedule=True,
+            inpainting=True,
+            cfgDelay=True,
+            characterPrompts=True,
+            v4Prompts=True,
+            smea=False,
+            smeaDyn=False,
+            text=True,
+            dynamicThresholding=False,
+            autoSmea=False,
+            v4_0legacyUC=True,
+            scaleRecommendedMin=0,
+            scaleRecommendedMax=None,
+            numericEmphasis=True,
+            encodedVibes=True,
+            cfgDelaySigma=58
+        )
+    if model in [
+        Model.NAI_DIFFUSION_4_5_CURATED,
+        Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+    ]:
+        return SupportCondition(
+            controlnet=False,
+            vibetransfer=False,
+            scaleMax=10,
+            negativePromptGuidance=True,
+            noiseSchedule=True,
+            inpainting=True,
+            cfgDelay=True,
+            characterPrompts=True,
+            v4Prompts=True,
+            smea=False,
+            smeaDyn=False,
+            text=True,
+            dynamicThresholding=False,
+            autoSmea=False,
+            v4_0legacyUC=False,
+            scaleRecommendedMin=0,
+            scaleRecommendedMax=None,
+            numericEmphasis=True,
+            encodedVibes=False,
+            cfgDelaySigma=58
         )
     return SupportCondition(
         controlnet=False,
@@ -278,8 +373,16 @@ def get_supported_params(model: Model):
         characterPrompts=False,
         v4Prompts=False,
         smea=False,
+        smeaDyn=False,
         text=False,
-        dynamicThresholding=False
+        dynamicThresholding=False,
+        autoSmea=False,
+        v4_0legacyUC=False,
+        scaleRecommendedMin=0,
+        scaleRecommendedMax=99,
+        numericEmphasis=False,
+        encodedVibes=False,
+        cfgDelaySigma=19
     )
 
 
@@ -290,6 +393,8 @@ class Modifier(object):
 
 
 def find_model_by_hashcode(hashcode: str) -> ModelTypeAlias:
+    if "NovelAI Diffusion V4.5" in hashcode:
+        return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_4_5_CURATED)
     if "NovelAI Diffusion V4" in hashcode:
         return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_4_CURATED_PREVIEW)
     return PROMOTION.get(hashcode, None)
@@ -303,6 +408,14 @@ def get_modifiers(model: Model) -> Modifier:
     """
     if model in [
         Model.CUSTOM,
+        Model.NAI_DIFFUSION_4_5_CURATED,
+        Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING
+    ]:
+        return Modifier(
+            qualityTags="",
+            suffix=", location, masterpiece, no text, -0.8::feet::, rating:general"
+        )
+    if model in [
         Model.NAI_DIFFUSION_4_FULL,
         Model.NAI_DIFFUSION_4_FULL_INPAINTING,
     ]:
@@ -364,8 +477,10 @@ def filter_by_model_noise_schedule(model: Model, noise_schedule: List[NoiseSched
     :param noise_schedule:
     :return:
     """
-    # 只有Novelai4系列不支持Native
+    # 只有 Novelai4 系列不支持Native
     if model in [
+        Model.NAI_DIFFUSION_4_5_CURATED,
+        Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
         Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
         Model.NAI_DIFFUSION_4_FULL,
         Model.NAI_DIFFUSION_4_FULL_INPAINTING,
@@ -451,7 +566,9 @@ def get_model_group(model: ModelTypeAlias) -> ModelGroups:
         "nai-diffusion-4-curated-preview": ModelGroups.V4,
         'nai-diffusion-4-full': ModelGroups.V4,
         'nai-diffusion-4-full-inpainting': ModelGroups.V4,
-        'nai-diffusion-4-curated-inpainting': ModelGroups.V4
+        'nai-diffusion-4-curated-inpainting': ModelGroups.V4,
+        'nai-diffusion-4-5-curated': ModelGroups.V4,
+        'nai-diffusion-4-5-curated-inpainting': ModelGroups.V4,
     }
     return mapping.get(model, ModelGroups.STABLE_DIFFUSION)
 
