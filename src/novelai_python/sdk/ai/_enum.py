@@ -721,7 +721,6 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             ),
         ]
     elif model in [
-        Model.CUSTOM,
         Model.NAI_DIFFUSION_4_FULL,
         Model.NAI_DIFFUSION_4_FULL_INPAINTING,
     ]:
@@ -735,6 +734,33 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
                 category="light",
                 name="light",
                 text="blurry, lowres, error, worst quality, bad quality, jpeg artifacts, very displeasing, white blank page, blank page"
+            ),
+            UcPrompt(
+                category="none",
+                name="none",
+                text=""
+            ),
+        ]
+    elif model in [
+        Model.CUSTOM,
+        Model.NAI_DIFFUSION_4_5_CURATED,
+        Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+    ]:
+        prompts = [
+            UcPrompt(
+                category="heavy",
+                name="heavy",
+                text="blurry, lowres, upscaled, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, negative space, blank page"
+            ),
+            UcPrompt(
+                category="light",
+                name="light",
+                text="blurry, lowres, upscaled, artistic error, scan artifacts, jpeg artifacts, logo, too many watermarks, negative space, blank page"
+            ),
+            UcPrompt(
+                category="human",
+                name="humanFocus",
+                text="blurry, lowres, upscaled, artistic error, film grain, scan artifacts, bad anatomy, bad hands, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, @_@, mismatched pupils, glowing eyes, negative space, blank page"
             ),
             UcPrompt(
                 category="none",
