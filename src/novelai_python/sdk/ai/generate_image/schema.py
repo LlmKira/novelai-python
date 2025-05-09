@@ -51,6 +51,7 @@ class Character(BaseModel):
     uc: str = Field("", description="Negative Prompt")
     center: Union[PositionMap, CharacterPosition] = Field(PositionMap.AUTO, description="Center")
     """Center"""
+    enabled: bool = Field(True, description="Enabled")
 
     @classmethod
     def build(cls,
@@ -110,20 +111,23 @@ class V4Prompt(BaseModel):
 
 class V4NegativePrompt(BaseModel):
     caption: Caption = Field(default_factory=Caption, description="Caption")
+    legacy_uc: bool = False
 
     @classmethod
     def build_from_character_prompts(cls,
                                      negative_prompt: str,
-                                     character_prompts: List[Character]
+                                     character_prompts: List[Character],
+                                     legacy_uc: bool
                                      ) -> "V4NegativePrompt":
         """
         Build V4NegativePrompt from character prompts
         :param negative_prompt: The main prompt
         :param character_prompts: List of character prompts
+        :param legacy_uc: Legacy Uc
         :return:
         """
         caption = Caption(base_caption=negative_prompt)
         for character_prompt in character_prompts:
             char_caption = CharCaption(char_caption=character_prompt.uc, centers=[character_prompt.center])
             caption.char_captions.append(char_caption)
-        return cls(caption=caption)
+        return cls(caption=caption, legacy_uc=legacy_uc)
