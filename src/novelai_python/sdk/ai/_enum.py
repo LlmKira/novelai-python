@@ -419,7 +419,7 @@ def get_modifiers(model: Model) -> Modifier:
     ]:
         return Modifier(
             qualityTags="",
-            suffix=", location, masterpiece, no text, -0.8::feet::, rating:general"
+            suffix=", very aesthetic, location, masterpiece, no text, -0.8::feet::, rating:general"
         )
     if model in [
         Model.NAI_DIFFUSION_4_FULL,

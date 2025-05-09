@@ -2,346 +2,36 @@
 # @Author  : sudoskys
 # @File    : __init__.py
 
-import base64
 import json
 import math
-import random
 import re
 from copy import deepcopy
 from enum import Enum
 from io import BytesIO
-from typing import Optional, Union, Tuple, List
+from typing import Optional, Union, List
 from urllib.parse import urlparse
 from zipfile import ZipFile, BadZipFile
 
 import curl_cffi
-import cv2
 import httpx
-import numpy as np
-from PIL import Image
 from curl_cffi.requests import AsyncSession
 from loguru import logger
-from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator, model_validator, Field
+from pydantic import ConfigDict, PrivateAttr, model_validator, Field
 from tenacity import retry, stop_after_attempt, wait_random, retry_if_exception
 from typing_extensions import override
 
 from novelai_python.sdk.ai._cost import CostCalculator
-from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, ControlNetModel, Action, UCPreset, \
+from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, Action, UCPreset, \
     INPAINTING_MODEL_LIST, get_default_uc_preset, \
     ModelTypeAlias, UCPresetTypeAlias, get_default_noise_schedule, get_supported_noise_schedule, \
-    get_model_group, ModelGroups, get_supported_params, get_modifiers, ImageBytesTypeAlias
+    get_model_group, ModelGroups, get_supported_params, get_modifiers
+from .params import Params, get_default_params
 from .schema import Character, V4Prompt, V4NegativePrompt, PositionMap
 from ...schema import ApiBaseModel
-from ...._enum import TextTokenizerGroup
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError, DataSerializationError
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
 from ....credential import CredentialBase
-from ....tokenizer import NaiTokenizer
 from ....utils import try_jsonfy
-
-
-def is_multiple_of_01(num, precision=1e-10):
-    remainder = num % 0.01
-    return abs(remainder) < precision or abs(0.01 - remainder) < precision
-
-
-class Params(BaseModel):
-    width: int = Field(832, ge=64, le=49152)
-    """Width For Image"""
-    height: int = Field(1216, ge=64, le=49152)
-    """Height For Image"""
-    scale: float = Field(6.0, ge=0, le=10, multiple_of=0.1)
-    """Prompt Guidance"""
-    sampler: Sampler = Sampler.K_EULER_ANCESTRAL
-    """Sampler For Generate Image"""
-    steps: int = Field(23, ge=1, le=50)
-    """Steps"""
-    n_samples: int = Field(1, ge=1, le=8)
-    """Number of samples"""
-    strength: Optional[float] = Field(0.7, ge=0.01, le=0.99, multiple_of=0.01)
-    """Strength for img2img"""
-    noise: Optional[float] = Field(0, ge=0, le=0.99, multiple_of=0.01)
-    """Noise for img2img"""
-    ucPreset: UCPresetTypeAlias = Field(None, ge=0)
-    """The Negative Prompt Preset, Bigger or equal to 0"""
-    qualityToggle: bool = True
-    """Whether to add the quality prompt"""
-    sm: Optional[bool] = False
-    # TODO: find out the usage
-    sm_dyn: Optional[bool] = False
-    # TODO: find out the usage
-    dynamic_thresholding: bool = False
-    """Decrisp:Reduce artifacts caused by high prompt guidance values"""
-    controlnet_strength: float = Field(1.0, ge=0.1, le=2, multiple_of=0.1)
-    """ControlNet Strength"""
-    legacy: bool = False
-    """Legacy Mode"""
-    cfg_rescale: Optional[float] = Field(0, ge=0, le=1, multiple_of=0.02)
-    """Prompt Guidance Rescale"""
-    noise_schedule: Optional[NoiseSchedule] = None
-    """Noise Schedule"""
-    legacy_v3_extend: Optional[bool] = False
-    """Legacy V3 Extend"""
-    mask: ImageBytesTypeAlias = None
-    """Mask for Inpainting"""
-    seed: int = Field(
-        default_factory=lambda: random.randint(0, 4294967295 - 7),
-        gt=0,
-        le=4294967295 - 7,
-    )
-    """Seed"""
-    image: ImageBytesTypeAlias = None
-    """Image for img2img"""
-    negative_prompt: Optional[str] = ''
-    """Negative Prompt"""
-    reference_image_multiple: Optional[List[Union[str, bytes]]] = Field(default_factory=list)
-    """Reference Image For Vibe Mode"""
-    reference_information_extracted_multiple: Optional[List[float]] = Field(default_factory=list)
-    """Reference Information Extracted For Vibe Mode"""
-    reference_strength_multiple: Optional[List[float]] = Field(
-        default=list,
-        description="Reference Strength For Vibe Mode"
-    )
-    """Reference Strength For Vibe Mode"""
-    extra_noise_seed: Optional[int] = Field(None, gt=0, le=4294967295 - 7)
-    """Extra Noise Seed"""
-
-    # ====Version3 ====
-    params_version: int = 3
-    """Params Version For Request"""
-    add_original_image: Optional[bool] = Field(False, description="Overlay Original Image")
-    """
-    Overlay Original Image.Prevents the existing image from changing,
-    but can introduce seams along the edge of the mask.
-    """
-    use_coords: bool = Field(False, description="Use Coordinates")
-    """Use Coordinates"""
-    characterPrompts: List[Character] = Field(default_factory=list)
-    """Character Prompts"""
-
-    v4_prompt: Optional[V4Prompt] = Field(None, description="V4 Prompt")
-    """V4 Prompt"""
-    v4_negative_prompt: Optional[V4NegativePrompt] = Field(None, description="V4 Negative Prompt")
-    """V4 Negative Prompt"""
-
-    deliberate_euler_ancestral_bug: Optional[bool] = Field(False, description="Deliberate Euler Ancestral Bug")
-    """Deliberate Euler Ancestral Bug"""
-    prefer_brownian: bool = Field(True, description="Prefer Brownian")
-    """Prefer Brownian"""
-
-    # ======== V1 ========
-    controlnet_condition: Optional[str] = None
-    """ControlNet Condition"""
-    controlnet_model: Optional[ControlNetModel] = None
-    """ControlNet Model"""
-    skip_cfg_above_sigma: Optional[int] = None
-    """Variety Boost, a new feature to improve the diversity of samples."""
-    uncond_scale: Optional[float] = Field(None, ge=0, le=1.5, multiple_of=0.05)
-    """Undesired Content Strength"""
-
-    @model_validator(mode="after")
-    def v_character(self):
-        if len(self.characterPrompts) > 6:
-            raise ValueError("Too many character given")
-        return self
-
-    @field_validator('uncond_scale')
-    def v_uncond_scale(cls, v: float):
-        """
-        Align
-        :param v:
-        :return: fixed value
-        """
-        if v == 0:
-            v = 0.00001
-        return v
-
-    @field_validator('width')
-    def v_width(cls, v: int):
-        """
-        Must be multiple of 64
-        :param v:
-        :return: fixed value
-        """
-        if v % 64 != 0:
-            raise ValueError("Invalid width, must be multiple of 64.")
-        return v
-
-    @field_validator('height')
-    def v_height(cls, v: int):
-        """
-        Must be multiple of 64
-        :param v:
-        :return: fixed value
-        """
-        if v % 64 != 0:
-            raise ValueError("Invalid height, must be multiple of 64.")
-        return v
-
-    @model_validator(mode="after")
-    def _build_image(self):
-        # == Mask ==
-        if self.mask is not None:
-            if isinstance(self.mask, str) and self.mask.startswith("data:"):
-                raise ValueError(
-                    "Invalid `mask` format, must be base64 encoded directly, "
-                    "you can also provide bytes directly."
-                )
-            if isinstance(self.mask, bytes):
-                self.mask = base64.b64encode(self.mask).decode("utf-8")
-
-        # == Image ==
-        if self.image is not None:
-            if isinstance(self.image, str) and self.image.startswith("data:"):
-                raise ValueError(
-                    "Invalid `image` format, must be base64 encoded directly, "
-                    "you can also provide bytes directly."
-                )
-            if isinstance(self.image, bytes):
-                self.image = base64.b64encode(self.image).decode("utf-8")
-            self.image = self.resize_image(
-                self.image,
-                self.width,
-                self.height
-            )
-        return self
-
-    @model_validator(mode="after")
-    def _build_reference_image(self):
-        # Resize the image to the specified size
-        if self.reference_image_multiple is not None:
-            new_images = []
-            for reference_image in self.reference_image_multiple:
-                if isinstance(reference_image, str):
-                    if reference_image.startswith("data:"):
-                        raise ValueError("Invalid `reference_image` format, must be base64 encoded directly.")
-                    new_images.append(reference_image)
-                elif isinstance(reference_image, bytes):
-                    new_image = self.add_image_to_black_background(
-                        reference_image,
-                        target_size=(448, 448),
-                        transparency=True
-                    )
-                    if isinstance(new_image, bytes):
-                        new_image = base64.b64encode(new_image).decode("utf-8")
-                    new_images.append(new_image)
-                else:
-                    raise ValueError("Invalid `reference_image` format, must be base64 encoded directly.")
-            self.reference_image_multiple = new_images
-        # 如果都不是 None 时，比较他们的长度
-        if all([
-            self.reference_strength_multiple,
-            self.reference_image_multiple,
-            self.reference_information_extracted_multiple
-        ]):
-            if len(self.reference_strength_multiple) != len(self.reference_image_multiple) != len(
-                    self.reference_information_extracted_multiple):
-                raise ValueError(
-                    f"All three reference_* must be of equal length, "
-                    f"strength:{len(self.reference_strength_multiple)}, "
-                    f"image:{len(self.reference_image_multiple)}, "
-                    f"information:{len(self.reference_information_extracted_multiple)}"
-                )
-            if len(self.reference_image_multiple) > 16:
-                raise ValueError("The maximum number of reference images is 16")
-        # 如果有一个存在，其他都必须存在
-        ref_items = [self.reference_strength_multiple,
-                     self.reference_image_multiple,
-                     self.reference_information_extracted_multiple]
-        if any(ref_items) and not all(ref_items):
-            raise ValueError("All fields must be present together or none should be present")
-        return self
-
-    @field_validator('reference_strength_multiple')
-    def v_reference_strength_multiple(cls, v):
-        # Field(0.6,ge=0,le=1,multiple_of=0.01,description="the stronger the AI will try to emulate visual cues.")
-        if v is None:
-            return v
-        for i in v:
-            if not 0 <= i <= 1:
-                raise ValueError("Invalid reference_strength_multiple, must be in [0, 1].")
-            if not is_multiple_of_01(i):
-                raise ValueError("Invalid reference_strength_multiple item, must be multiple of 0.01.")
-        return v
-
-    @field_validator('reference_information_extracted_multiple')
-    def v_reference_information_extracted_multiple(cls, v):
-        # List[Field(..., ge=0, le=1, multiple_of=0.01)]
-        if v is None:
-            return v
-        for i in v:
-            if not 0 <= i <= 1:
-                raise ValueError("Invalid reference_information_extracted_multiple, must be in [0, 1].")
-            if not is_multiple_of_01(i):
-                raise ValueError("Invalid reference_information_extracted_multiple item, must be multiple of 0.01.")
-        return v
-
-    @staticmethod
-    def resize_image(image: Union[str, bytes], width: int, height: int):
-        """
-        Resize the image to the specified size.
-        :param image: The image to be resized
-        :param width: The width of the image
-        :param height: The height of the image
-        :return: The resized image
-        """
-        if isinstance(image, str):
-            image = base64.b64decode(image)
-        open_image = Image.open(BytesIO(image)).convert("RGBA")
-        # 如果尺寸相同，直接返回
-        if open_image.width == width and open_image.height == height:
-            logger.debug("Image size is same, return directly.")
-            if isinstance(image, bytes):
-                return base64.b64encode(image).decode("utf-8")
-            return image
-        open_image = open_image.resize((width, height), Image.Resampling.BICUBIC)
-        buffered = BytesIO()
-        open_image.save(buffered, format="PNG")
-        return base64.b64encode(buffered.getvalue()).decode("utf-8")
-
-    @staticmethod
-    def add_image_to_black_background(
-            image: Union[str, bytes],
-            target_size: Tuple[int, int] = (448, 448),
-            transparency: bool = False
-    ):
-
-        """
-        缩放图像到指定的黑色透明背景上，使其尽可能大且保持比例。
-        :param transparency: 是否透明
-        :param image: 图像
-        :param target_size: 目标尺寸
-        :return: 新图像
-        """
-
-        if isinstance(image, str):
-            image = base64.b64decode(image)
-            # Decode the image from the base64 string
-        npimg = np.frombuffer(image, np.uint8)
-        # Load the image with OpenCV
-        img = cv2.imdecode(npimg, cv2.IMREAD_UNCHANGED)
-        # Calculate the aspect ratio (keeping aspect ratio)
-        ratio = min(target_size[0] / img.shape[1], target_size[1] / img.shape[0])
-        new_image_size = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
-        # Resize the image
-        img = cv2.resize(img, new_image_size, interpolation=cv2.INTER_LINEAR)
-        # Check if the image has alpha channel (transparency)
-        if img.shape[2] == 3:  # no alpha channel, add one
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
-        # Create new image with black background
-        delta_w = target_size[0] - img.shape[1]
-        delta_h = target_size[1] - img.shape[0]
-        top, bottom = delta_h // 2, delta_h - (delta_h // 2)
-        left, right = delta_w // 2, delta_w - (delta_w // 2)
-        # If the transparency flag is set the background is transparent, otherwise it is black
-        color = [0, 0, 0, 0] if transparency else [0, 0, 0, 255]
-        # Add padding to the image
-        new_img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
-        # Convert the image to base64
-        _, buffer = cv2.imencode(".png", new_img)
-        # buffer here is a numpy array, convert it to bytes
-        image_bytes = buffer.tobytes()
-        return base64.b64encode(image_bytes).decode("utf-8")
 
 
 class GenerateImageInfer(ApiBaseModel):
@@ -476,6 +166,8 @@ class GenerateImageInfer(ApiBaseModel):
         Build V4Prompt and V4NegativePrompt from character prompts.
         :return: self
         """
+        if get_supported_params(self.model).v4_0legacyUC:
+            self.parameters.legacy_uc = get_supported_params(self.model).v4_0legacyUC
         if get_supported_params(self.model).v4Prompts:
             if self.parameters.v4_prompt is None:
                 self.parameters.v4_prompt = V4Prompt.build_from_character_prompts(
@@ -485,7 +177,8 @@ class GenerateImageInfer(ApiBaseModel):
             if self.parameters.v4_negative_prompt is None:
                 self.parameters.v4_negative_prompt = V4NegativePrompt.build_from_character_prompts(
                     negative_prompt=self.parameters.negative_prompt,
-                    character_prompts=self.parameters.characterPrompts
+                    character_prompts=self.parameters.characterPrompts,
+                    legacy_uc=self.parameters.legacy_uc
                 )
         if not get_supported_params(self.model).vibetransfer:
             if self.parameters.reference_image_multiple:
@@ -691,22 +384,22 @@ class GenerateImageInfer(ApiBaseModel):
             prompt: str,
             *,
             model: Union[Model, str],
-            negative_prompt: str = "",
-            ucPreset: UCPresetTypeAlias = UCPreset.TYPE0,
-            sm: bool = False,
-            steps: int = 23,
+            negative_prompt: str = None,
+            ucPreset: UCPresetTypeAlias = None,
+            sm: bool = None,
+            steps: int = None,
             seed: int = None,
             sampler: Union[Sampler, str] = None,
-            width: int = 832,
-            height: int = 1216,
-            add_original_image: bool = True,
+            width: int = None,
+            height: int = None,
+            add_original_image: bool = None,
             character_prompts: List[Character] = None,
             reference_image_multiple: List[Union[str, bytes]] = None,
             reference_strength_multiple: List[float] = None,
             reference_information_extracted_multiple: List[float] = None,
-            qualityToggle: bool = False,
-            decrisp_mode: bool = False,
-            variety_boost: bool = False,
+            qualityToggle: bool = None,
+            decrisp_mode: bool = None,
+            variety_boost: bool = None,
     ):
         """
         Quickly construct a parameter class that meets the requirements.
@@ -734,37 +427,43 @@ class GenerateImageInfer(ApiBaseModel):
         :param variety_boost: A new feature to improve the diversity of samples.
         :return:
         """
-        if character_prompts is None:
-            character_prompts = []
-        if seed is None:
-            seed = random.randint(0, 4294967295 - 7)
-        if reference_strength_multiple is None:
-            reference_image_multiple = []
-        if reference_strength_multiple is None:
-            reference_strength_multiple = []
-        if reference_information_extracted_multiple is None:
-            reference_information_extracted_multiple = []
-        if len(reference_image_multiple) != len(reference_strength_multiple) != len(
-                reference_information_extracted_multiple):
-            raise ValueError("All three reference_* must be of equal length.")
-        params = Params(
-            width=width,
-            height=height,
-            sampler=sampler,
-            characterPrompts=character_prompts,
-            add_original_image=add_original_image,
-            steps=steps,
-            seed=seed,
-            sm=sm,
-            negative_prompt=negative_prompt,
-            ucPreset=ucPreset,
-            qualityToggle=qualityToggle,
-            dynamic_thresholding=decrisp_mode,
-            skip_cfg_above_sigma=19 if variety_boost else None,
-            reference_image_multiple=reference_image_multiple,
-            reference_information_extracted_multiple=reference_information_extracted_multiple,
-            reference_strength_multiple=reference_strength_multiple,
-        )
+        # Get default parameters for the model
+        params = get_default_params(model)
+
+        # Update only explicitly set parameters
+        if negative_prompt is not None:
+            params.negative_prompt = negative_prompt
+        if ucPreset is not None:
+            params.ucPreset = ucPreset
+        if sm is not None:
+            params.sm = sm
+        if steps is not None:
+            params.steps = steps
+        if seed is not None:
+            params.seed = seed
+        if sampler is not None:
+            params.sampler = sampler
+        if width is not None:
+            params.width = width
+        if height is not None:
+            params.height = height
+        if add_original_image is not None:
+            params.add_original_image = add_original_image
+        if character_prompts is not None:
+            params.characterPrompts = character_prompts
+        if reference_image_multiple is not None:
+            params.reference_image_multiple = reference_image_multiple
+        if reference_strength_multiple is not None:
+            params.reference_strength_multiple = reference_strength_multiple
+        if reference_information_extracted_multiple is not None:
+            params.reference_information_extracted_multiple = reference_information_extracted_multiple
+        if qualityToggle is not None:
+            params.qualityToggle = qualityToggle
+        if decrisp_mode is not None:
+            params.dynamic_thresholding = decrisp_mode
+        if variety_boost is not None:
+            params.skip_cfg_above_sigma = get_supported_params(model).cfgDelaySigma if variety_boost else None
+
         return GenerateImageInfer(
             input=prompt,
             model=model,
@@ -777,25 +476,25 @@ class GenerateImageInfer(ApiBaseModel):
             prompt: str,
             *,
             image: Union[bytes, str],
-            strength: float = 0.7,
-            noise: float = 0,
+            strength: float = None,
+            noise: float = None,
             seed: int = None,
             extra_noise_seed: int = None,
             model: Union[Model, str] = Model.NAI_DIFFUSION_4_5_CURATED,
-            negative_prompt: str = "",
-            ucPreset: UCPresetTypeAlias = UCPreset.TYPE0,
-            steps: int = 23,
+            negative_prompt: str = None,
+            ucPreset: UCPresetTypeAlias = None,
+            steps: int = None,
             sampler: Union[Sampler, str] = None,
-            width: int = 832,
-            height: int = 1216,
-            add_original_image: bool = True,
+            width: int = None,
+            height: int = None,
+            add_original_image: bool = None,
             character_prompts: List[Character] = None,
             reference_image_multiple: List[Union[str, bytes]] = None,
             reference_strength_multiple: List[float] = None,
             reference_information_extracted_multiple: List[float] = None,
-            qualityToggle: bool = False,
-            decrisp_mode: bool = False,
-            variety_boost: bool = False
+            qualityToggle: bool = None,
+            decrisp_mode: bool = None,
+            variety_boost: bool = None
     ):
         """
         Quickly construct a parameter class that meets the requirements.
@@ -826,42 +525,48 @@ class GenerateImageInfer(ApiBaseModel):
         :param variety_boost: A new feature to improve the diversity of samples.
         :return:
         """
-        if character_prompts is None:
-            character_prompts = []
-        if seed is None:
-            seed = random.randint(0, 4294967295 - 7)
-        if extra_noise_seed is None:
-            extra_noise_seed = random.randint(0, 4294967295 - 7)
-        if reference_strength_multiple is None:
-            reference_image_multiple = []
-        if reference_strength_multiple is None:
-            reference_strength_multiple = []
-        if reference_information_extracted_multiple is None:
-            reference_information_extracted_multiple = []
-        if len(reference_image_multiple) != len(reference_strength_multiple) != len(
-                reference_information_extracted_multiple):
-            raise ValueError("All three reference_* must be of equal length.")
-        params = Params(
-            image=image,
-            strength=strength,
-            noise=noise,
-            width=width,
-            height=height,
-            sampler=sampler,
-            characterPrompts=character_prompts,
-            add_original_image=add_original_image,
-            steps=steps,
-            seed=seed,
-            extra_noise_seed=extra_noise_seed,
-            negative_prompt=negative_prompt,
-            ucPreset=ucPreset,
-            qualityToggle=qualityToggle,
-            dynamic_thresholding=decrisp_mode,
-            skip_cfg_above_sigma=19 if variety_boost else None,
-            reference_image_multiple=reference_image_multiple,
-            reference_information_extracted_multiple=reference_information_extracted_multiple,
-            reference_strength_multiple=reference_strength_multiple,
-        )
+        # Get default parameters for the model
+        params = get_default_params(model)
+
+        # Update only explicitly set parameters
+        params.image = image  # image is required for img2img
+        if strength is not None:
+            params.strength = strength
+        if noise is not None:
+            params.noise = noise
+        if seed is not None:
+            params.seed = seed
+        if extra_noise_seed is not None:
+            params.extra_noise_seed = extra_noise_seed
+        if negative_prompt is not None:
+            params.negative_prompt = negative_prompt
+        if ucPreset is not None:
+            params.ucPreset = ucPreset
+        if steps is not None:
+            params.steps = steps
+        if sampler is not None:
+            params.sampler = sampler
+        if width is not None:
+            params.width = width
+        if height is not None:
+            params.height = height
+        if add_original_image is not None:
+            params.add_original_image = add_original_image
+        if character_prompts is not None:
+            params.characterPrompts = character_prompts
+        if reference_image_multiple is not None:
+            params.reference_image_multiple = reference_image_multiple
+        if reference_strength_multiple is not None:
+            params.reference_strength_multiple = reference_strength_multiple
+        if reference_information_extracted_multiple is not None:
+            params.reference_information_extracted_multiple = reference_information_extracted_multiple
+        if qualityToggle is not None:
+            params.qualityToggle = qualityToggle
+        if decrisp_mode is not None:
+            params.dynamic_thresholding = decrisp_mode
+        if variety_boost is not None:
+            params.skip_cfg_above_sigma = 19 if variety_boost else None
+
         return GenerateImageInfer(
             input=prompt,
             model=model,
@@ -875,23 +580,23 @@ class GenerateImageInfer(ApiBaseModel):
             *,
             image: Union[bytes, str],
             mask: Union[bytes, str],
-            strength: float = 0.7,
+            strength: float = None,
             model: Union[Model, str] = Model.NAI_DIFFUSION_4_5_CURATED,
-            negative_prompt: str = "",
-            ucPreset: UCPresetTypeAlias = UCPreset.TYPE0,
-            steps: int = 23,
+            negative_prompt: str = None,
+            ucPreset: UCPresetTypeAlias = None,
+            steps: int = None,
             seed: int = None,
             sampler: Union[Sampler, str] = None,
-            width: int = 832,
-            height: int = 1216,
-            add_original_image: bool = True,
+            width: int = None,
+            height: int = None,
+            add_original_image: bool = None,
             character_prompts: List[Character] = None,
             reference_image_multiple: List[Union[str, bytes]] = None,
             reference_strength_multiple: List[float] = None,
             reference_information_extracted_multiple: List[float] = None,
-            qualityToggle: bool = False,
-            decrisp_mode: bool = False,
-            variety_boost: bool = False,
+            qualityToggle: bool = None,
+            decrisp_mode: bool = None,
+            variety_boost: bool = None,
     ):
         """
         Quickly construct a parameter class that meets the requirements.
@@ -921,39 +626,45 @@ class GenerateImageInfer(ApiBaseModel):
         :param variety_boost: A new feature to improve the diversity of samples.
         :return:
         """
-        if character_prompts is None:
-            character_prompts = []
-        if seed is None:
-            seed = random.randint(0, 4294967295 - 7)
-        if reference_strength_multiple is None:
-            reference_image_multiple = []
-        if reference_strength_multiple is None:
-            reference_strength_multiple = []
-        if reference_information_extracted_multiple is None:
-            reference_information_extracted_multiple = []
-        if len(reference_image_multiple) != len(reference_strength_multiple) != len(
-                reference_information_extracted_multiple):
-            raise ValueError("All three reference_* must be of equal length.")
-        params = Params(
-            width=width,
-            height=height,
-            sampler=sampler,
-            image=image,
-            mask=mask,
-            strength=strength,
-            characterPrompts=character_prompts,
-            add_original_image=add_original_image,
-            steps=steps,
-            seed=seed,
-            negative_prompt=negative_prompt,
-            ucPreset=ucPreset,
-            qualityToggle=qualityToggle,
-            dynamic_thresholding=decrisp_mode,
-            skip_cfg_above_sigma=19 if variety_boost else None,
-            reference_image_multiple=reference_image_multiple,
-            reference_information_extracted_multiple=reference_information_extracted_multiple,
-            reference_strength_multiple=reference_strength_multiple,
-        )
+        # Get default parameters for the model
+        params = get_default_params(model)
+
+        # Update only explicitly set parameters
+        params.image = image  # image is required for infill
+        params.mask = mask   # mask is required for infill
+        if strength is not None:
+            params.strength = strength
+        if negative_prompt is not None:
+            params.negative_prompt = negative_prompt
+        if ucPreset is not None:
+            params.ucPreset = ucPreset
+        if steps is not None:
+            params.steps = steps
+        if seed is not None:
+            params.seed = seed
+        if sampler is not None:
+            params.sampler = sampler
+        if width is not None:
+            params.width = width
+        if height is not None:
+            params.height = height
+        if add_original_image is not None:
+            params.add_original_image = add_original_image
+        if character_prompts is not None:
+            params.characterPrompts = character_prompts
+        if reference_image_multiple is not None:
+            params.reference_image_multiple = reference_image_multiple
+        if reference_strength_multiple is not None:
+            params.reference_strength_multiple = reference_strength_multiple
+        if reference_information_extracted_multiple is not None:
+            params.reference_information_extracted_multiple = reference_information_extracted_multiple
+        if qualityToggle is not None:
+            params.qualityToggle = qualityToggle
+        if decrisp_mode is not None:
+            params.dynamic_thresholding = decrisp_mode
+        if variety_boost is not None:
+            params.skip_cfg_above_sigma = get_supported_params(model).cfgDelaySigma if variety_boost else None
+
         return GenerateImageInfer(
             input=prompt,
             model=model,

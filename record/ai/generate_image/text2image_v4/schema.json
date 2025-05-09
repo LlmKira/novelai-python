@@ -1,0 +1,105 @@
+{
+  "input": "1boy, 1girl, silver background, cowboy shot, love letter, very aesthetic, location, masterpiece, no text, -0.8::feet::, rating:general",
+  "model": "nai-diffusion-4-5-curated",
+  "action": "generate",
+  "parameters": {
+    "params_version": 3,
+    "width": 832,
+    "height": 1216,
+    "scale": 4.5,
+    "sampler": "k_euler_ancestral",
+    "steps": 23,
+    "n_samples": 1,
+    "ucPreset": 0,
+    "qualityToggle": true,
+    "autoSmea": false,
+    "dynamic_thresholding": false,
+    "controlnet_strength": 1,
+    "legacy": false,
+    "add_original_image": true,
+    "cfg_rescale": 0,
+    "noise_schedule": "karras",
+    "legacy_v3_extend": false,
+    "skip_cfg_above_sigma": null,
+    "use_coords": false,
+    "legacy_uc": false,
+    "normalize_reference_strength_multiple": true,
+    "seed": 168874300,
+    "characterPrompts": [
+      {
+        "prompt": "girl, tan, pink eyes, medium hair, braided ponytail, light blue hair, spiked hair, small breasts, mole under eye, hooded cloak, spread fingers, bodypaint",
+        "uc": "lowres, aliasing, ",
+        "center": {
+          "x": 0,
+          "y": 0
+        },
+        "enabled": true
+      },
+      {
+        "prompt": "boy, very dark skin, medium hair, asymmetrical hair, hair flaps, mole under eye, tuxedo, licking lips, prosthetic arm",
+        "uc": "lowres, aliasing, ",
+        "center": {
+          "x": 0,
+          "y": 0
+        },
+        "enabled": true
+      }
+    ],
+    "v4_prompt": {
+      "caption": {
+        "base_caption": "1boy, 1girl, silver background, cowboy shot, love letter, very aesthetic, location, masterpiece, no text, -0.8::feet::, rating:general",
+        "char_captions": [
+          {
+            "char_caption": "girl, tan, pink eyes, medium hair, braided ponytail, light blue hair, spiked hair, small breasts, mole under eye, hooded cloak, spread fingers, bodypaint",
+            "centers": [
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "char_caption": "boy, very dark skin, medium hair, asymmetrical hair, hair flaps, mole under eye, tuxedo, licking lips, prosthetic arm",
+            "centers": [
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          }
+        ]
+      },
+      "use_coords": false,
+      "use_order": true
+    },
+    "v4_negative_prompt": {
+      "caption": {
+        "base_caption": "blurry, lowres, upscaled, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, negative space, blank page",
+        "char_captions": [
+          {
+            "char_caption": "lowres, aliasing, ",
+            "centers": [
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          },
+          {
+            "char_caption": "lowres, aliasing, ",
+            "centers": [
+              {
+                "x": 0,
+                "y": 0
+              }
+            ]
+          }
+        ]
+      },
+      "legacy_uc": false
+    },
+    "negative_prompt": "blurry, lowres, upscaled, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, negative space, blank page",
+    "deliberate_euler_ancestral_bug": false,
+    "prefer_brownian": true
+  }
+}

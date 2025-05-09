@@ -84,7 +84,7 @@ async def generate(
             # Recommended, using preset negative_prompt depends on selected model
             qualityToggle=True,
             decrisp_mode=False,
-            variety_boost=True,
+            variety_boost=False,
             # Checkbox in novelai.net
         ).set_mutual_exclusion(True)
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
@@ -118,8 +118,7 @@ async def direct_use():
             height=1216,
             characterPrompts=[],
             seed=random.randint(0, 4294967295 - 7),
-            scale=5,
-            negative_prompt="lowres",
+            scale=6,
             qualityToggle=True,
             sampler=Sampler.K_EULER_ANCESTRAL,
             ucPreset=UCPreset.TYPE0,
