@@ -489,12 +489,12 @@ class GenerateImageInfer(ApiBaseModel):
     def build_img2img(
             prompt: str,
             *,
+            model: Union[Model, str] = Model.NAI_DIFFUSION_4_5_FULL,
             image: Union[bytes, str],
             strength: float = None,
             noise: float = None,
             seed: int = None,
             extra_noise_seed: int = None,
-            model: Union[Model, str] = Model.NAI_DIFFUSION_4_5_CURATED,
             negative_prompt: str = None,
             ucPreset: UCPresetTypeAlias = None,
             steps: int = None,
@@ -523,7 +523,7 @@ class GenerateImageInfer(ApiBaseModel):
         :param reference_strength_multiple:
         :param reference_image_multiple:
         :param prompt: Given prompt.
-        :param model: Model for generation.
+        :param model: Model for generation, which NOT end with 'inpainting'.
         :param negative_prompt: The things you don't want to see in the image.
         :param ucPreset: The negative prompt preset.
         :param steps: The steps for generation.
@@ -592,10 +592,10 @@ class GenerateImageInfer(ApiBaseModel):
     def build_infill(
             prompt: str,
             *,
+            model: Union[Model, str],
             image: Union[bytes, str],
             mask: Union[bytes, str],
             strength: float = None,
-            model: Union[Model, str] = Model.NAI_DIFFUSION_4_5_CURATED,
             negative_prompt: str = None,
             ucPreset: UCPresetTypeAlias = None,
             steps: int = None,
@@ -645,7 +645,7 @@ class GenerateImageInfer(ApiBaseModel):
 
         # Update only explicitly set parameters
         params.image = image  # image is required for infill
-        params.mask = mask   # mask is required for infill
+        params.mask = mask  # mask is required for infill
         if strength is not None:
             params.strength = strength
         if negative_prompt is not None:

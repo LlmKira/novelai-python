@@ -14,6 +14,7 @@ from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
 from novelai_python import GenerateImageInfer, ImageGenerateResp, ApiCredential
+from novelai_python.sdk.ai._enum import Model
 from novelai_python.sdk.ai.generate_image import Action, Sampler
 from novelai_python.utils.useful import enum_to_list
 
@@ -42,11 +43,10 @@ async def generate(
             image = base64.b64encode(f.read()).decode()
             # image = f.read() # Or you can use the raw bytes
         agent = GenerateImageInfer.build_img2img(
+            model=Model.NAI_DIFFUSION_4_5_FULL,
             prompt=prompt,
             sampler=Sampler.K_DPMPP_SDE,
             image=image,
-            seed=123456789,
-            extra_noise_seed=123123123,
         )
         print(f"charge: {agent.calculate_cost(is_opus=True)} if you are vip3")
         print(f"charge: {agent.calculate_cost(is_opus=False)} if you are not vip3")
