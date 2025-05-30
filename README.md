@@ -14,6 +14,7 @@ the [NovelAI API service](https://api.novelai.net/docs).
 
 ### 📰 News
 
+- [New Model. No Restrictions. V4.5 Full Is Here.](https://blog.novelai.net/novelai-diffusion-v4-5-full-release-678318c86205)
 - [NovelAI Diffusion V4.5 Curated is Here!](https://blog.novelai.net/novelai-diffusion-v4-5-curated-is-here-9e5ba1f628f3)
 - [Image Generation Model Release — NovelAI Anime Diffusion V4 Curated Preview (EN)](https://blog.novelai.net/release-novelai-anime-diffusion-v4-curated-preview-en-ca4b0b11e671)
 - [Tutorial: Creating Consistent Characters with NovelAI Diffusion Anime [Female]](https://blog.novelai.net/tutorial-en-creating-consistent-characters-with-novelai-diffusion-anime-female-538b4b678a4e)
@@ -50,7 +51,7 @@ prompt = "2girls, fisheye, closeup, from above"
 async def main():
     gen = GenerateImageInfer.build_generate(
         prompt=prompt,
-        model=Model.NAI_DIFFUSION_4_5_CURATED,
+        model=Model.NAI_DIFFUSION_4_5_FULL,
         character_prompts=[
             Character(
                 prompt="1girl, head tilt, short hair, black hair, grey eyes, small breasts, looking at viewer",
@@ -69,6 +70,7 @@ async def main():
         qualityToggle=True,
         decrisp_mode=False,
         variety_boost=True,
+        furry_mode=False,
         # Checkbox in novelai.net
     )
     cost = gen.calculate_cost(is_opus=True)
