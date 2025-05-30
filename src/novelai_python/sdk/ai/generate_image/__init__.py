@@ -170,8 +170,13 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.legacy_uc = get_supported_params(self.model).v4_0legacyUC
         if get_supported_params(self.model).v4Prompts:
             if self.parameters.v4_prompt is None:
+                # Remove furry tag from base caption
+                base_caption = self.input
+                if get_supported_params(self.model).hasFurryMode:
+                    if base_caption.startswith("fur dataset, "):
+                        base_caption = base_caption.replace("fur dataset, ", "")
                 self.parameters.v4_prompt = V4Prompt.build_from_character_prompts(
-                    prompt=self.input,
+                    base_caption=base_caption,
                     character_prompts=self.parameters.characterPrompts
                 )
             if self.parameters.v4_negative_prompt is None:
@@ -347,6 +352,12 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.sm_dyn = False
             if self.parameters.image is None:
                 raise ValueError("image is must required for img2img mode.")
+        # == Color Correction ==
+        if self.action == Action.IMG2IMG:
+            self.parameters.color_correct = True
+
+        if get_supported_params(self.model).img2imgInpainting and self.parameters.mask and self.parameters.inpaintImg2ImgStrength != 1:
+            self.parameters.color_correct = True
 
         return self
 
@@ -400,6 +411,7 @@ class GenerateImageInfer(ApiBaseModel):
             qualityToggle: bool = None,
             decrisp_mode: bool = None,
             variety_boost: bool = None,
+            furry_mode: bool = None,
     ):
         """
         Quickly construct a parameter class that meets the requirements.
@@ -425,6 +437,7 @@ class GenerateImageInfer(ApiBaseModel):
         :param qualityToggle: Use modifiers to make your images look more hentai.
         :param decrisp_mode: Reduce artifacts caused by high prompt guidance values.
         :param variety_boost: A new feature to improve the diversity of samples.
+        :param furry_mode: Whether to use furry mode.
         :return:
         """
         # Get default parameters for the model
@@ -463,7 +476,8 @@ class GenerateImageInfer(ApiBaseModel):
             params.dynamic_thresholding = decrisp_mode
         if variety_boost is not None:
             params.skip_cfg_above_sigma = get_supported_params(model).cfgDelaySigma if variety_boost else None
-
+        if furry_mode is True:
+            prompt = f"fur dataset, {prompt}"
         return GenerateImageInfer(
             input=prompt,
             model=model,

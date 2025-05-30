@@ -89,7 +89,7 @@ class V4Prompt(BaseModel):
 
     @classmethod
     def build_from_character_prompts(cls,
-                                     prompt: str,
+                                     base_caption: str,
                                      character_prompts: List[Character],
                                      use_coords: bool = True,
                                      use_order: bool = True
@@ -102,7 +102,7 @@ class V4Prompt(BaseModel):
         :param use_order: Whether to use order
         :return:
         """
-        caption = Caption(base_caption=prompt)
+        caption = Caption(base_caption=base_caption)
         for character_prompt in character_prompts:
             char_caption = CharCaption(char_caption=character_prompt.prompt, centers=[character_prompt.center])
             caption.char_captions.append(char_caption)

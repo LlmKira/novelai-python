@@ -112,7 +112,7 @@ async def direct_use():
     credential = ApiCredential(api_token=SecretStr("pst-5555"))
     result = await GenerateImageInfer(
         input="1girl",
-        model=Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
+        model=Model.NAI_DIFFUSION_4_5_FULL,
         parameters=Params(
             width=832,
             height=1216,

@@ -10,7 +10,7 @@
 The goal of this repository is to use Pydantic to build legitimate requests to access
 the [NovelAI API service](https://api.novelai.net/docs).
 
-> Python >= 3.9 is required.
+> Python >= 3.9 <3.13 is required.
 
 ### 📰 News
 
