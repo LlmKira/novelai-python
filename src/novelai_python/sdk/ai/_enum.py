@@ -595,7 +595,18 @@ def get_default_noise_schedule(sample_type: Sampler) -> NoiseSchedule:
         return NoiseSchedule.NATIVE
 
 
-def get_model_group(model: Model) -> ModelGroups:
+def get_model_group(model: ModelTypeAlias) -> ModelGroups:
+    """
+    Get model group
+    If the model is not in the mapping, return STABLE_DIFFUSION
+    :param model: Model enum or model name string
+    :return: Model group
+    """
+    if isinstance(model, str):
+        try:
+            model = Model(model)
+        except ValueError:
+            return ModelGroups.STABLE_DIFFUSION
     mapping = {
         Model.STABLE_DIFFUSION: ModelGroups.STABLE_DIFFUSION,
         Model.NAI_DIFFUSION: ModelGroups.STABLE_DIFFUSION,
