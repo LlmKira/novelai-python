@@ -93,6 +93,11 @@ class Params(BaseModel):
     characterPrompts: List[Character] = Field(default_factory=list)
     """Character Prompts"""
 
+    color_correct: Optional[bool] = None
+    """For Inpaint"""
+    inpaintImg2ImgStrength: Optional[float] = Field(None, ge=0, le=1, multiple_of=0.01)
+    """For SameFeel"""
+
     v4_prompt: Optional[V4Prompt] = Field(None, description="V4 Prompt")
     """V4 Prompt"""
     v4_negative_prompt: Optional[V4NegativePrompt] = Field(None, description="V4 Negative Prompt")
@@ -358,7 +363,8 @@ def get_default_params(model: Model = None) -> Params:
             cfg_rescale=0.0,
             noise_schedule=NoiseSchedule.NATIVE,
             legacy_v3_extend=False,
-            skip_cfg_above_sigma=None
+            skip_cfg_above_sigma=None,
+            params_version=3
         )
 
     if model == Model.NAI_DIFFUSION_2:
@@ -383,11 +389,11 @@ def get_default_params(model: Model = None) -> Params:
             cfg_rescale=0.0,
             noise_schedule=NoiseSchedule.NATIVE,
             legacy_v3_extend=False,
-            skip_cfg_above_sigma=None
+            skip_cfg_above_sigma=None,
+            params_version=3
         )
 
     if model in [
-        Model.CUSTOM,
         Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
         Model.NAI_DIFFUSION_4_FULL,
         Model.NAI_DIFFUSION_4_FULL_INPAINTING,
@@ -417,12 +423,17 @@ def get_default_params(model: Model = None) -> Params:
             skip_cfg_above_sigma=None,
             use_coords=False,
             legacy_uc=False,
-            normalize_reference_strength_multiple=True
+            normalize_reference_strength_multiple=True,
+            inpaintImg2ImgStrength=1.0,
+            params_version=3
         )
 
     if model in [
+        Model.CUSTOM,
         Model.NAI_DIFFUSION_4_5_CURATED,
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+        Model.NAI_DIFFUSION_4_5_FULL,
+        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
     ]:
         return Params(
             width=832,
@@ -448,7 +459,9 @@ def get_default_params(model: Model = None) -> Params:
             skip_cfg_above_sigma=None,
             use_coords=False,
             legacy_uc=False,
-            normalize_reference_strength_multiple=True
+            normalize_reference_strength_multiple=True,
+            inpaintImg2ImgStrength=1.0,
+            params_version=3
         )
 
     if model == Model.NAI_DIFFUSION_3:
@@ -473,7 +486,8 @@ def get_default_params(model: Model = None) -> Params:
             cfg_rescale=0.0,
             noise_schedule=NoiseSchedule.KARRAS,
             legacy_v3_extend=False,
-            skip_cfg_above_sigma=None
+            skip_cfg_above_sigma=None,
+            params_version=3
         )
 
     if model == Model.NAI_DIFFUSION_FURRY_3:
@@ -498,7 +512,8 @@ def get_default_params(model: Model = None) -> Params:
             cfg_rescale=0.0,
             noise_schedule=NoiseSchedule.KARRAS,
             legacy_v3_extend=False,
-            skip_cfg_above_sigma=None
+            skip_cfg_above_sigma=None,
+            params_version=3
         )
 
     # Default parameters if model is not specified or not matched
@@ -523,5 +538,6 @@ def get_default_params(model: Model = None) -> Params:
         cfg_rescale=0.0,
         noise_schedule=NoiseSchedule.NATIVE,
         legacy_v3_extend=False,
-        skip_cfg_above_sigma=None
+        skip_cfg_above_sigma=None,
+        params_version=3
     )

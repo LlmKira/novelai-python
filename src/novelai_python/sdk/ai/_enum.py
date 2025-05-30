@@ -94,6 +94,9 @@ class Model(Enum):
     """
     Nai Diffusion series
     """
+    NAI_DIFFUSION_4_5_FULL = "nai-diffusion-4-5-full"
+    NAI_DIFFUSION_4_5_FULL_INPAINTING = 'nai-diffusion-4-5-full-inpainting'
+
     NAI_DIFFUSION_4_5_CURATED = 'nai-diffusion-4-5-curated'
     NAI_DIFFUSION_4_5_CURATED_INPAINTING = 'nai-diffusion-4-5-curated-inpainting'
 
@@ -158,17 +161,27 @@ PROMOTION = {
     "Stable Diffusion XL B0BDF6C1": Model.NAI_DIFFUSION_3,
     "Stable Diffusion XL C1E1DE52": Model.NAI_DIFFUSION_3,
     "Stable Diffusion XL 7BCCAA2C": Model.NAI_DIFFUSION_3,
+    "Stable Diffusion XL 1120E6A9": Model.NAI_DIFFUSION_3,
     "Stable Diffusion XL 8BA2AF87": Model.NAI_DIFFUSION_3,
     "Stable Diffusion XL 4BE8C60C": Model.NAI_DIFFUSION_FURRY_3,
     "Stable Diffusion XL C8704949": Model.NAI_DIFFUSION_FURRY_3,
     "Stable Diffusion XL 37C2B166": Model.NAI_DIFFUSION_FURRY_3,
+    "Stable Diffusion XL F306816B": Model.NAI_DIFFUSION_FURRY_3,
     "Stable Diffusion XL 9CC2F394": Model.NAI_DIFFUSION_FURRY_3,
-    'NovelAI Diffusion V4 4F49EC75': Model.NAI_DIFFUSION_4_FULL,
-    'NovelAI Diffusion V4 CA4B7203': Model.NAI_DIFFUSION_4_FULL,
+    'NovelAI Diffusion V4.5 B9F340FD': Model.NAI_DIFFUSION_4_5_FULL,
+    'NovelAI Diffusion V4.5 F3D95188': Model.NAI_DIFFUSION_4_5_FULL,
     'NovelAI Diffusion V4.5 5AB81C7C': Model.NAI_DIFFUSION_4_5_CURATED,
     "NovelAI Diffusion V4.5 B5A2A797": Model.NAI_DIFFUSION_4_5_CURATED,
     "NovelAI Diffusion V4 5AB81C7C": Model.NAI_DIFFUSION_4_5_CURATED,
     "NovelAI Diffusion V4 B5A2A797": Model.NAI_DIFFUSION_4_5_CURATED,
+    "NovelAI Diffusion V4 37442FCA": Model.NAI_DIFFUSION_4_FULL,
+    "NovelAI Diffusion V4 4F49EC75": Model.NAI_DIFFUSION_4_FULL,
+    "NovelAI Diffusion V4 CA4B7203": Model.NAI_DIFFUSION_4_FULL,
+    "NovelAI Diffusion V4 79F47848": Model.NAI_DIFFUSION_4_FULL,
+    "NovelAI Diffusion V4 F6302A9D": Model.NAI_DIFFUSION_4_FULL,
+    "NovelAI Diffusion V4 7ABFFA2A": Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
+    "NovelAI Diffusion V4 C1CCBA86": Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
+    "NovelAI Diffusion V4 770A9E12": Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
 }
 
 ModelTypeAlias = Optional[Union[Model, str]]
@@ -198,6 +211,9 @@ class SupportCondition:
     numericEmphasis: bool
     encodedVibes: bool
     cfgDelaySigma: int
+    enhancePromptAdd: bool  # For enhance mode, see https://github.com/llmkira/novelai-python/blob/main/playground/enhance.py
+    hasFurryMode: bool
+    img2imgInpainting: bool
 
 
 def get_supported_params(model: Model):
@@ -237,7 +253,10 @@ def get_supported_params(model: Model):
             scaleRecommendedMax=25,
             numericEmphasis=False,
             encodedVibes=False,
-            cfgDelaySigma=19
+            cfgDelaySigma=19,
+            enhancePromptAdd=False,
+            hasFurryMode=False,
+            img2imgInpainting=False
         )
     if model in [Model.NAI_DIFFUSION_2]:
         return SupportCondition(
@@ -260,7 +279,10 @@ def get_supported_params(model: Model):
             scaleRecommendedMax=25,
             numericEmphasis=False,
             encodedVibes=False,
-            cfgDelaySigma=19
+            cfgDelaySigma=19,
+            enhancePromptAdd=False,
+            hasFurryMode=False,
+            img2imgInpainting=False
         )
     if model in [
         Model.NAI_DIFFUSION_XL,
@@ -289,7 +311,10 @@ def get_supported_params(model: Model):
             scaleRecommendedMax=8,
             numericEmphasis=False,
             encodedVibes=False,
-            cfgDelaySigma=19
+            cfgDelaySigma=19,
+            enhancePromptAdd=False,
+            hasFurryMode=False,
+            img2imgInpainting=False
         )
     if model in [
         Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
@@ -299,8 +324,8 @@ def get_supported_params(model: Model):
     ]:
         return SupportCondition(
             controlnet=False,
-            vibetransfer=False,
-            scaleMax=20,
+            vibetransfer=True,
+            scaleMax=10,
             negativePromptGuidance=True,
             noiseSchedule=True,
             inpainting=True,
@@ -317,7 +342,10 @@ def get_supported_params(model: Model):
             scaleRecommendedMax=6,
             numericEmphasis=True,
             encodedVibes=True,
-            cfgDelaySigma=19
+            cfgDelaySigma=19,
+            enhancePromptAdd=False,
+            hasFurryMode=True,
+            img2imgInpainting=False
         )
     if model in [Model.CUSTOM]:
         return SupportCondition(
@@ -340,11 +368,16 @@ def get_supported_params(model: Model):
             scaleRecommendedMax=None,
             numericEmphasis=True,
             encodedVibes=True,
-            cfgDelaySigma=58
+            cfgDelaySigma=58,
+            enhancePromptAdd=False,
+            hasFurryMode=True,
+            img2imgInpainting=False
         )
     if model in [
         Model.NAI_DIFFUSION_4_5_CURATED,
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+        Model.NAI_DIFFUSION_4_5_FULL,
+        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
     ]:
         return SupportCondition(
             controlnet=False,
@@ -366,7 +399,10 @@ def get_supported_params(model: Model):
             scaleRecommendedMax=None,
             numericEmphasis=True,
             encodedVibes=False,
-            cfgDelaySigma=58
+            cfgDelaySigma=58,
+            enhancePromptAdd=True,
+            hasFurryMode=True,
+            img2imgInpainting=False
         )
     return SupportCondition(
         controlnet=False,
@@ -388,7 +424,10 @@ def get_supported_params(model: Model):
         scaleRecommendedMax=99,
         numericEmphasis=False,
         encodedVibes=False,
-        cfgDelaySigma=19
+        cfgDelaySigma=19,
+        enhancePromptAdd=False,
+        hasFurryMode=False,
+        img2imgInpainting=False
     )
 
 
@@ -400,7 +439,7 @@ class Modifier(object):
 
 def find_model_by_hashcode(hashcode: str) -> ModelTypeAlias:
     if "NovelAI Diffusion V4.5" in hashcode:
-        return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_4_5_CURATED)
+        return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_4_5_FULL)
     if "NovelAI Diffusion V4" in hashcode:
         return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_4_CURATED_PREVIEW)
     return PROMOTION.get(hashcode, None)
@@ -414,6 +453,14 @@ def get_modifiers(model: Model) -> Modifier:
     """
     if model in [
         Model.CUSTOM,
+        Model.NAI_DIFFUSION_4_5_FULL,
+        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING
+    ]:
+        return Modifier(
+            qualityTags="",
+            suffix=", location, very aesthetic, masterpiece, no text"
+        )
+    if model in [
         Model.NAI_DIFFUSION_4_5_CURATED,
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING
     ]:
@@ -487,6 +534,8 @@ def filter_by_model_noise_schedule(model: Model, noise_schedule: List[NoiseSched
     if model in [
         Model.NAI_DIFFUSION_4_5_CURATED,
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+        Model.NAI_DIFFUSION_4_5_FULL,
+        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
         Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
         Model.NAI_DIFFUSION_4_FULL,
         Model.NAI_DIFFUSION_4_FULL_INPAINTING,
@@ -547,34 +596,42 @@ def get_default_noise_schedule(sample_type: Sampler) -> NoiseSchedule:
 
 
 def get_model_group(model: ModelTypeAlias) -> ModelGroups:
-    # 一般情况禁止转换
-    if isinstance(model, Enum):
-        model = model.value
-    else:
-        model = str(model)
+    """
+    Get model group
+    If the model is not in the mapping, return STABLE_DIFFUSION
+    :param model: Model enum or model name string
+    :return: Model group
+    """
+    if isinstance(model, str):
+        try:
+            model = Model(model)
+        except ValueError:
+            return ModelGroups.STABLE_DIFFUSION
     mapping = {
-        "stable-diffusion": ModelGroups.STABLE_DIFFUSION,
-        "nai-diffusion": ModelGroups.STABLE_DIFFUSION,
-        "safe-diffusion": ModelGroups.STABLE_DIFFUSION,
-        "waifu-diffusion": ModelGroups.STABLE_DIFFUSION,
-        "nai-diffusion-furry": ModelGroups.STABLE_DIFFUSION,
-        "curated-diffusion-test": ModelGroups.STABLE_DIFFUSION,
-        "nai-diffusion-inpainting": ModelGroups.STABLE_DIFFUSION,
-        "safe-diffusion-inpainting": ModelGroups.STABLE_DIFFUSION,
-        "furry-diffusion-inpainting": ModelGroups.STABLE_DIFFUSION,
-        "nai-diffusion-2": ModelGroups.STABLE_DIFFUSION_GROUP_2,
-        "nai-diffusion-xl": ModelGroups.STABLE_DIFFUSION_XL,
-        "nai-diffusion-3": ModelGroups.STABLE_DIFFUSION_XL,
-        "nai-diffusion-3-inpainting": ModelGroups.STABLE_DIFFUSION_XL,
-        "custom": ModelGroups.V4,
-        "nai-diffusion-furry-3": ModelGroups.STABLE_DIFFUSION_XL_FURRY,
-        "nai-diffusion-furry-3-inpainting": ModelGroups.STABLE_DIFFUSION_XL_FURRY,
-        "nai-diffusion-4-curated-preview": ModelGroups.V4,
-        'nai-diffusion-4-full': ModelGroups.V4,
-        'nai-diffusion-4-full-inpainting': ModelGroups.V4,
-        'nai-diffusion-4-curated-inpainting': ModelGroups.V4,
-        'nai-diffusion-4-5-curated': ModelGroups.V4,
-        'nai-diffusion-4-5-curated-inpainting': ModelGroups.V4,
+        Model.STABLE_DIFFUSION: ModelGroups.STABLE_DIFFUSION,
+        Model.NAI_DIFFUSION: ModelGroups.STABLE_DIFFUSION,
+        Model.SAFE_DIFFUSION: ModelGroups.STABLE_DIFFUSION,
+        Model.WAIFU_DIFFUSION: ModelGroups.STABLE_DIFFUSION,
+        Model.NAI_DIFFUSION_FURRY: ModelGroups.STABLE_DIFFUSION,
+        Model.CURATED_DIFFUSION_TEST: ModelGroups.STABLE_DIFFUSION,
+        Model.NAI_DIFFUSION_INPAINTING: ModelGroups.STABLE_DIFFUSION,
+        Model.SAFE_DIFFUSION_INPAINTING: ModelGroups.STABLE_DIFFUSION,
+        Model.FURRY_DIFFUSION_INPAINTING: ModelGroups.STABLE_DIFFUSION,
+        Model.NAI_DIFFUSION_2: ModelGroups.STABLE_DIFFUSION_GROUP_2,
+        Model.NAI_DIFFUSION_XL: ModelGroups.STABLE_DIFFUSION_XL,
+        Model.NAI_DIFFUSION_3: ModelGroups.STABLE_DIFFUSION_XL,
+        Model.NAI_DIFFUSION_3_INPAINTING: ModelGroups.STABLE_DIFFUSION_XL,
+        Model.CUSTOM: ModelGroups.V4,
+        Model.NAI_DIFFUSION_FURRY_3: ModelGroups.STABLE_DIFFUSION_XL_FURRY,
+        Model.NAI_DIFFUSION_FURRY_3_INPAINTING: ModelGroups.STABLE_DIFFUSION_XL_FURRY,
+        Model.NAI_DIFFUSION_4_CURATED_PREVIEW: ModelGroups.V4,
+        Model.NAI_DIFFUSION_4_FULL: ModelGroups.V4,
+        Model.NAI_DIFFUSION_4_FULL_INPAINTING: ModelGroups.V4,
+        Model.NAI_DIFFUSION_4_CURATED_INPAINTING: ModelGroups.V4,
+        Model.NAI_DIFFUSION_4_5_CURATED: ModelGroups.V4,
+        Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING: ModelGroups.V4,
+        Model.NAI_DIFFUSION_4_5_FULL: ModelGroups.V4,
+        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING: ModelGroups.V4,
     }
     return mapping.get(model, ModelGroups.STABLE_DIFFUSION)
 
@@ -761,6 +818,37 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
                 category="human",
                 name="humanFocus",
                 text="blurry, lowres, upscaled, artistic error, film grain, scan artifacts, bad anatomy, bad hands, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, @_@, mismatched pupils, glowing eyes, negative space, blank page"
+            ),
+            UcPrompt(
+                category="none",
+                name="none",
+                text=""
+            ),
+        ]
+    elif model in [
+        Model.NAI_DIFFUSION_4_5_FULL,
+        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
+    ]:
+        prompts = [
+            UcPrompt(
+                category="heavy",
+                name="heavy",
+                text="lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page"
+            ),
+            UcPrompt(
+                category="light",
+                name="light",
+                text="lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page"
+            ),
+            UcPrompt(
+                category="furry",
+                name="furryFocus",
+                text="{worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic"
+            ),
+            UcPrompt(
+                category="human",
+                name="humanFocus",
+                text="lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy"
             ),
             UcPrompt(
                 category="none",
