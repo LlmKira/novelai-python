@@ -5,6 +5,18 @@
 [![PyPI version](https://badge.fury.io/py/novelai-python.svg)](https://badge.fury.io/py/novelai-python)
 [![Downloads](https://pepy.tech/badge/novelai_python)](https://pepy.tech/project/novelai_python)
 
+
+>**Declaration** (2025/06/04)
+>
+>**I have nothing to do with NovelAI.**
+>
+>Due to various considerations, such as NovelAI's confusing project architecture and "can't learn anything from it", this project will be in a *non-active* maintenance state. If you have any questions, please *raise an issue*.
+>
+>This project is designed to be a sample project for me to write Python SDK. It turns out that Pydantic is very powerful.
+>
+>*I will invest more time in open source projects that are more beneficial to society.*
+>
+
 ✨ NovelAI api python sdk with Pydantic, modern and user-friendly.
 
 The goal of this repository is to use Pydantic to build legitimate requests to access
