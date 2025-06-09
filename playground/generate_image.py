@@ -76,8 +76,8 @@ async def generate(
     try:
         agent = GenerateImageInfer.build_generate(
             prompt=os.getenv("TEST_TAG", prompt),
-            width=832,
-            height=1216,
+            width=1024,
+            height=1024,
             model=model,
             character_prompts=None if os.getenv("TEST_TAG") else character,
             sampler=Sampler.K_EULER_ANCESTRAL,

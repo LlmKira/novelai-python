@@ -20,6 +20,8 @@ def is_multiple_of_01(num, precision=1e-10):
 
 
 class Params(BaseModel):
+    params_version: int = 3
+    """Params Version For Request"""
     width: int = Field(832, ge=64, le=49152)
     """Width For Image"""
     height: int = Field(1216, ge=64, le=49152)
@@ -32,42 +34,66 @@ class Params(BaseModel):
     """Steps"""
     n_samples: int = Field(1, ge=1, le=8)
     """Number of samples"""
-    strength: Optional[float] = Field(0.7, ge=0.01, le=0.99, multiple_of=0.01)
-    """Strength for img2img"""
-    noise: Optional[float] = Field(0, ge=0, le=0.99, multiple_of=0.01)
-    """Noise for img2img"""
     ucPreset: UCPresetTypeAlias = Field(None, ge=0)
     """The Negative Prompt Preset, Bigger or equal to 0"""
     qualityToggle: bool = True
     """Whether to add the quality prompt"""
-    sm: Optional[bool] = False
-    # TODO: find out the usage
-    sm_dyn: Optional[bool] = False
-    # TODO: find out the usage
+    autoSmea: Optional[bool] = False
     dynamic_thresholding: bool = False
     """Decrisp:Reduce artifacts caused by high prompt guidance values"""
     controlnet_strength: float = Field(1.0, ge=0.1, le=2, multiple_of=0.1)
     """ControlNet Strength"""
     legacy: bool = False
     """Legacy Mode"""
+    add_original_image: Optional[bool] = Field(False, description="Overlay Original Image")
+    """
+    Overlay Original Image.Prevents the existing image from changing,
+    but can introduce seams along the edge of the mask.
+    """
     cfg_rescale: Optional[float] = Field(0, ge=0, le=1, multiple_of=0.02)
     """Prompt Guidance Rescale"""
     noise_schedule: Optional[NoiseSchedule] = None
     """Noise Schedule"""
     legacy_v3_extend: Optional[bool] = False
     """Legacy V3 Extend"""
-    mask: ImageBytesTypeAlias = None
-    """Mask for Inpainting"""
+    skip_cfg_above_sigma: Optional[int] = None
+    """Variety Boost, a new feature to improve the diversity of samples."""
+    use_coords: bool = Field(False, description="Use Coordinates")
+    """Use Coordinates"""
+    legacy_uc: bool = False
+    normalize_reference_strength_multiple: bool = True
     seed: int = Field(
         default_factory=lambda: random.randint(0, 4294967295 - 7),
         gt=0,
         le=4294967295 - 7,
     )
     """Seed"""
-    image: ImageBytesTypeAlias = None
-    """Image for img2img"""
+    characterPrompts: List[Character] = Field(default_factory=list)
+    """Character Prompts"""
+    v4_prompt: Optional[V4Prompt] = Field(None, description="V4 Prompt")
+    """V4 Prompt"""
+    v4_negative_prompt: Optional[V4NegativePrompt] = Field(None, description="V4 Negative Prompt")
+    """V4 Negative Prompt"""
     negative_prompt: Optional[str] = ''
     """Negative Prompt"""
+    deliberate_euler_ancestral_bug: Optional[bool] = Field(False, description="Deliberate Euler Ancestral Bug")
+    """Deliberate Euler Ancestral Bug"""
+    prefer_brownian: bool = Field(True, description="Prefer Brownian")
+    """Prefer Brownian"""
+
+    # Other fields
+    strength: Optional[float] = Field(0.7, ge=0.01, le=0.99, multiple_of=0.01)
+    """Strength for img2img"""
+    noise: Optional[float] = Field(0, ge=0, le=0.99, multiple_of=0.01)
+    """Noise for img2img"""
+    sm: Optional[bool] = False
+    # TODO: find out the usage
+    sm_dyn: Optional[bool] = False
+    # TODO: find out the usage
+    mask: ImageBytesTypeAlias = None
+    """Mask for Inpainting"""
+    image: ImageBytesTypeAlias = None
+    """Image for img2img"""
     reference_image_multiple: Optional[List[Union[str, bytes]]] = Field(default_factory=list)
     """Reference Image For Vibe Mode"""
     reference_information_extracted_multiple: Optional[List[float]] = Field(default_factory=list)
@@ -79,48 +105,16 @@ class Params(BaseModel):
     """Reference Strength For Vibe Mode"""
     extra_noise_seed: Optional[int] = Field(None, gt=0, le=4294967295 - 7)
     """Extra Noise Seed"""
-
-    # ====Version3 ====
-    params_version: int = 3
-    """Params Version For Request"""
-    add_original_image: Optional[bool] = Field(False, description="Overlay Original Image")
-    """
-    Overlay Original Image.Prevents the existing image from changing,
-    but can introduce seams along the edge of the mask.
-    """
-    use_coords: bool = Field(False, description="Use Coordinates")
-    """Use Coordinates"""
-    characterPrompts: List[Character] = Field(default_factory=list)
-    """Character Prompts"""
-
     color_correct: Optional[bool] = None
     """For Inpaint"""
     inpaintImg2ImgStrength: Optional[float] = Field(None, ge=0, le=1, multiple_of=0.01)
     """For SameFeel"""
-
-    v4_prompt: Optional[V4Prompt] = Field(None, description="V4 Prompt")
-    """V4 Prompt"""
-    v4_negative_prompt: Optional[V4NegativePrompt] = Field(None, description="V4 Negative Prompt")
-    """V4 Negative Prompt"""
-
-    deliberate_euler_ancestral_bug: Optional[bool] = Field(False, description="Deliberate Euler Ancestral Bug")
-    """Deliberate Euler Ancestral Bug"""
-    prefer_brownian: bool = Field(True, description="Prefer Brownian")
-    """Prefer Brownian"""
-
-    # ======== V1 ========
     controlnet_condition: Optional[str] = None
     """ControlNet Condition"""
     controlnet_model: Optional[ControlNetModel] = None
     """ControlNet Model"""
-    skip_cfg_above_sigma: Optional[int] = None
-    """Variety Boost, a new feature to improve the diversity of samples."""
     uncond_scale: Optional[float] = Field(None, ge=0, le=1.5, multiple_of=0.05)
     """Undesired Content Strength"""
-
-    autoSmea: Optional[bool] = False
-    normalize_reference_strength_multiple: bool = True
-    legacy_uc: bool = False
 
     @model_validator(mode="after")
     def v_character(self):

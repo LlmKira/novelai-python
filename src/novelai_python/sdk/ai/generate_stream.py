@@ -87,7 +87,6 @@ class LLMStream(LLM):
         }
         async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
             # Header
-            sess.headers.update(await self.necessary_headers(request_data))
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)

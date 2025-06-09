@@ -57,27 +57,6 @@ class VoiceGenerate(ApiBaseModel):
     def endpoint(self, value):
         self._endpoint = value
 
-    async def necessary_headers(self, request_data) -> dict:
-        """
-        :param request_data: dict
-        :return: dict
-        "Sec-Ch-Ua": '"Edge";v="123", "Not:A-Brand";v="8"',
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"',
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-site",
-        """
-        return {
-            "Host": urlparse(self.endpoint).netloc,
-            "Accept": "*/*",
-            "Accept-Language": "zh-CN,zh;q=0.9",
-            "Cache-Control": "no-cache",
-            "Origin": "https://novelai.net",
-            "Pragma": "no-cache",
-            "Referer": "https://novelai.net/",
-        }
-
     @classmethod
     def build(cls,
               text: str,
@@ -133,7 +112,6 @@ class VoiceGenerate(ApiBaseModel):
         request_data = self.model_dump(mode="json", exclude_none=True)
         async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
             # Header
-            sess.headers.update(await self.necessary_headers(request_data))
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)

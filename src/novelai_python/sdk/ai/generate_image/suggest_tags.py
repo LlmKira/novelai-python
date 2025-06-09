@@ -37,25 +37,6 @@ class SuggestTags(ApiBaseModel):
     def base_url(self):
         return f"{self.endpoint.strip('/')}/ai/generate-image/suggest-tags"
 
-    async def necessary_headers(self, request_data) -> dict:
-        return {
-            "Host": urlparse(self.endpoint).netloc,
-            "Accept": "*/*",
-
-            "Accept-Encoding": "gzip, deflate, br",
-            "Access-Control-Allow-Origin": "*",
-            "Referer": "https://novelai.net/",
-            "Content-Type": "application/json",
-            "Origin": "https://novelai.net",
-            "Connection": "keep-alive",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-site",
-            "Pragma": "no-cache",
-            "Cache-Control": "no-cache",
-            "TE": "trailers",
-        }
-
     async def request(self,
                       session: Union[AsyncSession, CredentialBase],
                       *,
@@ -70,9 +51,9 @@ class SuggestTags(ApiBaseModel):
         # Data Build
         request_data = self.model_dump(mode="json", exclude_none=True)
         if isinstance(session, AsyncSession):
-            session.headers.update(await self.necessary_headers(request_data))
+            pass
         elif isinstance(session, CredentialBase):
-            session = await session.get_session(update_headers=await self.necessary_headers(request_data))
+            pass
         # Header
         if override_headers:
             session.headers.clear()

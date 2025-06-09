@@ -65,22 +65,6 @@ class LLM(ApiBaseModel):
     def base_url(self):
         return f"{self.endpoint.strip('/')}/ai/generate"
 
-    async def necessary_headers(self, request_data) -> dict:
-        """
-        :param request_data: dict
-        :return: dict
-        """
-        return {
-            "Host": urlparse(self.endpoint).netloc,
-            "accept": "*/*",
-            "accept-language": "zh-CN,zh;q=0.9",
-            "cache-control": "no-cache",
-            "content-type": "application/json",
-            "pragma": "no-cache",
-            "Referer": "https://novelai.net/",
-            "Referrer-Policy": "strict-origin-when-cross-origin"
-        }
-
     @model_validator(mode="after")
     def normalize_model(self):
         if self.model in [
@@ -361,7 +345,6 @@ class LLM(ApiBaseModel):
         }
         async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
             # Header
-            sess.headers.update(await self.necessary_headers(request_data))
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
