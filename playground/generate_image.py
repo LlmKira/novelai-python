@@ -4,6 +4,7 @@
 # @File    : __init__.py.py
 
 import asyncio
+import base64
 import os
 import pathlib
 import random
@@ -55,7 +56,7 @@ async def generate(
     scene = prompt_generator.generate_scene_composition()
     if prompt is None:
         prompt = scene.pop(0) + ','.join([
-            'muelsyse (arknights) '
+            'muelsyse (arknights)'
         ])
     character = [
         Character(
@@ -74,11 +75,11 @@ async def generate(
     # Generate
     try:
         agent = GenerateImageInfer.build_generate(
-            prompt=prompt,
-            width=832,
-            height=1216,
+            prompt=os.getenv("TEST_TAG", prompt),
+            width=1024,
+            height=1024,
             model=model,
-            character_prompts=character,
+            character_prompts=None if os.getenv("TEST_TAG") else character,
             sampler=Sampler.K_EULER_ANCESTRAL,
             ucPreset=UCPreset.TYPE0,
             # Recommended, using preset negative_prompt depends on selected model
@@ -110,7 +111,7 @@ async def direct_use():
     :return:
     """
     credential = ApiCredential(api_token=SecretStr("pst-5555"))
-    result = await GenerateImageInfer(
+    result: ImageGenerateResp = await GenerateImageInfer(
         input="1girl",
         model=Model.NAI_DIFFUSION_4_5_FULL,
         parameters=Params(
@@ -127,6 +128,9 @@ async def direct_use():
         )
     ).request(session=credential)
     print(f"Meta: {result.meta}")
+    file = result.files[0]
+    with open(f"{pathlib.Path(__file__).stem}.png", "wb") as f:
+        f.write(file[1])
 
 
 load_dotenv()

@@ -174,28 +174,6 @@ class AugmentImageInfer(ApiBaseModel):
             prompt=prompt,
         )
 
-    async def necessary_headers(self, request_data) -> dict:
-        """
-        :param request_data:
-        :return:
-        """
-        return {
-            "Host": urlparse(self.endpoint).netloc,
-            "Accept": "*/*",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Referer": "https://novelai.net/",
-            "Content-Type": "application/json",
-            "Origin": "https://novelai.net",
-            "Content-Length": str(len(json.dumps(request_data).encode("utf-8"))),
-            "Connection": "keep-alive",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-site",
-            "Pragma": "no-cache",
-            "Cache-Control": "no-cache",
-            'priority': "u=1, i"
-        }
-
     @retry(
         wait=wait_random(min=1, max=3),
         stop=stop_after_attempt(3),
@@ -216,7 +194,6 @@ class AugmentImageInfer(ApiBaseModel):
         # Prepare request data
         request_data = self.model_dump(mode="json", exclude_none=True)
         async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
-            sess.headers.update(await self.necessary_headers(request_data))
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)

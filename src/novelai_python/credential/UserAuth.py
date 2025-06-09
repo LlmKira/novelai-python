@@ -10,7 +10,7 @@ import shortuuid
 from curl_cffi.requests import AsyncSession
 from pydantic import SecretStr, Field
 
-from ._base import CredentialBase, FAKE_UA
+from ._base import CredentialBase
 
 
 class LoginCredential(CredentialBase):
@@ -25,13 +25,8 @@ class LoginCredential(CredentialBase):
 
     async def get_session(self, timeout: int = 180, update_headers: dict = None):
         headers = {
-            "Accept": "*/*",
-            "User-Agent": FAKE_UA.edge,
-            "Accept-Encoding": "gzip, deflate, br",
             "Authorization": "Bearer ",
             "Content-Type": "application/json",
-            "Origin": "https://novelai.net",
-            "Referer": "https://novelai.net/",
             "x-correlation-id": self.x_correlation_id,
             "x-initiated-at": f"{arrow.utcnow().isoformat()}Z",
         }
@@ -49,4 +44,4 @@ class LoginCredential(CredentialBase):
         if update_headers:
             headers.update(update_headers)
 
-        return AsyncSession(timeout=timeout, headers=headers, impersonate="edge101")
+        return AsyncSession(timeout=timeout, headers=headers, impersonate="chrome136")

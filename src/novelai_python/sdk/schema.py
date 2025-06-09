@@ -31,10 +31,6 @@ class ApiBaseModel(BaseModel, ABC):
     def endpoint(self, value):
         self._endpoint = value
 
-    @abstractmethod
-    async def necessary_headers(self, request_data) -> dict:
-        raise NotImplementedError()
-
     @staticmethod
     def ensure_session_has_post_method(session):
         if not hasattr(session, "post"):

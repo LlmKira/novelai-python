@@ -53,9 +53,6 @@ class Login(ApiBaseModel):
         """
         return cls(key=encode_access_key(user_name, password))
 
-    async def necessary_headers(self, request_data) -> dict:
-        return {}
-
     async def request(self,
                       session: Union[AsyncSession, CredentialBase] = None,
                       *,
@@ -70,7 +67,6 @@ class Login(ApiBaseModel):
 
         async with session if isinstance(session, AsyncSession) else self.session as sess:
             # Header
-            sess.headers.update(await self.necessary_headers(request_data))
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)

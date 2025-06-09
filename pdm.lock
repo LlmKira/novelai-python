@@ -415,7 +415,7 @@ files = [
 
 [[package]]
 name = "curl-cffi"
-version = "0.10.0"
+version = "0.11.3"
 requires_python = ">=3.9"
 summary = "libcurl ffi bindings for Python, with impersonation support."
 groups = ["default"]
@@ -424,16 +424,15 @@ dependencies = [
     "cffi>=1.12.0",
 ]
 files = [
-    {file = "curl_cffi-0.10.0-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:15053d01c6a3e3c4c5331ce9e07e1dc31ca5aa063babca05d18b1b5aad369fac"},
-    {file = "curl_cffi-0.10.0-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:3969e4260ad4dab638fb6dbe349623f9f5f022435c7fd21daf760231380367fa"},
-    {file = "curl_cffi-0.10.0-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:458f53c41bd76d90d8974d60c3a8a0dd902a1af1f9056215cf24f454bcedc6fd"},
-    {file = "curl_cffi-0.10.0-cp39-abi3-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:cfc74f09e44d2d8d61b8e8fda3a7004b5bc0217a703fbbe9e16ef8caa1f3d4e4"},
-    {file = "curl_cffi-0.10.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f03f4b17dc679c82bd3c946feb1ad38749b2ad731d7c26daefaac857d1c72fd9"},
-    {file = "curl_cffi-0.10.0-cp39-abi3-musllinux_1_1_aarch64.whl", hash = "sha256:f1b0c7b7b81afca15a0e56c593d3c2bdcd4fd4c9ca49b9ded5b9d8076ba78ff9"},
-    {file = "curl_cffi-0.10.0-cp39-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:04b1d23f0f54f94b8298ed417e6bece85a635d674723cde2b155da686efbf78f"},
-    {file = "curl_cffi-0.10.0-cp39-abi3-win32.whl", hash = "sha256:1e60b8ecc80bfb0da4ff73ac9d194e80482b50ecbb8aefec1b0edaf45fafd80e"},
-    {file = "curl_cffi-0.10.0-cp39-abi3-win_amd64.whl", hash = "sha256:59389773a1556e087120e91eac1e33f84f1599d853e1bc168b153e4cdf360002"},
-    {file = "curl_cffi-0.10.0.tar.gz", hash = "sha256:3e37b35268ca58492f54ed020ae4b50c33ee0debad4145db9f746f04ed466eb0"},
+    {file = "curl_cffi-0.11.3-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:fb5bdec1a6c3717ab4945bfa95a84d19239ae94cb7e1d1388a7e6eb2fb2e30ee"},
+    {file = "curl_cffi-0.11.3-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:0ba33cf5486a018ffa10824d4d941f76c7bd90fe280e01c14f156a2ee0ecf8dc"},
+    {file = "curl_cffi-0.11.3-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e03592a12e28cc43d8180713b26b8fbffe08c9d26ace9daa287a500590d4295b"},
+    {file = "curl_cffi-0.11.3-cp39-abi3-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:3852e75fe5e424cfd0fff5dec55a2833a45323c3b90275f6fd44bbf633ada3de"},
+    {file = "curl_cffi-0.11.3-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e83065bc89b6725a4d72bafaf3cbdddf56bb4f014bc63be73f87f1b3903fd0ae"},
+    {file = "curl_cffi-0.11.3-cp39-abi3-musllinux_1_1_aarch64.whl", hash = "sha256:f1368594ff2544088eb7f5f3a534e3067e8086b4afb14815bd0af009d25f4ff4"},
+    {file = "curl_cffi-0.11.3-cp39-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:6ae31e513718e108f37889d28d7dc506102399fc753f91b85bdcbb11e79b2860"},
+    {file = "curl_cffi-0.11.3-cp39-abi3-win_amd64.whl", hash = "sha256:953d6ef5b964b6bf2f3e6ba11034adc108faf45b2e18d081de84d797a4d9f328"},
+    {file = "curl_cffi-0.11.3.tar.gz", hash = "sha256:0b21f39980bce3fb5aeea8d64d76bd465825c54a45e2933ca4df5ec0f041ba49"},
 ]
 
 [[package]]

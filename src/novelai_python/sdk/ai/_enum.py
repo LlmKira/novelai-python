@@ -217,12 +217,17 @@ class SupportCondition:
     img2imgInpainting: bool
 
 
-def get_supported_params(model: Model):
+def get_supported_params(model: ModelTypeAlias):
     """
     Get supported parameters for a given model
     :param model: Model
     :return: SupportCondition
     """
+    if isinstance(model, str):
+        try:
+            model = Model(model)
+        except ValueError:
+            pass
     if model in [
         Model.STABLE_DIFFUSION,
         Model.NAI_DIFFUSION,

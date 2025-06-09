@@ -1,6 +1,6 @@
 [project]
 name = "novelai-python"
-version = "0.7.10"
+version = "0.7.11"
 description = "NovelAI Python Binding With Pydantic"
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
@@ -13,7 +13,7 @@ dependencies = [
     "httpx>=0.26.0",
     "shortuuid>=1.0.11",
     "Pillow>=10.2.0",
-    "curl-cffi>=0.9.0",
+    "curl-cffi>=0.11.3",
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0.post1",
     "numpy>=1.24.4",

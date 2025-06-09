@@ -33,24 +33,6 @@ class Subscription(ApiBaseModel):
     def endpoint(self, value):
         self._endpoint = value
 
-    async def necessary_headers(self, request_data) -> dict:
-        return {
-            "Host": urlparse(self.endpoint).netloc,
-            "Accept": "*/*",
-
-            "Accept-Encoding": "gzip, deflate, br",
-            "Referer": "https://novelai.net/",
-            "Content-Type": "application/json",
-            "Origin": "https://novelai.net",
-            "Connection": "keep-alive",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-site",
-            "Pragma": "no-cache",
-            "Cache-Control": "no-cache",
-            "TE": "trailers",
-        }
-
     async def request(self,
                       session: Union[AsyncSession, CredentialBase],
                       *,
@@ -66,7 +48,6 @@ class Subscription(ApiBaseModel):
         request_data = {}
         async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
             # Header
-            sess.headers.update(await self.necessary_headers(request_data))
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
