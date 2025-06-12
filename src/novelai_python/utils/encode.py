@@ -16,7 +16,7 @@ def encode_access_key(username: str, password: str) -> str:
     :param password: str (plaintext)
     :return: str
     """
-    pre_salt = f"{password[:6]}{username}novelai_data_access_key"
+    pre_salt = f"{password[:6]}{username.lower()}novelai_data_access_key"
 
     blake = blake2b(digest_size=16)
     blake.update(pre_salt.encode())

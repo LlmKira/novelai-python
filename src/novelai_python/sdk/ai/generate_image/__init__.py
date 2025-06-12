@@ -167,14 +167,14 @@ class GenerateImageInfer(ApiBaseModel):
             for key in input_prompt:
                 if key in uc_prompt:
                     uc_prompt.pop(key)
-            self.parameters.negative_prompt = ",".join(uc_prompt.values())
+            self.parameters.negative_prompt = ",".join(uc_prompt.values()).strip()
             
         # Instantly remove nsfw if input contains it
         elif "nsfw" in self.input and "nsfw" in self.parameters.negative_prompt:
             uc_prompt = {x.strip(): x for x in self.parameters.negative_prompt.split(",")}
             uc_prompt.pop("nsfw", None)
             
-            self.parameters.negative_prompt = ",".join(uc_prompt.values())
+            self.parameters.negative_prompt = ",".join(uc_prompt.values()).strip()
 
     @model_validator(mode="after")
     def _build_nai4_prompt(self):
