@@ -464,7 +464,7 @@ def get_modifiers(model: Model) -> Modifier:
     ]:
         return Modifier(
             qualityTags="",
-            suffix=", location, very aesthetic, masterpiece, no text"
+            suffix=", very aesthetic, masterpiece, no text"
         )
     if model in [
         Model.NAI_DIFFUSION_4_5_CURATED,
@@ -661,12 +661,12 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="lowQualityPlusBadAnatomy",
-                text="lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
+                text="nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
             ),
             UcPrompt(
                 category="light",
                 name="lowQuality",
-                text="lowres, text, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
+                text="nsfw, lowres, text, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
             ),
             UcPrompt(
                 category="none",
@@ -682,12 +682,12 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="light",
                 name="lowQuality",
-                text="worst quality, low quality, what has science done, what, nightmare fuel, eldritch horror, where is your god now, why"
+                text="nsfw, worst quality, low quality, what has science done, what, nightmare fuel, eldritch horror, where is your god now, why"
             ),
             UcPrompt(
                 category="heavy",
                 name="badAnatomy",
-                text="{worst quality}, low quality, distracting watermark, [nightmare fuel], {{unfinished}}, deformed, outline, pattern, simple background"
+                text="nsfw, {worst quality}, low quality, distracting watermark, [nightmare fuel], {{unfinished}}, deformed, outline, pattern, simple background"
             ),
             UcPrompt(
                 category="none",
@@ -702,12 +702,12 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="heavy",
-                text="lowres, bad, text, error, missing, extra, fewer, cropped, jpeg artifacts, worst quality, bad quality, watermark, displeasing, unfinished, chromatic aberration, scan, scan artifacts"
+                text="nsfw, lowres, bad, text, error, missing, extra, fewer, cropped, jpeg artifacts, worst quality, bad quality, watermark, displeasing, unfinished, chromatic aberration, scan, scan artifacts"
             ),
             UcPrompt(
                 category="light",
                 name="light",
-                text="lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"
+                text="nsfw, lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"
             ),
             UcPrompt(
                 category="none",
@@ -723,17 +723,17 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="heavy",
-                text="lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]"
+                text="nsfw, lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]"
             ),
             UcPrompt(
                 category="light",
                 name="light",
-                text="lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"
+                text="nsfw, lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"
             ),
             UcPrompt(
                 category="human",
                 name="humanFocus",
-                text="lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, glowing eyes"
+                text="nsfw, lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, glowing eyes"
             ),
             UcPrompt(
                 category="none",
@@ -749,12 +749,12 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="heavy",
-                text="{{worst quality}}, [displeasing], {unusual pupils}, guide lines, {{unfinished}}, {bad}, url, artist name, {{tall image}}, mosaic, {sketch page}, comic panel, impact (font), [dated], {logo}, ych, {what}, {where is your god now}, {distorted text}, repeated text, {floating head}, {1994}, {widescreen}, absolutely everyone, sequence, {compression artifacts}, hard translated, {cropped}, {commissioner name}, unknown text, high contrast"
+                text="nsfw, {{worst quality}}, [displeasing], {unusual pupils}, guide lines, {{unfinished}}, {bad}, url, artist name, {{tall image}}, mosaic, {sketch page}, comic panel, impact (font), [dated], {logo}, ych, {what}, {where is your god now}, {distorted text}, repeated text, {floating head}, {1994}, {widescreen}, absolutely everyone, sequence, {compression artifacts}, hard translated, {cropped}, {commissioner name}, unknown text, high contrast"
             ),
             UcPrompt(
                 category="light",
                 name="light",
-                text="{worst quality}, guide lines, unfinished, bad, url, tall image, widescreen, compression artifacts, unknown text"
+                text="nsfw, {worst quality}, guide lines, unfinished, bad, url, tall image, widescreen, compression artifacts, unknown text"
             ),
             UcPrompt(
                 category="none",
@@ -791,12 +791,12 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="heavy",
-                text="blurry, lowres, error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, multiple views, logo, too many watermarks, white blank page, blank page"
+                text="nsfw, blurry, lowres, error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, multiple views, logo, too many watermarks, white blank page, blank page"
             ),
             UcPrompt(
                 category="light",
                 name="light",
-                text="blurry, lowres, error, worst quality, bad quality, jpeg artifacts, very displeasing, white blank page, blank page"
+                text="nsfw, blurry, lowres, error, worst quality, bad quality, jpeg artifacts, very displeasing, white blank page, blank page"
             ),
             UcPrompt(
                 category="none",
@@ -839,22 +839,22 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="heavy",
-                text="lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page"
+                text="nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page"
             ),
             UcPrompt(
                 category="light",
                 name="light",
-                text="lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page"
+                text="nsfw, lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page"
             ),
             UcPrompt(
                 category="furry",
                 name="furryFocus",
-                text="{worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic"
+                text="nsfw, {worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic"
             ),
             UcPrompt(
                 category="human",
                 name="humanFocus",
-                text="lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy"
+                text="nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy"
             ),
             UcPrompt(
                 category="none",
