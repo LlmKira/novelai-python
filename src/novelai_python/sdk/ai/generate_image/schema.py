@@ -84,14 +84,14 @@ class Caption(BaseModel):
 
 class V4Prompt(BaseModel):
     caption: Caption = Field(default_factory=Caption, description="Caption")
-    use_coords: bool = Field(True, description="Use Coordinates")
+    use_coords: bool = Field(False, description="Use Coordinates")
     use_order: bool = Field(True, description="Use Order")
 
     @classmethod
     def build_from_character_prompts(cls,
                                      base_caption: str,
                                      character_prompts: List[Character],
-                                     use_coords: bool = True,
+                                     use_coords: bool = False,
                                      use_order: bool = True
                                      ) -> "V4Prompt":
         """

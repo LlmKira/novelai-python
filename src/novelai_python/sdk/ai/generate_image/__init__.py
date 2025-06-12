@@ -65,6 +65,16 @@ class GenerateImageInfer(ApiBaseModel):
     action: Union[str, Action] = Field(Action.GENERATE, description="Mode for img generate")
     parameters: Union[Params]
     model_config = ConfigDict(extra="ignore")
+    
+    # forced params integration
+    def model_dump(self, *args, **kwargs):
+        """
+        Overrides model_dump for own features
+        """
+        data = super().model_dump(*args, **kwargs)
+        data["parameters"] = self.parameters.model_dump(*args, **kwargs)
+        
+        return data
 
     @override
     def model_post_init(self, *args) -> None:
@@ -158,6 +168,13 @@ class GenerateImageInfer(ApiBaseModel):
                 if key in uc_prompt:
                     uc_prompt.pop(key)
             self.parameters.negative_prompt = ",".join(uc_prompt.values())
+            
+        # Instantly remove nsfw if input contains it
+        elif "nsfw" in self.input and "nsfw" in self.parameters.negative_prompt:
+            uc_prompt = {x.strip(): x for x in self.parameters.negative_prompt.split(",")}
+            uc_prompt.pop("nsfw", None)
+            
+            self.parameters.negative_prompt = ",".join(uc_prompt.values())
 
     @model_validator(mode="after")
     def _build_nai4_prompt(self):
@@ -187,9 +204,9 @@ class GenerateImageInfer(ApiBaseModel):
         if not get_supported_params(self.model).vibetransfer:
             if self.parameters.reference_image_multiple:
                 logger.warning("Vibe transfer is not supported for this model.")
-            self.parameters.reference_image_multiple = []
-            self.parameters.reference_information_extracted_multiple = []
-            self.parameters.reference_strength_multiple = []
+            self.parameters.reference_image_multiple = None # Auto exclude None values
+            self.parameters.reference_information_extracted_multiple = None # Auto exclude None values
+            self.parameters.reference_strength_multiple = None # Auto exclude None values
 
         if not get_supported_params(self.model).controlnet:
             if self.parameters.controlnet_condition is not None:
@@ -210,6 +227,9 @@ class GenerateImageInfer(ApiBaseModel):
         """
         if self.parameters.characterPrompts:
             self.parameters.use_coords = any([c.center != PositionMap.AUTO for c in self.parameters.characterPrompts])
+            
+            if get_supported_params(self.model).v4Prompts and self.parameters.v4_prompt is not None:
+                self.parameters.v4_prompt.use_coords = self.parameters.use_coords
         # Mix Prompt Warning
         if self.input.count('|') > 6:
             logger.warning("Maximum prompt mixes exceeded. Extra will be ignored.")

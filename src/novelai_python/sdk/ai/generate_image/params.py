@@ -1,7 +1,7 @@
 import base64
 import random
 from io import BytesIO
-from typing import Optional, List, Union, Tuple
+from typing import Optional, List, OrderedDict, Set, Union, Tuple
 
 import cv2
 import numpy as np
@@ -62,6 +62,8 @@ class Params(BaseModel):
     """Use Coordinates"""
     legacy_uc: bool = False
     normalize_reference_strength_multiple: bool = True
+    inpaintImg2ImgStrength: Optional[float] = Field(None, ge=0, le=1, multiple_of=0.01)
+    """For SameFeel"""
     seed: int = Field(
         default_factory=lambda: random.randint(0, 4294967295 - 7),
         gt=0,
@@ -107,15 +109,45 @@ class Params(BaseModel):
     """Extra Noise Seed"""
     color_correct: Optional[bool] = None
     """For Inpaint"""
-    inpaintImg2ImgStrength: Optional[float] = Field(None, ge=0, le=1, multiple_of=0.01)
-    """For SameFeel"""
     controlnet_condition: Optional[str] = None
     """ControlNet Condition"""
     controlnet_model: Optional[ControlNetModel] = None
     """ControlNet Model"""
     uncond_scale: Optional[float] = Field(None, ge=0, le=1.5, multiple_of=0.05)
     """Undesired Content Strength"""
-
+    
+    ########## Next code wants custom BaseModel
+    __strong_values__: Set[str] = {
+        "skip_cfg_above_sigma", # See models before Anime V3
+    }
+    """Settings with none value to strongly include"""
+    
+    def force_include(self, value: str):
+        """
+        Force include some params to json
+        """
+        if value not in self.__dict__:
+            raise ValueError("Wrong value in params:", value)
+        
+        self.__strong_values__.add(value)
+    
+    # Also integrated into GenerateImageInfer
+    def model_dump(self, *args, **kwargs):
+        """
+        Overrides model_dump for own features
+        """
+        data = super().model_dump(*args, **kwargs)
+        ordered_fields = list(self.__fields__.keys())
+        new_data = OrderedDict()
+        
+        for field in ordered_fields:
+            if field in data:
+                new_data[field] = data[field]
+            elif field in self.__strong_values__:
+                new_data[field] = getattr(self, field, None)
+        return new_data
+    #########
+    
     @model_validator(mode="after")
     def v_character(self):
         if len(self.characterPrompts) > 6:
