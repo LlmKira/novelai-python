@@ -1,13 +1,13 @@
 import base64
 import random
 from io import BytesIO
-from typing import Optional, List, OrderedDict, Set, Union, Tuple
+from typing import Optional, List, Set, Union, Tuple
 
 import cv2
 import numpy as np
 from PIL import Image
 from loguru import logger
-from pydantic import BaseModel, Field, model_validator, field_validator
+from pydantic import BaseModel, Field, model_validator, field_validator, model_serializer
 
 from novelai_python.sdk.ai._enum import Sampler, UCPresetTypeAlias, NoiseSchedule, ImageBytesTypeAlias, ControlNetModel, \
     Model
@@ -115,39 +115,26 @@ class Params(BaseModel):
     """ControlNet Model"""
     uncond_scale: Optional[float] = Field(None, ge=0, le=1.5, multiple_of=0.05)
     """Undesired Content Strength"""
-    
-    ########## Next code wants custom BaseModel
+
+    # region Custom serializer
     __strong_values__: Set[str] = {
         "skip_cfg_above_sigma", # See models before Anime V3
     }
     """Settings with none value to strongly include"""
     
-    def force_include(self, value: str):
+    @model_serializer(mode="wrap")
+    def _serialize(self, handler):
         """
-        Force include some params to json
+        Custom serializer to force include specific fields even when they are None
         """
-        if value not in self.__dict__:
-            raise ValueError("Wrong value in params:", value)
-        
-        self.__strong_values__.add(value)
-    
-    # Also integrated into GenerateImageInfer
-    def model_dump(self, *args, **kwargs):
-        """
-        Overrides model_dump for own features
-        """
-        data = super().model_dump(*args, **kwargs)
-        ordered_fields = list(self.__fields__.keys())
-        new_data = OrderedDict()
-        
-        for field in ordered_fields:
-            if field in data:
-                new_data[field] = data[field]
-            elif field in self.__strong_values__:
-                new_data[field] = getattr(self, field, None)
-        return new_data
-    #########
-    
+        data = handler(self)
+        # Just add None values for strong fields
+        for field in self.__strong_values__:
+            if field not in data:
+                data[field] = getattr(self, field, None)
+        return data
+    # endregion
+
     @model_validator(mode="after")
     def v_character(self):
         if len(self.characterPrompts) > 6:
