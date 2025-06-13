@@ -65,16 +65,6 @@ class GenerateImageInfer(ApiBaseModel):
     action: Union[str, Action] = Field(Action.GENERATE, description="Mode for img generate")
     parameters: Union[Params]
     model_config = ConfigDict(extra="ignore")
-    
-    # forced params integration
-    def model_dump(self, *args, **kwargs):
-        """
-        Overrides model_dump for own features
-        """
-        data = super().model_dump(*args, **kwargs)
-        data["parameters"] = self.parameters.model_dump(*args, **kwargs)
-        
-        return data
 
     @override
     def model_post_init(self, *args) -> None:
