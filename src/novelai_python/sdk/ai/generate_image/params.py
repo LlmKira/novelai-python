@@ -1,13 +1,14 @@
 import base64
 import random
 from io import BytesIO
+from collections import OrderedDict
 from typing import Optional, List, Set, Union, Tuple
 
 import cv2
 import numpy as np
 from PIL import Image
 from loguru import logger
-from pydantic import BaseModel, Field, model_validator, field_validator, model_serializer
+from pydantic import BaseModel, Field, model_serializer, model_validator, field_validator
 
 from novelai_python.sdk.ai._enum import Sampler, UCPresetTypeAlias, NoiseSchedule, ImageBytesTypeAlias, ControlNetModel, \
     Model
@@ -128,11 +129,22 @@ class Params(BaseModel):
         Custom serializer to force include specific fields even when they are None
         """
         data = handler(self)
-        # Just add None values for strong fields
-        for field in self.__strong_values__:
-            if field not in data:
-                data[field] = getattr(self, field, None)
-        return data
+        
+        # Force include strong fields and ensure proper ordering
+        # Create ordered dict following JavaScript field order
+        ordered_fields = list(self.__class__.model_fields.keys())
+        ordered_data = OrderedDict()
+        
+        for field_name in ordered_fields:
+            if field_name in data:
+                # Field exists in data, include it
+                ordered_data[field_name] = data[field_name]
+            elif field_name in self.__strong_values__:
+                # Since we iterate from `self.__class__.model_fields`,、
+                # the field is guaranteed to exist. The previous safety check was redundant.
+                ordered_data[field_name] = getattr(self, field_name, None)
+        
+        return ordered_data
     # endregion
 
     @model_validator(mode="after")
