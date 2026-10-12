@@ -17,6 +17,27 @@ class RequestParams(BaseModel):
     raw_request: dict = None
 
 
+class ImageStreamEvent(BaseModel):
+    """
+    One frame from /ai/generate-image-stream (msgpack framed with a uint32 big-endian length prefix).
+
+    event_type: "intermediate" (preview), "final" (finished sample) or "error".
+    """
+    event_type: str
+    samp_ix: int = 0
+    step_ix: Optional[int] = None
+    image: Optional[bytes] = None
+    message: Optional[str] = None
+
+    @property
+    def is_final(self) -> bool:
+        return self.event_type == "final"
+
+    @property
+    def is_error(self) -> bool:
+        return self.event_type == "error"
+
+
 class ImageGenerateResp(RespBase):
     meta: RequestParams
     files: List[Tuple[str, bytes]] = None

@@ -2,7 +2,10 @@
 # MIT: https://github.com/NovelAI/novelai-image-metadata/blob/main/nai_bch.py
 import functools
 
-import bchlib
+try:
+    import bchlib
+except ImportError:  # optional extra: pip install "novelai-python[metadata]"
+    bchlib = None
 import numpy as np
 
 correctable_bits = 16
@@ -129,6 +132,8 @@ def pad(data_bytes):
 
 # Returns codes for the data in data_bytes
 def fec_encode(data_bytes, w, h):
+    if bchlib is None:
+        raise ImportError("bchlib is required for image metadata, install novelai-python[metadata]")
     encoder = bchlib.BCH(16, prim_poly=17475)
     # import galois
     # encoder = galois.BCH(16383, 16383-224, d=17, c=224)
@@ -138,6 +143,8 @@ def fec_encode(data_bytes, w, h):
 
 # Returns the error corrected data and number of corrected errors or None, None if errors are not correctable
 def fec_decode(data_bytes, codes, w, h):
+    if bchlib is None:
+        raise ImportError("bchlib is required for image metadata, install novelai-python[metadata]")
     encoder = bchlib.BCH(16, prim_poly=17475)
     chunks, dim, rest_size, rest_dim = split_byte_ranges(data_bytes, 2019, w, h, shuffle=True)
     codes = split_byte_ranges(codes, 28, w, h)

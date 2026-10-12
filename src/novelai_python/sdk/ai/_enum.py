@@ -93,6 +93,8 @@ class Resolution(Enum):
 class QualityPreset(Enum):
     """qualityPresetId sent by the web client for params_version >= 4"""
     STANDARD = "standard"
+    LIGHT = "light"
+    NONE = "none"
 
 
 class ImageFormat(Enum):
@@ -106,6 +108,11 @@ class Model(Enum):
     Nai Diffusion series
     """
     NAI_DIFFUSION_5_FULL = "nai-diffusion-5-full"
+    NAI_DIFFUSION_5_FULL_INPAINTING = "nai-diffusion-5-full-inpainting"
+    NAI_DIFFUSION_5_FULL_MEDIUM = "nai-diffusion-5-full-medium"
+    NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING = "nai-diffusion-5-full-medium-inpainting"
+    NAI_DIFFUSION_5_CURATED = "nai-diffusion-5-curated"
+    NAI_DIFFUSION_5_CURATED_INPAINTING = "nai-diffusion-5-curated-inpainting"
 
     NAI_DIFFUSION_4_5_FULL = "nai-diffusion-4-5-full"
     NAI_DIFFUSION_4_5_FULL_INPAINTING = 'nai-diffusion-4-5-full-inpainting'
@@ -147,12 +154,34 @@ class ModelGroups(Enum):
     STABLE_DIFFUSION_XL = "stable_diffusion_xl"
     STABLE_DIFFUSION_XL_FURRY = "stable_diffusion_xl_furry"
     V4 = "v4"
+    V5 = "v5"
 
 
 V5_MODEL_LIST = [
     Model.NAI_DIFFUSION_5_FULL,
+    Model.NAI_DIFFUSION_5_FULL_INPAINTING,
+    Model.NAI_DIFFUSION_5_FULL_MEDIUM,
+    Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING,
+    Model.NAI_DIFFUSION_5_CURATED,
+    Model.NAI_DIFFUSION_5_CURATED_INPAINTING,
 ]
-"""Models that use the params_version 4 request shape (ucPresetId / qualityPresetId, multipart body)."""
+"""NovelAI Diffusion V5 family (web client model group "v5")."""
+
+V5_MEDIUM_MODEL_LIST = [
+    Model.NAI_DIFFUSION_5_FULL_MEDIUM,
+    Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING,
+]
+"""Fast V5 variant: the web client pins steps=14, k_euler_ancestral and the heavy preset."""
+
+IMAGE_MODEL_IDS = {
+    Model.NAI_DIFFUSION_5_CURATED: 703,
+    Model.NAI_DIFFUSION_5_CURATED_INPAINTING: 703,
+    Model.NAI_DIFFUSION_5_FULL: 1471,
+    Model.NAI_DIFFUSION_5_FULL_INPAINTING: 1471,
+    Model.NAI_DIFFUSION_5_FULL_MEDIUM: 1471,
+    Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING: 1471,
+}
+"""Numeric ids the web client stores in clientsettings for V5 models."""
 
 
 def is_v5_model(model: "ModelTypeAlias") -> bool:
@@ -174,6 +203,9 @@ INPAINTING_MODEL_LIST = [
     Model.NAI_DIFFUSION_4_FULL_INPAINTING,
     Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
     Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
+    Model.NAI_DIFFUSION_5_FULL_INPAINTING,
+    Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING,
+    Model.NAI_DIFFUSION_5_CURATED_INPAINTING,
 ]
 
 PROMOTION = {
@@ -412,7 +444,6 @@ def get_supported_params(model: ModelTypeAlias):
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
         Model.NAI_DIFFUSION_4_5_FULL,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
-        Model.NAI_DIFFUSION_5_FULL,
     ]:
         return SupportCondition(
             controlnet=False,
@@ -438,6 +469,34 @@ def get_supported_params(model: ModelTypeAlias):
             enhancePromptAdd=True,
             hasFurryMode=True,
             img2imgInpainting=False
+        )
+    if model in V5_MODEL_LIST:
+        # From the web client: cfgRescale on, maxCharacters 32, streamed responses,
+        # transparency, img2img inpainting. Medium additionally pins steps/sampler/preset.
+        return SupportCondition(
+            controlnet=False,
+            vibetransfer=False,
+            scaleMax=10,
+            negativePromptGuidance=True,
+            noiseSchedule=True,
+            inpainting=True,
+            cfgDelay=False,
+            characterPrompts=True,
+            v4Prompts=True,
+            smea=False,
+            smeaDyn=False,
+            text=True,
+            dynamicThresholding=False,
+            autoSmea=False,
+            v4_0legacyUC=False,
+            scaleRecommendedMin=0,
+            scaleRecommendedMax=None,
+            numericEmphasis=True,
+            encodedVibes=False,
+            cfgDelaySigma=58,
+            enhancePromptAdd=True,
+            hasFurryMode=True,
+            img2imgInpainting=True
         )
     return SupportCondition(
         controlnet=False,
@@ -472,8 +531,49 @@ class Modifier(object):
     suffix: str
 
 
+@dataclass
+class QualityPresetDef:
+    id: str
+    suffix: str
+
+
+def get_quality_presets(model: ModelTypeAlias) -> List[QualityPresetDef]:
+    """
+    Quality presets the web client offers per model (qualityPresetId -> suffix).
+    "none" is always available.
+    """
+    if isinstance(model, str):
+        try:
+            model = Model(model)
+        except ValueError:
+            pass
+    if model in V5_MODEL_LIST or model == Model.CUSTOM:
+        return [
+            QualityPresetDef("standard", "very aesthetic, masterpiece, no text"),
+            QualityPresetDef("light", "very aesthetic, amazing quality, no text"),
+            QualityPresetDef("none", ""),
+        ]
+    modifier = get_modifiers(model)
+    suffix = modifier.suffix.lstrip(", ") if modifier.suffix else modifier.qualityTags.rstrip(", ")
+    return [QualityPresetDef("standard", suffix), QualityPresetDef("none", "")]
+
+
+def get_quality_suffix(model: ModelTypeAlias, preset_id: Union[str, QualityPreset, None]) -> Modifier:
+    """Modifier for a named quality preset; falls back to the model's standard modifier."""
+    if isinstance(preset_id, Enum):
+        preset_id = preset_id.value
+    if preset_id in (None, "standard"):
+        return get_modifiers(model)
+    for preset in get_quality_presets(model):
+        if preset.id == preset_id:
+            return Modifier(qualityTags="", suffix=f", {preset.suffix}" if preset.suffix else "")
+    return get_modifiers(model)
+
+
 def find_model_by_hashcode(hashcode: str) -> ModelTypeAlias:
     if "NovelAI Diffusion V5" in hashcode:
+        if "Curated" in hashcode:
+            return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_5_CURATED)
         return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_5_FULL)
     if "NovelAI Diffusion V4.5" in hashcode:
         return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_4_5_FULL)
@@ -492,9 +592,9 @@ def get_modifiers(model: Model) -> Modifier:
         Model.CUSTOM,
         Model.NAI_DIFFUSION_4_5_FULL,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
-        Model.NAI_DIFFUSION_5_FULL,
+        *V5_MODEL_LIST,
     ]:
-        # V5: confirmed from the web client, qualityPresetId "standard"
+        # V5: qualityPresetId "standard" in the web client
         return Modifier(
             qualityTags="",
             suffix=", very aesthetic, masterpiece, no text"
@@ -571,7 +671,7 @@ def filter_by_model_noise_schedule(model: Model, noise_schedule: List[NoiseSched
     """
     # 只有 Novelai4 系列不支持Native
     if model in [
-        Model.NAI_DIFFUSION_5_FULL,
+        *V5_MODEL_LIST,
         Model.NAI_DIFFUSION_4_5_CURATED,
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
         Model.NAI_DIFFUSION_4_5_FULL,
@@ -672,7 +772,12 @@ def get_model_group(model: ModelTypeAlias) -> ModelGroups:
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING: ModelGroups.V4,
         Model.NAI_DIFFUSION_4_5_FULL: ModelGroups.V4,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING: ModelGroups.V4,
-        Model.NAI_DIFFUSION_5_FULL: ModelGroups.V4,
+        Model.NAI_DIFFUSION_5_FULL: ModelGroups.V5,
+        Model.NAI_DIFFUSION_5_FULL_INPAINTING: ModelGroups.V5,
+        Model.NAI_DIFFUSION_5_FULL_MEDIUM: ModelGroups.V5,
+        Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING: ModelGroups.V5,
+        Model.NAI_DIFFUSION_5_CURATED: ModelGroups.V5,
+        Model.NAI_DIFFUSION_5_CURATED_INPAINTING: ModelGroups.V5,
     }
     return mapping.get(model, ModelGroups.STABLE_DIFFUSION)
 
@@ -866,13 +971,40 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
                 text=""
             ),
         ]
+    elif model in V5_MODEL_LIST:
+        # From the web client bundle. The client prepends "nsfw" to every preset except
+        # "none" unless the prompt already contains it; that prefix is reproduced here.
+        prompts = [
+            UcPrompt(
+                category="heavy",
+                name="heavy",
+                text="nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page"
+            ),
+            UcPrompt(
+                category="light",
+                name="light",
+                text="nsfw, lowres, bad hands, bad anatomy, artistic error, sepia, white haze, worst quality, very displeasing, jpeg artifacts, 0::ai-generated::"
+            ),
+            UcPrompt(
+                category="furry",
+                name="furryFocus",
+                text="nsfw, {worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic"
+            ),
+            UcPrompt(
+                category="human",
+                name="humanFocus",
+                text="nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy"
+            ),
+            UcPrompt(
+                category="none",
+                name="none",
+                text=""
+            ),
+        ]
     elif model in [
         Model.NAI_DIFFUSION_4_5_FULL,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
-        Model.NAI_DIFFUSION_5_FULL,
     ]:
-        # V5 "heavy" is confirmed identical to V4.5 Full from the web client;
-        # the other presets are inherited until a capture proves otherwise.
         prompts = [
             UcPrompt(
                 category="heavy",

@@ -11,7 +11,7 @@ from loguru import logger
 from pydantic import BaseModel, Field, model_serializer, model_validator, field_validator
 
 from novelai_python.sdk.ai._enum import Sampler, UCPresetTypeAlias, NoiseSchedule, ImageBytesTypeAlias, ControlNetModel, \
-    Model, QualityPreset, ImageFormat, is_v5_model
+    Model, QualityPreset, ImageFormat, is_v5_model, V5_MEDIUM_MODEL_LIST
 from novelai_python.sdk.ai.generate_image.schema import Character, V4Prompt, V4NegativePrompt
 
 
@@ -21,8 +21,8 @@ def is_multiple_of_01(num, precision=1e-10):
 
 
 class Params(BaseModel):
-    params_version: int = 3
-    """Params Version For Request"""
+    params_version: int = 4
+    """Params Version For Request (the web client sends 4 for every model)"""
     width: int = Field(832, ge=64, le=49152)
     """Width For Image"""
     height: int = Field(1216, ge=64, le=49152)
@@ -83,6 +83,8 @@ class Params(BaseModel):
     """params_version>=4: quality-tag hint level sent by the web client (1)"""
     tag_hint_uc_preset: Optional[int] = None
     """params_version>=4: uc-preset hint sent by the web client (2)"""
+    tag_hint_transparent_background: Optional[bool] = None
+    """V5: ask for a transparent background (web client default False)"""
     v4_prompt: Optional[V4Prompt] = Field(None, description="V4 Prompt")
     """V4 Prompt"""
     v4_negative_prompt: Optional[V4NegativePrompt] = Field(None, description="V4 Negative Prompt")
@@ -136,13 +138,10 @@ class Params(BaseModel):
     """Settings with none value to strongly include"""
 
     __v4_dropped_fields__: Set[str] = {
-        # The params_version 4 web client replaced these with ucPresetId / qualityPresetId
-        # and no longer sends the SMEA / uncond knobs at all.
+        # The params_version 4 web client replaces these with ucPresetId / qualityPresetId
+        # before sending (see its migration: `delete t.qualityToggle, delete t.ucPreset`).
         "ucPreset",
         "qualityToggle",
-        "sm",
-        "sm_dyn",
-        "uncond_scale",
     }
     """Fields the web client stopped sending with params_version >= 4"""
 
@@ -415,7 +414,7 @@ def get_default_params(model: Model = None) -> Params:
             noise_schedule=NoiseSchedule.NATIVE,
             legacy_v3_extend=False,
             skip_cfg_above_sigma=None,
-            params_version=3
+            params_version=4
         )
 
     if model == Model.NAI_DIFFUSION_2:
@@ -441,7 +440,7 @@ def get_default_params(model: Model = None) -> Params:
             noise_schedule=NoiseSchedule.NATIVE,
             legacy_v3_extend=False,
             skip_cfg_above_sigma=None,
-            params_version=3
+            params_version=4
         )
 
     if model in [
@@ -476,24 +475,25 @@ def get_default_params(model: Model = None) -> Params:
             legacy_uc=False,
             normalize_reference_strength_multiple=True,
             inpaintImg2ImgStrength=1.0,
-            params_version=3
+            params_version=4
         )
 
     if is_v5_model(model):
-        # Defaults captured from the novelai.net web client for nai-diffusion-5-full
+        # Defaults from the web client bundle for the V5 family (scale 7, steps 23);
+        # the "medium" variant pins steps=14 / k_euler_ancestral / heavy.
         return Params(
             width=832,
             height=1216,
             scale=7.0,
             sampler=Sampler.K_EULER_ANCESTRAL,
-            steps=28,
+            steps=14 if model in V5_MEDIUM_MODEL_LIST else 23,
             n_samples=1,
             strength=0.7,
             noise=0.0,
             ucPreset=0,
             qualityToggle=True,
             ucPresetId=None,  # derived from ucPreset
-            qualityPresetId=QualityPreset.STANDARD,
+            qualityPresetId=None,  # derived from qualityToggle
             autoSmea=False,
             dynamic_thresholding=False,
             controlnet_strength=1.0,
@@ -510,6 +510,7 @@ def get_default_params(model: Model = None) -> Params:
             straight_alpha=True,
             tag_hint_qt=1,
             tag_hint_uc_preset=2,
+            tag_hint_transparent_background=False,
             deliberate_euler_ancestral_bug=False,
             prefer_brownian=True,
             image_format=ImageFormat.WEBP,
@@ -549,7 +550,7 @@ def get_default_params(model: Model = None) -> Params:
             legacy_uc=False,
             normalize_reference_strength_multiple=True,
             inpaintImg2ImgStrength=1.0,
-            params_version=3
+            params_version=4
         )
 
     if model == Model.NAI_DIFFUSION_3:
@@ -575,7 +576,7 @@ def get_default_params(model: Model = None) -> Params:
             noise_schedule=NoiseSchedule.KARRAS,
             legacy_v3_extend=False,
             skip_cfg_above_sigma=None,
-            params_version=3
+            params_version=4
         )
 
     if model == Model.NAI_DIFFUSION_FURRY_3:
@@ -601,7 +602,7 @@ def get_default_params(model: Model = None) -> Params:
             noise_schedule=NoiseSchedule.KARRAS,
             legacy_v3_extend=False,
             skip_cfg_above_sigma=None,
-            params_version=3
+            params_version=4
         )
 
     # Default parameters if model is not specified or not matched
@@ -627,5 +628,5 @@ def get_default_params(model: Model = None) -> Params:
         noise_schedule=NoiseSchedule.NATIVE,
         legacy_v3_extend=False,
         skip_cfg_above_sigma=None,
-        params_version=3
+        params_version=4
     )

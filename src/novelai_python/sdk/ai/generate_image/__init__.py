@@ -10,11 +10,12 @@ import string
 from copy import deepcopy
 from enum import Enum
 from io import BytesIO
-from typing import Optional, Union, List, Tuple
+from typing import Optional, Union, List, Tuple, AsyncIterator
 from zipfile import ZipFile, BadZipFile
 
 import curl_cffi
 import httpx
+import msgpack
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import ConfigDict, PrivateAttr, model_validator, Field
@@ -24,6 +25,7 @@ from typing_extensions import override
 from novelai_python.sdk.ai._cost import CostCalculator
 from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, Action, UCPreset, \
     INPAINTING_MODEL_LIST, get_default_uc_preset, get_uc_preset_id, is_v5_model, QualityPreset, ImageFormat, \
+    V5_MEDIUM_MODEL_LIST, get_quality_suffix, \
     ModelTypeAlias, UCPresetTypeAlias, get_default_noise_schedule, get_supported_noise_schedule, \
     get_model_group, ModelGroups, get_supported_params, get_modifiers
 from .params import Params, get_default_params
@@ -31,7 +33,7 @@ from .schema import Character, V4Prompt, V4NegativePrompt, PositionMap
 from .suggest_tags import SuggestTags
 from ...schema import ApiBaseModel
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError, DataSerializationError
-from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
+from ...._response.ai.generate_image import ImageGenerateResp, RequestParams, ImageStreamEvent
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
 from ....utils.daily_limit import DailyImageLimiter, get_default_limiter
@@ -142,8 +144,8 @@ class GenerateImageInfer(ApiBaseModel):
                 filter(None, [default_negative_prompt, self.parameters.negative_prompt])
             )
 
-        # Add quality prompt based on qualityToggle
-        modifier = get_modifiers(self.model)
+        # Add quality prompt based on qualityToggle / qualityPresetId
+        modifier = get_quality_suffix(self.model, self.parameters.qualityPresetId)
         quality_tags, suffix = modifier.qualityTags, modifier.suffix
 
         def enhance_text_part(_part, _quality_tags, _suffix):
@@ -189,7 +191,10 @@ class GenerateImageInfer(ApiBaseModel):
                 )
                 return _prompt
 
-        if self.parameters.qualityToggle:
+        quality_preset = self.parameters.qualityPresetId
+        if isinstance(quality_preset, Enum):
+            quality_preset = quality_preset.value
+        if self.parameters.qualityToggle and quality_preset != "none":
             logger.trace("Enhancing input with qualityToggle, will modify input prompt.")
             self.input = enhance_message(self.input)
 
@@ -221,14 +226,19 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.params_version = 4
         if self.parameters.params_version < 4:
             return self
+        if self.model in V5_MEDIUM_MODEL_LIST:
+            # fixedSettings in the web client
+            self.parameters.steps = 14
+            self.parameters.sampler = Sampler.K_EULER_ANCESTRAL
+            self.parameters.ucPresetId = "heavy"
         if self.parameters.ucPresetId is None and self.parameters.ucPreset is not None:
             uc_preset = self.parameters.ucPreset
             if isinstance(uc_preset, Enum):
                 uc_preset = uc_preset.value
             self.parameters.ucPresetId = get_uc_preset_id(self.model, uc_preset)
-        if self.parameters.qualityPresetId is None and self.parameters.qualityToggle:
-            self.parameters.qualityPresetId = QualityPreset.STANDARD
-        if self.parameters.image_format is None:
+        if self.parameters.qualityPresetId is None:
+            self.parameters.qualityPresetId = QualityPreset.STANDARD if self.parameters.qualityToggle else QualityPreset.NONE
+        if is_v5_model(self.model) and self.parameters.image_format is None:
             self.parameters.image_format = ImageFormat.WEBP
         return self
 
@@ -439,6 +449,10 @@ class GenerateImageInfer(ApiBaseModel):
     @property
     def base_url(self):
         return f"{self.endpoint.strip('/')}/ai/generate-image"
+
+    @property
+    def stream_url(self):
+        return f"{self.endpoint.strip('/')}/ai/generate-image-stream"
 
     def calculate_cost(self, is_opus: bool = False):
         """
@@ -765,6 +779,93 @@ class GenerateImageInfer(ApiBaseModel):
             parameters=params
         )
 
+    @staticmethod
+    def _iter_msgpack_frames(buffer: bytearray):
+        """Yield complete [uint32 BE length][msgpack] frames from ``buffer``, leaving partial data in place."""
+        while len(buffer) >= 4:
+            length = int.from_bytes(buffer[:4], "big")
+            if len(buffer) < 4 + length:
+                return
+            frame = bytes(buffer[4:4 + length])
+            del buffer[:4 + length]
+            yield msgpack.unpackb(frame, raw=False)
+
+    async def request_stream(
+            self,
+            session: Union[AsyncSession, "CredentialBase"],
+            *,
+            override_headers: Optional[dict] = None,
+            limiter: Union[DailyImageLimiter, bool, None] = True,
+    ) -> AsyncIterator[ImageStreamEvent]:
+        """
+        **Stream a generation**: intermediate previews and the final image per sample,
+        the way the web client does for models with ``streamedResponses`` (V5 family).
+
+        Yields ImageStreamEvent; ``event.is_final`` carries the finished sample bytes.
+
+        :param session: Async session object or credential-based session.
+        :param override_headers: Headers to override the default headers.
+        :param limiter: see :meth:`request`.
+        :raises DailyLimitExceeded: If the local image budget is used up (no request is sent).
+        :raises APIError / AuthError / ConcurrentGenerationError / SessionHttpError: as :meth:`request`.
+        """
+        if limiter is True:
+            limiter = get_default_limiter()
+        elif limiter is False:
+            limiter = None
+        if limiter is not None:
+            limiter.check(self.parameters.n_samples)
+
+        request_data = self.model_dump(mode="json", exclude_none=True)
+        request_data["parameters"]["stream"] = "msgpack"
+        body, content_type = build_multipart_request(json.dumps(request_data).encode("utf-8"))
+        finals = 0
+        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+            if override_headers:
+                sess.headers.clear()
+                sess.headers.update(override_headers)
+            try:
+                self.ensure_session_has_post_method(sess)
+                response = await sess.post(
+                    self.stream_url,
+                    data=body,
+                    headers={"Content-Type": content_type},
+                    stream=True,
+                )
+                if response.status_code >= 400:
+                    error_message = await self.handle_error_response(response, request_data)
+                    status_code = error_message.get("statusCode", response.status_code)
+                    message = error_message.get("message", "Unknown error")
+                    if status_code in [400, 401, 402]:
+                        raise AuthError(message, request=request_data, code=status_code, response=error_message)
+                    if status_code == 429:
+                        raise ConcurrentGenerationError(message, request=request_data, code=status_code,
+                                                        response=error_message)
+                    raise APIError(message, request=request_data, code=status_code, response=error_message)
+
+                buffer = bytearray()
+                async for chunk in response.aiter_content():
+                    buffer.extend(chunk)
+                    for frame in self._iter_msgpack_frames(buffer):
+                        event = ImageStreamEvent(
+                            event_type=str(frame.get("event_type", "")),
+                            samp_ix=int(frame.get("samp_ix", 0) or 0),
+                            step_ix=frame.get("step_ix"),
+                            image=frame.get("image"),
+                            message=frame.get("message"),
+                        )
+                        if event.is_final:
+                            finals += 1
+                        yield event
+            except curl_cffi.requests.errors.RequestsError as exc:
+                logger.exception(exc)
+                raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.")
+            except httpx.HTTPError as exc:
+                logger.exception(exc)
+                raise SessionHttpError("An HTTP error occurred. Try again later.")
+        if limiter is not None and finals:
+            limiter.consume(finals)
+
     @retry(
         wait=wait_random(min=1, max=3),
         stop=stop_after_attempt(3),
@@ -808,6 +909,7 @@ class GenerateImageInfer(ApiBaseModel):
         request_data = self.model_dump(mode="json", exclude_none=True)
         request_json = json.dumps(request_data).encode("utf-8")
         if self.parameters.params_version >= 4:
+            # the web client wraps every generate-image call in multipart/form-data
             body, content_type = build_multipart_request(request_json)
         else:
             body, content_type = request_json, "application/json"

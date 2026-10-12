@@ -20,7 +20,7 @@ WEB_CLIENT_V5_KEYS = {
     "ucPresetId", "qualityPresetId", "autoSmea", "dynamic_thresholding", "controlnet_strength",
     "legacy", "add_original_image", "cfg_rescale", "legacy_v3_extend", "use_coords", "legacy_uc",
     "normalize_reference_strength_multiple", "inpaintImg2ImgStrength", "seed", "characterPrompts",
-    "straight_alpha", "tag_hint_qt", "tag_hint_uc_preset", "v4_prompt", "v4_negative_prompt",
+    "straight_alpha", "tag_hint_qt", "tag_hint_uc_preset", "tag_hint_transparent_background", "v4_prompt", "v4_negative_prompt",
     "negative_prompt", "deliberate_euler_ancestral_bug", "prefer_brownian", "noise_schedule", "image_format",
 }
 WEB_CLIENT_V5_HEAVY_UC = (
@@ -38,7 +38,7 @@ def test_v5_request_matches_web_client():
     assert data["input"] == "1girl, cat girl, very aesthetic, masterpiece, no text"
     assert set(params.keys()) == WEB_CLIENT_V5_KEYS
     assert params["params_version"] == 4
-    assert params["scale"] == 7.0 and params["steps"] == 28
+    assert params["scale"] == 7.0 and params["steps"] == 23
     assert params["ucPresetId"] == "heavy"
     assert params["qualityPresetId"] == "standard"
     assert params["image_format"] == "webp"
@@ -67,12 +67,35 @@ def test_v5_model_forces_params_version_4():
     assert gen.parameters.ucPresetId == "heavy"
 
 
-def test_v45_request_keeps_legacy_shape():
+def test_v45_request_uses_params_version_4_too():
+    # the web client migrated every model to ucPresetId / qualityPresetId
     gen = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_4_5_FULL)
     params = gen.model_dump(mode="json", exclude_none=True)["parameters"]
-    assert params["params_version"] == 3
-    assert "ucPreset" in params and "qualityToggle" in params
-    assert "ucPresetId" not in params and "image_format" not in params
+    assert params["params_version"] == 4
+    assert params["ucPresetId"] == "heavy" and params["qualityPresetId"] == "standard"
+    assert "ucPreset" not in params and "qualityToggle" not in params
+    assert "image_format" not in params and "straight_alpha" not in params
+
+
+def test_v5_family_models():
+    from novelai_python.sdk.ai._enum import V5_MODEL_LIST, INPAINTING_MODEL_LIST, get_supported_params
+    assert Model.NAI_DIFFUSION_5_CURATED in V5_MODEL_LIST
+    assert Model.NAI_DIFFUSION_5_FULL_INPAINTING in INPAINTING_MODEL_LIST
+    assert get_supported_params(Model.NAI_DIFFUSION_5_CURATED).img2imgInpainting is True
+    medium = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL_MEDIUM, steps=40, ucPreset=1)
+    assert medium.parameters.steps == 14 and medium.parameters.ucPresetId == "heavy"
+
+
+def test_quality_presets():
+    from novelai_python.sdk.ai._enum import get_quality_presets, QualityPreset
+    ids = [q.id for q in get_quality_presets(Model.NAI_DIFFUSION_5_FULL)]
+    assert ids == ["standard", "light", "none"]
+    light = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL)
+    light.parameters.qualityPresetId = QualityPreset.LIGHT
+    light = GenerateImageInfer(input="1girl", model=Model.NAI_DIFFUSION_5_FULL, parameters=light.parameters)
+    assert light.input.endswith(", very aesthetic, amazing quality, no text")
+    off = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL, qualityToggle=False)
+    assert off.input == "1girl" and off.parameters.qualityPresetId == QualityPreset.NONE
 
 
 def test_multipart_body_shape():
@@ -134,13 +157,50 @@ async def test_v5_request_sends_multipart_and_counts_images(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_v45_request_sends_json():
+async def test_legacy_params_version_3_sends_json():
     session = _session(_zip_response([("image_0.png", b"\x89PNG")]))
-    gen = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_4_5_FULL)
+    gen = GenerateImageInfer(input="1girl", model=Model.NAI_DIFFUSION_3, parameters=Params(params_version=3, ucPreset=0))
     await gen.request(session, limiter=False)
     call = session.post.await_args
     assert call.kwargs["headers"]["Content-Type"] == "application/json"
-    assert json.loads(call.kwargs["data"])["model"] == "nai-diffusion-4-5-full"
+    assert json.loads(call.kwargs["data"])["parameters"]["ucPreset"] == 0
+
+
+def _frame(payload: dict) -> bytes:
+    import msgpack
+    packed = msgpack.packb(payload)
+    return len(packed).to_bytes(4, "big") + packed
+
+
+@pytest.mark.asyncio
+async def test_stream_yields_msgpack_frames(tmp_path):
+    frames = _frame({"event_type": "intermediate", "samp_ix": 0, "step_ix": 3, "image": b"prev"}) \
+        + _frame({"event_type": "final", "samp_ix": 0, "image": b"RIFF....WEBP"})
+    # split across chunks on purpose, including inside a frame
+    chunks = [frames[:7], frames[7:30], frames[30:]]
+
+    async def aiter_content():
+        for c in chunks:
+            yield c
+
+    response = mock.Mock()
+    response.status_code = 200
+    response.headers = {"Content-Type": "application/octet-stream"}
+    response.aiter_content = aiter_content
+    session = _session(response)
+    limiter = DailyImageLimiter(5, state_file=tmp_path / "s.json")
+    gen = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL)
+
+    events = [e async for e in gen.request_stream(session, limiter=limiter)]
+    assert [e.event_type for e in events] == ["intermediate", "final"]
+    assert events[0].step_ix == 3 and events[0].image == b"prev"
+    assert events[1].is_final and events[1].image == b"RIFF....WEBP"
+    assert limiter.used == 1
+    call = session.post.await_args
+    assert call.args[0].endswith("/ai/generate-image-stream")
+    assert call.kwargs["stream"] is True
+    payload = json.loads(call.kwargs["data"].split(b"\r\n\r\n", 1)[1].rsplit(b"\r\n--", 1)[0])
+    assert payload["parameters"]["stream"] == "msgpack"
 
 
 @pytest.mark.asyncio

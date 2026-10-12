@@ -22,13 +22,18 @@
 The goal of this repository is to use Pydantic to build legitimate requests to access
 the [NovelAI API service](https://api.novelai.net/docs).
 
-> Python >= 3.9 <3.13 is required.
+> Python >= 3.10 is required (tested on 3.10 – 3.14).
 
 ### 📰 News
 
-- **NovelAI Diffusion V5 Full** (`nai-diffusion-5-full`) is supported: `params_version` 4 request shape
-  (`ucPresetId` / `qualityPresetId`, `straight_alpha`, `tag_hint_*`, `image_format: webp`) sent as the same
-  `multipart/form-data` body the web client uses, with the current V5 quality suffix and "heavy" negative preset.
+- **NovelAI Diffusion V5** family: `nai-diffusion-5-full`, `-full-medium` (fast, 14 steps), `-curated` and their
+  `-inpainting` variants. Request shape, defaults, quality presets (`standard` / `light` / `none`) and negative
+  presets are taken from the current web client bundle; every model now uses `params_version` 4
+  (`ucPresetId` / `qualityPresetId`) and the same `multipart/form-data` body the web client sends.
+- **Streaming**: `async for event in gen.request_stream(session)` on `/ai/generate-image-stream` yields
+  intermediate previews and the final image per sample (msgpack frames, like the web client).
+- Dependencies refreshed (pydantic 2.11+, httpx 0.28, numpy 2, opencv 4.11+, curl_cffi 0.13+, msgpack);
+  `bchlib` moved to the optional `[metadata]` extra.
 - Browser identity refreshed to Chrome 154 (User-Agent + `sec-ch-ua`) on every session, newest `curl_cffi`
   TLS fingerprint picked automatically.
 - Built-in image budget: **2500 images per 24h window** by default (counted from the first image after start-up,
@@ -102,6 +107,13 @@ async def main():
     resp: ImageGenerateResp
     print(resp.meta)
     print(resp.save("./output"))  # auto-download every returned image
+
+    # streaming previews (V5 family)
+    async for event in gen.request_stream(session=session):
+        if event.is_final:
+            open(f"./output/sample_{event.samp_ix}.webp", "wb").write(event.image)
+        elif event.event_type == "intermediate":
+            print("preview", event.samp_ix, "step", event.step_ix, len(event.image), "bytes")
 
 
 loop = asyncio.get_event_loop()
