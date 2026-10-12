@@ -22,9 +22,12 @@ from .sdk.ai.generate_image import GenerateImageInfer, Model
 from .sdk.ai.generate_image.suggest_tags import SuggestTags
 from .sdk.ai.generate_voice import VoiceGenerate
 from .sdk.ai.upscale import Upscale
+from .sdk.user.data import UserData
 from .sdk.user.information import Information
 from .sdk.user.login import Login
 from .sdk.user.subscription import Subscription
+from .sdk.user.trial_status import TrialStatus
+from .utils.daily_limit import get_default_limiter
 
 app = FastAPI()
 token_key = APIKeyHeader(name="Authorization")
@@ -44,6 +47,74 @@ def get_current_token(auth_key: str = Security(token_key)):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/limit")
+async def image_limit():
+    """
+    Local image budget (NOVELAI_DAILY_IMAGE_LIMIT, default 2500 per 24h window)
+    :return:
+    """
+    return get_default_limiter().status()
+
+
+@app.get("/user/anlas")
+async def anlas(
+        current_token: str = Depends(get_current_token)
+):
+    """
+    Anlas balance + subscription tier, for monitoring
+    :param current_token: Authorization
+    :return:
+    """
+    try:
+        _result = await Subscription().request(session=get_session(current_token))
+        return {
+            "anlas_left": _result.anlas_left,
+            "fixed": _result.trainingStepsLeft.fixedTrainingStepsLeft,
+            "purchased": _result.trainingStepsLeft.purchasedTrainingSteps,
+            "tier": _result.get_tier_name,
+            "active": _result.is_active,
+            "unlimited_image_generation": _result.is_unlimited_image_generation,
+            "expires_at": _result.expiresAt,
+        }
+    except Exception as e:
+        logger.exception(e)
+        return JSONResponse(status_code=500, content=e.__dict__)
+
+
+@app.get("/user/trial-status")
+async def trial_status(
+        current_token: str = Depends(get_current_token)
+):
+    """
+    Free-trial counters
+    :param current_token: Authorization
+    :return:
+    """
+    try:
+        _result = await TrialStatus().request(session=get_session(current_token))
+        return _result.model_dump()
+    except Exception as e:
+        logger.exception(e)
+        return JSONResponse(status_code=500, content=e.__dict__)
+
+
+@app.get("/user/data")
+async def user_data(
+        current_token: str = Depends(get_current_token)
+):
+    """
+    Aggregated account data (subscription + information + priority)
+    :param current_token: Authorization
+    :return:
+    """
+    try:
+        _result = await UserData().request(session=get_session(current_token))
+        return _result.model_dump()
+    except Exception as e:
+        logger.exception(e)
+        return JSONResponse(status_code=500, content=e.__dict__)
 
 
 @app.post("/user/login")

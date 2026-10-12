@@ -1,0 +1,64 @@
+# -*- coding: utf-8 -*-
+import json
+import time
+
+import pytest
+
+from novelai_python import DailyLimitExceeded
+from novelai_python.utils.daily_limit import DailyImageLimiter
+
+
+def test_limit_blocks_after_budget(tmp_path):
+    limiter = DailyImageLimiter(3, state_file=tmp_path / "state.json")
+    limiter.check(2)
+    limiter.consume(2)
+    assert limiter.used == 2
+    assert limiter.remaining == 1
+    limiter.check(1)
+    with pytest.raises(DailyLimitExceeded) as e:
+        limiter.check(2)
+    assert e.value.limit == 3
+    assert e.value.used == 2
+    assert e.value.reset_at > time.time()
+
+
+def test_state_persists_across_instances(tmp_path):
+    state = tmp_path / "state.json"
+    DailyImageLimiter(10, state_file=state).consume(4)
+    again = DailyImageLimiter(10, state_file=state)
+    assert again.used == 4
+    assert json.loads(state.read_text())["used"] == 4
+
+
+def test_window_rolls_over_from_first_use(tmp_path):
+    state = tmp_path / "state.json"
+    limiter = DailyImageLimiter(1, window_seconds=60, state_file=state)
+    limiter.consume(1)
+    with pytest.raises(DailyLimitExceeded):
+        limiter.check(1)
+    # pretend the window started long ago
+    data = json.loads(state.read_text())
+    data["window_start"] = time.time() - 120
+    state.write_text(json.dumps(data))
+    fresh = DailyImageLimiter(1, window_seconds=60, state_file=state)
+    fresh.check(1)
+    assert fresh.used == 0
+
+
+def test_disabled_limiter_never_blocks():
+    limiter = DailyImageLimiter(0)
+    limiter.check(10_000)
+    limiter.consume(10_000)
+    assert limiter.remaining == -1
+    assert limiter.enabled is False
+
+
+def test_default_limiter_reads_env(monkeypatch, tmp_path):
+    from novelai_python.utils import daily_limit
+    monkeypatch.setenv(daily_limit.ENV_LIMIT, "7")
+    monkeypatch.setenv(daily_limit.ENV_STATE_FILE, str(tmp_path / "env_state.json"))
+    daily_limit.set_default_limiter(None)
+    limiter = daily_limit.get_default_limiter()
+    assert limiter.limit == 7
+    assert limiter.state_file == tmp_path / "env_state.json"
+    daily_limit.set_default_limiter(None)

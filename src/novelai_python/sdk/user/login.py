@@ -16,6 +16,7 @@ from ..schema import ApiBaseModel
 from ..._exceptions import APIError, SessionHttpError
 from ..._response.user.login import LoginResp
 from ...credential import CredentialBase
+from ...credential._base import browser_headers, IMPERSONATE
 from ...utils import encode_access_key
 
 
@@ -37,11 +38,9 @@ class Login(ApiBaseModel):
 
     @property
     def session(self):
-        return AsyncSession(timeout=180, headers={
+        return AsyncSession(timeout=180, headers=browser_headers({
             "Content-Type": "application/json",
-            "Origin": "https://novelai.net",
-            "Referer": "https://novelai.net/",
-        }, impersonate="chrome110")
+        }), impersonate=IMPERSONATE)
 
     @classmethod
     def build(cls, *, user_name: str, password: str):

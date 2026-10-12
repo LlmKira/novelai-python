@@ -11,7 +11,7 @@ from loguru import logger
 from pydantic import BaseModel, Field, model_serializer, model_validator, field_validator
 
 from novelai_python.sdk.ai._enum import Sampler, UCPresetTypeAlias, NoiseSchedule, ImageBytesTypeAlias, ControlNetModel, \
-    Model
+    Model, QualityPreset, ImageFormat, is_v5_model
 from novelai_python.sdk.ai.generate_image.schema import Character, V4Prompt, V4NegativePrompt
 
 
@@ -39,6 +39,10 @@ class Params(BaseModel):
     """The Negative Prompt Preset, Bigger or equal to 0"""
     qualityToggle: bool = True
     """Whether to add the quality prompt"""
+    ucPresetId: Optional[str] = None
+    """params_version>=4: negative preset by name ("heavy", "light", "human", "furry", "none"); derived from ucPreset when unset"""
+    qualityPresetId: Optional[Union[QualityPreset, str]] = None
+    """params_version>=4: quality preset by name, "standard" when qualityToggle is on"""
     autoSmea: Optional[bool] = False
     dynamic_thresholding: bool = False
     """Decrisp:Reduce artifacts caused by high prompt guidance values"""
@@ -73,6 +77,12 @@ class Params(BaseModel):
     """Seed"""
     characterPrompts: List[Character] = Field(default_factory=list)
     """Character Prompts"""
+    straight_alpha: Optional[bool] = None
+    """params_version>=4: keep straight (non-premultiplied) alpha in the output"""
+    tag_hint_qt: Optional[int] = None
+    """params_version>=4: quality-tag hint level sent by the web client (1)"""
+    tag_hint_uc_preset: Optional[int] = None
+    """params_version>=4: uc-preset hint sent by the web client (2)"""
     v4_prompt: Optional[V4Prompt] = Field(None, description="V4 Prompt")
     """V4 Prompt"""
     v4_negative_prompt: Optional[V4NegativePrompt] = Field(None, description="V4 Negative Prompt")
@@ -83,6 +93,8 @@ class Params(BaseModel):
     """Deliberate Euler Ancestral Bug"""
     prefer_brownian: bool = Field(True, description="Prefer Brownian")
     """Prefer Brownian"""
+    image_format: Optional[Union[ImageFormat, str]] = None
+    """params_version>=4: output encoding, the web client asks for webp"""
 
     # Other fields
     strength: Optional[float] = Field(0.7, ge=0.01, le=0.99, multiple_of=0.01)
@@ -122,28 +134,42 @@ class Params(BaseModel):
         "skip_cfg_above_sigma", # See models before Anime V3
     }
     """Settings with none value to strongly include"""
-    
+
+    __v4_dropped_fields__: Set[str] = {
+        # The params_version 4 web client replaced these with ucPresetId / qualityPresetId
+        # and no longer sends the SMEA / uncond knobs at all.
+        "ucPreset",
+        "qualityToggle",
+        "sm",
+        "sm_dyn",
+        "uncond_scale",
+    }
+    """Fields the web client stopped sending with params_version >= 4"""
+
     @model_serializer(mode="wrap")
     def _serialize(self, handler):
         """
         Custom serializer to force include specific fields even when they are None
         """
         data = handler(self)
-        
+
         # Force include strong fields and ensure proper ordering
         # Create ordered dict following JavaScript field order
         ordered_fields = list(self.__class__.model_fields.keys())
         ordered_data = OrderedDict()
-        
+        dropped = self.__v4_dropped_fields__ if self.params_version >= 4 else set()
+
         for field_name in ordered_fields:
+            if field_name in dropped:
+                continue
             if field_name in data:
                 # Field exists in data, include it
                 ordered_data[field_name] = data[field_name]
-            elif field_name in self.__strong_values__:
+            elif field_name in self.__strong_values__ and self.params_version < 4:
                 # Since we iterate from `self.__class__.model_fields`,、
                 # the field is guaranteed to exist. The previous safety check was redundant.
                 ordered_data[field_name] = getattr(self, field_name, None)
-        
+
         return ordered_data
     # endregion
 
@@ -451,6 +477,43 @@ def get_default_params(model: Model = None) -> Params:
             normalize_reference_strength_multiple=True,
             inpaintImg2ImgStrength=1.0,
             params_version=3
+        )
+
+    if is_v5_model(model):
+        # Defaults captured from the novelai.net web client for nai-diffusion-5-full
+        return Params(
+            width=832,
+            height=1216,
+            scale=7.0,
+            sampler=Sampler.K_EULER_ANCESTRAL,
+            steps=28,
+            n_samples=1,
+            strength=0.7,
+            noise=0.0,
+            ucPreset=0,
+            qualityToggle=True,
+            ucPresetId=None,  # derived from ucPreset
+            qualityPresetId=QualityPreset.STANDARD,
+            autoSmea=False,
+            dynamic_thresholding=False,
+            controlnet_strength=1.0,
+            legacy=False,
+            add_original_image=True,
+            cfg_rescale=0.0,
+            noise_schedule=NoiseSchedule.KARRAS,
+            legacy_v3_extend=False,
+            skip_cfg_above_sigma=None,
+            use_coords=False,
+            legacy_uc=False,
+            normalize_reference_strength_multiple=True,
+            inpaintImg2ImgStrength=1.0,
+            straight_alpha=True,
+            tag_hint_qt=1,
+            tag_hint_uc_preset=2,
+            deliberate_euler_ancestral_bug=False,
+            prefer_brownian=True,
+            image_format=ImageFormat.WEBP,
+            params_version=4
         )
 
     if model in [

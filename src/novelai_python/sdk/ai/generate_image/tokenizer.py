@@ -11,6 +11,7 @@ def get_prompt_tokenizer(model: Model):
     """
     if model in [
         Model.CUSTOM,
+        Model.NAI_DIFFUSION_5_FULL,
         Model.NAI_DIFFUSION_4_5_CURATED,
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
         Model.NAI_DIFFUSION_4_CURATED_PREVIEW,

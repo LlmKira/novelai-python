@@ -90,10 +90,23 @@ class Resolution(Enum):
     RES_1920_1088 = (1920, 1088)
 
 
+class QualityPreset(Enum):
+    """qualityPresetId sent by the web client for params_version >= 4"""
+    STANDARD = "standard"
+
+
+class ImageFormat(Enum):
+    WEBP = "webp"
+    PNG = "png"
+    JPEG = "jpeg"
+
+
 class Model(Enum):
     """
     Nai Diffusion series
     """
+    NAI_DIFFUSION_5_FULL = "nai-diffusion-5-full"
+
     NAI_DIFFUSION_4_5_FULL = "nai-diffusion-4-5-full"
     NAI_DIFFUSION_4_5_FULL_INPAINTING = 'nai-diffusion-4-5-full-inpainting'
 
@@ -134,6 +147,21 @@ class ModelGroups(Enum):
     STABLE_DIFFUSION_XL = "stable_diffusion_xl"
     STABLE_DIFFUSION_XL_FURRY = "stable_diffusion_xl_furry"
     V4 = "v4"
+
+
+V5_MODEL_LIST = [
+    Model.NAI_DIFFUSION_5_FULL,
+]
+"""Models that use the params_version 4 request shape (ucPresetId / qualityPresetId, multipart body)."""
+
+
+def is_v5_model(model: "ModelTypeAlias") -> bool:
+    if isinstance(model, str):
+        try:
+            model = Model(model)
+        except ValueError:
+            return False
+    return model in V5_MODEL_LIST
 
 
 INPAINTING_MODEL_LIST = [
@@ -384,6 +412,7 @@ def get_supported_params(model: ModelTypeAlias):
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
         Model.NAI_DIFFUSION_4_5_FULL,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
+        Model.NAI_DIFFUSION_5_FULL,
     ]:
         return SupportCondition(
             controlnet=False,
@@ -444,6 +473,8 @@ class Modifier(object):
 
 
 def find_model_by_hashcode(hashcode: str) -> ModelTypeAlias:
+    if "NovelAI Diffusion V5" in hashcode:
+        return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_5_FULL)
     if "NovelAI Diffusion V4.5" in hashcode:
         return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_4_5_FULL)
     if "NovelAI Diffusion V4" in hashcode:
@@ -460,8 +491,10 @@ def get_modifiers(model: Model) -> Modifier:
     if model in [
         Model.CUSTOM,
         Model.NAI_DIFFUSION_4_5_FULL,
-        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING
+        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
+        Model.NAI_DIFFUSION_5_FULL,
     ]:
+        # V5: confirmed from the web client, qualityPresetId "standard"
         return Modifier(
             qualityTags="",
             suffix=", very aesthetic, masterpiece, no text"
@@ -538,6 +571,7 @@ def filter_by_model_noise_schedule(model: Model, noise_schedule: List[NoiseSched
     """
     # 只有 Novelai4 系列不支持Native
     if model in [
+        Model.NAI_DIFFUSION_5_FULL,
         Model.NAI_DIFFUSION_4_5_CURATED,
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
         Model.NAI_DIFFUSION_4_5_FULL,
@@ -638,6 +672,7 @@ def get_model_group(model: ModelTypeAlias) -> ModelGroups:
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING: ModelGroups.V4,
         Model.NAI_DIFFUSION_4_5_FULL: ModelGroups.V4,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING: ModelGroups.V4,
+        Model.NAI_DIFFUSION_5_FULL: ModelGroups.V4,
     }
     return mapping.get(model, ModelGroups.STABLE_DIFFUSION)
 
@@ -834,7 +869,10 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
     elif model in [
         Model.NAI_DIFFUSION_4_5_FULL,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
+        Model.NAI_DIFFUSION_5_FULL,
     ]:
+        # V5 "heavy" is confirmed identical to V4.5 Full from the web client;
+        # the other presets are inherited until a capture proves otherwise.
         prompts = [
             UcPrompt(
                 category="heavy",
@@ -871,3 +909,14 @@ def get_default_uc_preset(model: ModelTypeAlias, uc_preset: int) -> str:
         return prompts[uc_preset].text
     else:
         return "lowres"
+
+
+def get_uc_preset_id(model: ModelTypeAlias, uc_preset: int) -> Optional[str]:
+    """
+    Category name ("heavy", "light", "human", "furry", "none") that the web client
+    sends as ``ucPresetId`` for params_version >= 4. None when the index is unknown.
+    """
+    prompts = get_uc_preset(model)
+    if 0 <= uc_preset < len(prompts):
+        return prompts[uc_preset].category
+    return None

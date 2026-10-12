@@ -10,7 +10,7 @@ import shortuuid
 from curl_cffi.requests import AsyncSession
 from pydantic import SecretStr, Field
 
-from ._base import CredentialBase
+from ._base import CredentialBase, browser_headers, IMPERSONATE
 
 
 class LoginCredential(CredentialBase):
@@ -24,12 +24,12 @@ class LoginCredential(CredentialBase):
     x_correlation_id: str = shortuuid.uuid()[0:6]
 
     async def get_session(self, timeout: int = 180, update_headers: dict = None):
-        headers = {
+        headers = browser_headers({
             "Authorization": "Bearer ",
             "Content-Type": "application/json",
             "x-correlation-id": self.x_correlation_id,
             "x-initiated-at": f"{arrow.utcnow().isoformat()}Z",
-        }
+        })
 
         # 30 天有效期
         if not self.session_headers or int(time.time()) - self.update_at > 29 * 24 * 60 * 60:
@@ -44,4 +44,4 @@ class LoginCredential(CredentialBase):
         if update_headers:
             headers.update(update_headers)
 
-        return AsyncSession(timeout=timeout, headers=headers, impersonate="chrome136")
+        return AsyncSession(timeout=timeout, headers=headers, impersonate=IMPERSONATE)

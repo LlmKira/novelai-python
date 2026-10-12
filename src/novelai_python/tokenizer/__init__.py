@@ -13,6 +13,7 @@ from tokenizers import Tokenizer, pre_tokenizers, Regex, decoders
 from tokenizers.models import BPE
 
 from .clip_simple_tokenizer import SimpleTokenizer
+from ..credential._base import DEFAULT_USER_AGENT
 
 
 def download_file(url, destination_path, session):
@@ -29,7 +30,7 @@ def download_file(url, destination_path, session):
         url,
         timeout=30,
         headers={
-            "User-Agent": "novelai-python/0.1.0",
+            "User-Agent": DEFAULT_USER_AGENT,
             "Accept-Encoding": "gzip, deflate, br",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }

@@ -4,11 +4,13 @@
 
 import json
 import math
+import random
 import re
+import string
 from copy import deepcopy
 from enum import Enum
 from io import BytesIO
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Tuple
 from zipfile import ZipFile, BadZipFile
 
 import curl_cffi
@@ -21,7 +23,7 @@ from typing_extensions import override
 
 from novelai_python.sdk.ai._cost import CostCalculator
 from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, Action, UCPreset, \
-    INPAINTING_MODEL_LIST, get_default_uc_preset, \
+    INPAINTING_MODEL_LIST, get_default_uc_preset, get_uc_preset_id, is_v5_model, QualityPreset, ImageFormat, \
     ModelTypeAlias, UCPresetTypeAlias, get_default_noise_schedule, get_supported_noise_schedule, \
     get_model_group, ModelGroups, get_supported_params, get_modifiers
 from .params import Params, get_default_params
@@ -32,6 +34,41 @@ from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, Sess
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
+from ....utils.daily_limit import DailyImageLimiter, get_default_limiter
+
+ZIP_CONTENT_TYPES = (
+    "binary/octet-stream",
+    "application/octet-stream",
+    "application/x-zip-compressed",
+    "application/zip",
+)
+IMAGE_CONTENT_TYPES = ("image/webp", "image/png", "image/jpeg")
+
+
+def _sniff_image_extension(data: bytes) -> Optional[str]:
+    """Return the file extension when ``data`` is a bare image rather than a zip."""
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "png"
+    if data[:3] == b"\xff\xd8\xff":
+        return "jpg"
+    return None
+
+
+def build_multipart_request(request_json: bytes) -> Tuple[bytes, str]:
+    """
+    Wrap the request JSON the way the web client does for params_version >= 4:
+    a single multipart/form-data part named ``request`` with filename ``blob``.
+    :return: (body, Content-Type header value)
+    """
+    boundary = "----WebKitFormBoundary" + "".join(random.choices(string.ascii_letters + string.digits, k=16))
+    body = (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="request"; filename="blob"\r\n'
+            f"Content-Type: application/json\r\n\r\n"
+    ).encode("utf-8") + request_json + f"\r\n--{boundary}--\r\n".encode("utf-8")
+    return body, f"multipart/form-data; boundary={boundary}"
 
 
 class GenerateImageInfer(ApiBaseModel):
@@ -61,11 +98,16 @@ class GenerateImageInfer(ApiBaseModel):
         self._mutual_exclusion = bool(value)
         return self
 
-    input: str = "1girl, best quality, amazing quality, very aesthetic, absurdres"
-    model: ModelTypeAlias = "nai-diffusion-3"
+    input: str = "1girl"
+    model: ModelTypeAlias = Model.NAI_DIFFUSION_5_FULL
     action: Union[str, Action] = Field(Action.GENERATE, description="Mode for img generate")
     parameters: Union[Params]
     use_new_shared_trial: bool = False
+    recaptcha_token: Optional[str] = None
+    """
+    reCAPTCHA Enterprise token the web client attaches to free-trial generations.
+    Not produced by this library; pass one through only if you already hold it.
+    """
     model_config = ConfigDict(extra="ignore")
 
     @override
@@ -167,6 +209,28 @@ class GenerateImageInfer(ApiBaseModel):
             uc_prompt.pop("nsfw", None)
             
             self.parameters.negative_prompt = ",".join(uc_prompt.values()).strip()
+
+    @model_validator(mode="after")
+    def _build_v5_params(self):
+        """
+        params_version 4 (NAI V5): the web client names presets instead of numbering them.
+        :return: self
+        """
+        if is_v5_model(self.model) and self.parameters.params_version < 4:
+            logger.warning(f"{self.model} requires params_version 4, upgrading request shape.")
+            self.parameters.params_version = 4
+        if self.parameters.params_version < 4:
+            return self
+        if self.parameters.ucPresetId is None and self.parameters.ucPreset is not None:
+            uc_preset = self.parameters.ucPreset
+            if isinstance(uc_preset, Enum):
+                uc_preset = uc_preset.value
+            self.parameters.ucPresetId = get_uc_preset_id(self.model, uc_preset)
+        if self.parameters.qualityPresetId is None and self.parameters.qualityToggle:
+            self.parameters.qualityPresetId = QualityPreset.STANDARD
+        if self.parameters.image_format is None:
+            self.parameters.image_format = ImageFormat.WEBP
+        return self
 
     @model_validator(mode="after")
     def _build_nai4_prompt(self):
@@ -405,7 +469,7 @@ class GenerateImageInfer(ApiBaseModel):
     def build_generate(
             prompt: str,
             *,
-            model: Union[Model, str],
+            model: Union[Model, str] = Model.NAI_DIFFUSION_5_FULL,
             negative_prompt: str = None,
             ucPreset: UCPresetTypeAlias = None,
             sm: bool = None,
@@ -712,6 +776,7 @@ class GenerateImageInfer(ApiBaseModel):
             session: Union[AsyncSession, "CredentialBase"],
             *,
             override_headers: Optional[dict] = None,
+            limiter: Union[DailyImageLimiter, bool, None] = True,
     ) -> ImageGenerateResp:
         """
         **Generate images using NovelAI's diffusion models.**
@@ -721,15 +786,31 @@ class GenerateImageInfer(ApiBaseModel):
 
         :param override_headers: Headers to override the default headers.
         :param session: Async session object or credential-based session.
+        :param limiter: Local image budget. ``True`` uses the process-wide limiter
+                        (``NOVELAI_DAILY_IMAGE_LIMIT``, default 2500 per 24h window),
+                        a ``DailyImageLimiter`` instance uses that one, ``False``/``None`` skips the check.
         :return: ImageGenerateResp containing the response data and metadata.
+        :raises DailyLimitExceeded: If the local image budget is used up (no request is sent).
         :raises AuthError: If the request is unauthorized.
         :raises APIError: If the API returns an error.
         :raises ConcurrentGenerationError: If the request is rate-limited.
         :raises SessionHttpError: If an HTTP error occurs.
         :raises DataSerializationError: If an error occurs while processing the response data.
         """
+        if limiter is True:
+            limiter = get_default_limiter()
+        elif limiter is False:
+            limiter = None
+        if limiter is not None:
+            limiter.check(self.parameters.n_samples)
+
         # Prepare request data
         request_data = self.model_dump(mode="json", exclude_none=True)
+        request_json = json.dumps(request_data).encode("utf-8")
+        if self.parameters.params_version >= 4:
+            body, content_type = build_multipart_request(request_json)
+        else:
+            body, content_type = request_json, "application/json"
         async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
             if override_headers:
                 sess.headers.clear()
@@ -755,12 +836,13 @@ class GenerateImageInfer(ApiBaseModel):
                 self.ensure_session_has_post_method(sess)
                 response = await sess.post(
                     self.base_url,
-                    data=json.dumps(request_data).encode("utf-8"),
+                    data=body,
+                    headers={"Content-Type": content_type},
                 )
                 # Validate response content type and status code
+                response_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                 if (
-                        response.headers.get("Content-Type")
-                        not in ["binary/octet-stream", "application/x-zip-compressed"]
+                        response_type not in ZIP_CONTENT_TYPES + IMAGE_CONTENT_TYPES
                         or response.status_code >= 400
                 ):
                     error_message = await self.handle_error_response(response, request_data)
@@ -784,22 +866,28 @@ class GenerateImageInfer(ApiBaseModel):
                     else:
                         raise APIError(message, request=request_data, code=status_code, response=error_message)
 
-                # Unpack the ZIP response
+                # Unpack the ZIP response (or accept a bare image, which V5 may return for webp)
                 try:
-                    zip_file = ZipFile(BytesIO(response.content))
                     unzip_content = []
-                    with zip_file as zf:
-                        file_list = zf.namelist()
-                        if not file_list:
-                            raise DataSerializationError(
-                                message="The ZIP response contains no files.",
-                                request=request_data,
-                                response=try_jsonfy(response.content),
-                                code=response.status_code,
-                            )
-                        for filename in file_list:
-                            data = zip_file.read(filename)
-                            unzip_content.append((filename, data))
+                    bare_ext = _sniff_image_extension(response.content)
+                    if bare_ext:
+                        unzip_content.append((f"image_0.{bare_ext}", response.content))
+                    else:
+                        zip_file = ZipFile(BytesIO(response.content))
+                        with zip_file as zf:
+                            file_list = zf.namelist()
+                            if not file_list:
+                                raise DataSerializationError(
+                                    message="The ZIP response contains no files.",
+                                    request=request_data,
+                                    response=try_jsonfy(response.content),
+                                    code=response.status_code,
+                                )
+                            for filename in file_list:
+                                data = zip_file.read(filename)
+                                unzip_content.append((filename, data))
+                    if limiter is not None:
+                        limiter.consume(max(len(unzip_content), 1))
                     return ImageGenerateResp(
                         meta=RequestParams(
                             endpoint=self.base_url,

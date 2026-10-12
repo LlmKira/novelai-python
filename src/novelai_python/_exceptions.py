@@ -88,3 +88,29 @@ class AuthError(APIError):
     """
 
     pass
+
+
+class DailyLimitExceeded(NovelAiError):
+    """
+    DailyLimitExceeded is raised locally, before any request is sent,
+    when the configured per-window image budget is used up.
+    """
+    limit: int
+    used: int
+    reset_at: float
+
+    def __init__(self, message: str, *, limit: int, used: int, reset_at: float) -> None:
+        super().__init__(message)
+        self.limit = limit
+        self.used = used
+        self.reset_at = reset_at
+
+    @property
+    def __dict__(self):
+        parent_dict = super().__dict__
+        parent_dict.update({
+            "limit": self.limit,
+            "used": self.used,
+            "reset_at": self.reset_at,
+        })
+        return parent_dict

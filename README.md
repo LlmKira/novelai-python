@@ -26,6 +26,17 @@ the [NovelAI API service](https://api.novelai.net/docs).
 
 ### 📰 News
 
+- **NovelAI Diffusion V5 Full** (`nai-diffusion-5-full`) is supported: `params_version` 4 request shape
+  (`ucPresetId` / `qualityPresetId`, `straight_alpha`, `tag_hint_*`, `image_format: webp`) sent as the same
+  `multipart/form-data` body the web client uses, with the current V5 quality suffix and "heavy" negative preset.
+- Browser identity refreshed to Chrome 154 (User-Agent + `sec-ch-ua`) on every session, newest `curl_cffi`
+  TLS fingerprint picked automatically.
+- Built-in image budget: **2500 images per 24h window** by default (counted from the first image after start-up,
+  persisted to `~/.novelai_python/image_limit.json`). Tune with `NOVELAI_DAILY_IMAGE_LIMIT` (0 disables) or pass
+  `limiter=` to `request()`.
+- New endpoints: `UserData` (`image.novelai.net/user/data`), `TrialStatus` (`text.novelai.net/ai/trial-status`);
+  server routes `/user/anlas`, `/user/data`, `/user/trial-status`, `/limit`.
+- `ImageGenerateResp.save(dir)` writes the returned images to disk.
 - [New Model. No Restrictions. V4.5 Full Is Here.](https://blog.novelai.net/novelai-diffusion-v4-5-full-release-678318c86205)
 - [NovelAI Diffusion V4.5 Curated is Here!](https://blog.novelai.net/novelai-diffusion-v4-5-curated-is-here-9e5ba1f628f3)
 - [Image Generation Model Release — NovelAI Anime Diffusion V4 Curated Preview (EN)](https://blog.novelai.net/release-novelai-anime-diffusion-v4-curated-preview-en-ca4b0b11e671)
@@ -63,7 +74,7 @@ prompt = "2girls, fisheye, closeup, from above"
 async def main():
     gen = GenerateImageInfer.build_generate(
         prompt=prompt,
-        model=Model.NAI_DIFFUSION_4_5_FULL,
+        model=Model.NAI_DIFFUSION_5_FULL,  # or NAI_DIFFUSION_4_5_FULL
         character_prompts=[
             Character(
                 prompt="1girl, head tilt, short hair, black hair, grey eyes, small breasts, looking at viewer",
@@ -87,18 +98,40 @@ async def main():
     )
     cost = gen.calculate_cost(is_opus=True)
     print(f"charge: {cost} if you are vip3")
-    resp = await gen.request(session=session)
+    resp = await gen.request(session=session)  # raises DailyLimitExceeded once the local budget is spent
     resp: ImageGenerateResp
     print(resp.meta)
-    file = resp.files[0]
-    with open(file[0], "wb") as f:
-        f.write(file[1])
+    print(resp.save("./output"))  # auto-download every returned image
 
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
 
 ```
+
+#### 🔋 Anlas / limit monitoring
+
+```python
+from novelai_python import Subscription, UserData, TrialStatus, get_default_limiter
+
+sub = await Subscription().request(session=session)
+print(sub.anlas_left, sub.get_tier_name, sub.is_unlimited_image_generation)
+
+data = await UserData().request(session=session)  # subscription + information in one call
+print(data.anlas_left)
+
+trial = await TrialStatus().request(session=session)
+print(trial.trialImagesLeft)
+
+print(get_default_limiter().status())  # {'limit': 2500, 'used': ..., 'remaining': ..., 'reset_at': ...}
+```
+
+Environment:
+
+| variable | default | meaning |
+|---|---|---|
+| `NOVELAI_DAILY_IMAGE_LIMIT` | `2500` | images per 24h window, `0` disables |
+| `NOVELAI_LIMIT_STATE_FILE` | `~/.novelai_python/image_limit.json` | where the counter is persisted |
 
 #### 📦 LLM
 

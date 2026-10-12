@@ -7,7 +7,8 @@ from ._exceptions import (
     APIError,
     AuthError,
     ConcurrentGenerationError,
-    SessionHttpError
+    SessionHttpError,
+    DailyLimitExceeded,
 )
 from .credential import JwtCredential, LoginCredential, ApiCredential
 from .sdk import AugmentImageInfer
@@ -18,10 +19,24 @@ from .sdk import LLMStream, LLMStreamResp
 from .sdk import Login, LoginResp
 from .sdk import Subscription, SubscriptionResp
 from .sdk import SuggestTags, SuggestTagsResp
+from .sdk import TrialStatus, TrialStatusResp
 from .sdk import Upscale, UpscaleResp
+from .sdk import UserData, UserDataResp
 from .sdk import VoiceGenerate, VoiceResponse
+from .utils.daily_limit import DailyImageLimiter, get_default_limiter, set_default_limiter
 
 __all__ = [
+    "TrialStatus",
+    "TrialStatusResp",
+
+    "UserData",
+    "UserDataResp",
+
+    "DailyImageLimiter",
+    "DailyLimitExceeded",
+    "get_default_limiter",
+    "set_default_limiter",
+
     "LLM",
     "LLMResp",
 

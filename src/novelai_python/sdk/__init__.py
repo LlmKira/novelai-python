@@ -14,3 +14,5 @@ from .ai.upscale import Upscale, UpscaleResp  # noqa 401
 from .user.information import Information, InformationResp  # noqa 401
 from .user.login import Login, LoginResp  # noqa 401
 from .user.subscription import Subscription, SubscriptionResp  # noqa 401
+from .user.trial_status import TrialStatus, TrialStatusResp  # noqa 401
+from .user.data import UserData, UserDataResp  # noqa 401
