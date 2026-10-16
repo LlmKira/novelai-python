@@ -24,11 +24,12 @@ class Perks(BaseModel):
     startPriority: int
     moduleTrainingSteps: int
     unlimitedMaxPriority: bool
-    voiceGeneration: bool
-    imageGeneration: bool
-    unlimitedImageGeneration: bool
-    unlimitedImageGenerationLimits: list[ImageGenerationLimit]
     contextTokens: int
+    # no longer sent since the V5 usage bar (live response 2026-10-17); kept for older payloads
+    voiceGeneration: bool | None = None
+    imageGeneration: bool | None = None
+    unlimitedImageGeneration: bool | None = None
+    unlimitedImageGenerationLimits: list[ImageGenerationLimit] | None = None
 
 
 class SubscriptionUsage(BaseModel):
@@ -67,6 +68,10 @@ class SubscriptionResp(RespBase):
     trainingStepsLeft: TrainingSteps = Field(..., description="Training steps left")
     accountType: int = Field(..., description="Account type")
     usage: SubscriptionUsage | None = Field(None, description="Opus V5 usage bar (absent on non-Opus)")
+    paymentProcessor: str | None = Field(None, description='e.g. "chargebee"')
+    isGracePeriod: bool | None = None
+    isPaypal: bool | None = None
+    isNewCustomer: bool | None = None
 
     @property
     def is_active(self):
@@ -77,8 +82,11 @@ class SubscriptionResp(RespBase):
         return self.trainingStepsLeft.fixedTrainingStepsLeft + self.trainingStepsLeft.purchasedTrainingSteps
 
     @property
-    def is_unlimited_image_generation(self):
-        return self.perks.unlimitedImageGeneration and self.perks.imageGeneration
+    def is_unlimited_image_generation(self) -> bool:
+        if self.perks.unlimitedImageGeneration is None:
+            # current API: Opus image generation is metered by the usage bar instead of a perk flag
+            return self.usage is not None and not self.usage.isNegative
+        return bool(self.perks.unlimitedImageGeneration and self.perks.imageGeneration)
 
     @property
     def get_tier_name(self) -> str:
@@ -96,11 +104,11 @@ class SubscriptionResp(RespBase):
     @property
     def limit_perks(self):
         perks = []
-        if not self.perks.imageGeneration:
+        if self.perks.imageGeneration is False:
             perks.append("imageGeneration")
-        if not self.perks.voiceGeneration:
+        if self.perks.voiceGeneration is False:
             perks.append("voiceGeneration")
-        if not self.perks.unlimitedImageGeneration:
+        if self.perks.unlimitedImageGeneration is False:
             perks.append("unlimitedImageGeneration")
         if not self.perks.unlimitedMaxPriority:
             perks.append("unlimitedMaxPriority")

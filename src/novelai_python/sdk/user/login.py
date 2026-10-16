@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class Login(ApiBaseModel):
-    _endpoint: str = PrivateAttr("https://api.novelai.net")
+    _endpoint: str = PrivateAttr("https://image.novelai.net")
     key: str = Field(..., description="User's key")
 
     @property
@@ -45,6 +45,7 @@ class Login(ApiBaseModel):
                 }
             ),
             impersonate=IMPERSONATE,
+            trust_env=False,  # never route through a system HTTP(S)_PROXY by accident
         )
 
     @classmethod

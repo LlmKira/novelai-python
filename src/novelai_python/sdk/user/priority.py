@@ -16,7 +16,7 @@ class PriorityResp(BaseModel):
 
 
 class Priority(ApiBaseModel):
-    _endpoint: str = PrivateAttr("https://api.novelai.net")
+    _endpoint: str = PrivateAttr("https://image.novelai.net")
 
     @property
     def base_url(self) -> str:

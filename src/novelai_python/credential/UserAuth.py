@@ -34,7 +34,13 @@ class LoginCredential(CredentialBase):
         if not self.session_headers or int(time.time()) - self.update_at > 29 * 24 * 60 * 60:
             from ..sdk import Login
 
-            resp = await Login.build(user_name=self.username, password=self.password.get_secret_value()).request()
+            # log in through the same proxy / fingerprint as every later request
+            login_session = AsyncSession(
+                **self.session_kwargs(timeout, browser_headers({"Content-Type": "application/json"}))
+            )
+            resp = await Login.build(user_name=self.username, password=self.password.get_secret_value()).request(
+                login_session
+            )
             headers["Authorization"] = f"Bearer {resp.accessToken}"
             self.session_headers = headers
             self.update_at = int(time.time())

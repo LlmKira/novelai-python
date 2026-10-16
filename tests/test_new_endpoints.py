@@ -179,7 +179,7 @@ async def test_priority():
     resp = await Priority().request(session)
     assert resp.taskPriority == 2.5 and resp.maxPriorityActions == 10
     method, url = session.request.await_args.args
-    assert (method, url) == ("GET", "https://api.novelai.net/user/priority")
+    assert (method, url) == ("GET", "https://image.novelai.net/user/priority")
 
 
 @pytest.mark.asyncio
@@ -272,3 +272,33 @@ async def test_oa_models_and_token_count():
     session = _session(_response(content=b'{"encoded":[1,2,3],"length":3}'))
     count = await OAITokenCount(model="glm-4-6", prompt="a b c").request(session)
     assert count.length == 3 and count.encoded == [1, 2, 3]
+
+
+# --- shapes captured from the web client on 2026-10-17 (Opus account, Chrome 155) ---
+
+
+def test_trial_status_current_shape():
+    from novelai_python import TrialStatusResp
+
+    resp = TrialStatusResp.model_validate(
+        {
+            "used_text_actions": 0,
+            "remaining_text_actions": 50,
+            "used_image_actions": 8,
+            "remaining_image_actions": 22,
+            "eligible_for_text_gens": False,
+            "eligible_for_image_gens": False,
+            "trial_activated": True,
+        }
+    )
+    assert resp.remaining_image_actions == 22 and resp.trial_activated is True
+
+
+def test_user_endpoints_use_image_host():
+    # api.novelai.net answers third-party clients "update to the image URL" (live 2026-10-17)
+    from novelai_python import Information, Login, Subscription, Upscale
+
+    for req in (Subscription(), Information(), Priority(), CreatePersistentToken()):
+        assert req.base_url.startswith("https://image.novelai.net/user/")
+    assert Login(key="x").base_url == "https://image.novelai.net/user/login"
+    assert Upscale(image=_png(64, 64)).base_url == "https://image.novelai.net/ai/upscale"

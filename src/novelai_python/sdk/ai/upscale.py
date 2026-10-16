@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class Upscale(ApiBaseModel):
-    _endpoint: str = PrivateAttr("https://api.novelai.net")
+    _endpoint: str = PrivateAttr("https://image.novelai.net")
     image: str | bytes  # base64
     width: int | None = None
     height: int | None = None
