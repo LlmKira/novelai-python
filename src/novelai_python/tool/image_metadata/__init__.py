@@ -1,9 +1,9 @@
 import base64
 import json
+import logging
 from io import BytesIO
 
 import numpy as np
-from loguru import logger
 from nacl.encoding import Base64Encoder
 from nacl.signing import VerifyKey
 from PIL import Image
@@ -16,6 +16,8 @@ from novelai_python.sdk.ai._enum import Model, find_model_by_hashcode
 from .bch_utils import fec_decode
 from .lsb_extractor import ImageLsbDataExtractor
 from .lsb_injector import inject_data
+
+logger = logging.getLogger(__name__)
 
 
 class BrokenMetaDataError(Exception):
@@ -178,7 +180,7 @@ class ImageMetadata(BaseModel):
             image_meta_data, _fec_data = ImageLsbDataExtractor().extract_data(image)
             return cls.model_validate(image_meta_data)
         except Exception as e:
-            logger.trace(f"Error extracting data in LSB: {e}")
+            logger.debug(f"Error extracting data in LSB: {e}")
             return None
 
     @classmethod
@@ -273,7 +275,7 @@ class ImageVerifier:
                     elif cid == b"ltnt":
                         latents = data
         except Exception as e:
-            logger.trace(f"Error extracting latents: {e}")
+            logger.debug(f"Error extracting latents: {e}")
             return True, False, None
         if sig is None or latents is None:
             return True, False, None
@@ -294,7 +296,7 @@ class ImageVerifier:
             verify_key.verify(signed_hash + latents, sig)
             return True, True, (float_dim, latents)
         except Exception as e:
-            logger.trace(f"Error verifying latents: {e}")
+            logger.debug(f"Error verifying latents: {e}")
             return False, False, None
 
     def verify(
@@ -313,7 +315,7 @@ class ImageVerifier:
         try:
             metadata, fec_data = ImageLsbDataExtractor().extract_data(image, get_fec=True)
         except Exception as e:
-            logger.trace(f"Error extracting data in LSB: {e}")
+            logger.debug(f"Error extracting data in LSB: {e}")
             metadata = None
             fec_data = None
         if not metadata or not metadata.get("Comment") or not metadata["Comment"].get("signed_hash"):
@@ -334,12 +336,12 @@ class ImageVerifier:
         try:
             verify_key.verify(image_and_comment, signed_hash)
         except Exception as e:
-            logger.trace(f"Error verifying image [1]: {e}")
+            logger.debug(f"Error verifying image [1]: {e}")
             try:
                 rgb, _errs = fec_decode(bytearray(rgb), bytearray(fec_data), w, h)
                 image_and_comment = rgb + parameter
                 verify_key.verify(image_and_comment, signed_hash)
             except Exception as e:
-                logger.trace(f"Error verifying image [2]: {e}")
+                logger.debug(f"Error verifying image [2]: {e}")
                 return False, False
         return True, have_latents

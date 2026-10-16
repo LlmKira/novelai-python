@@ -2,14 +2,16 @@
 # @Author  : sudoskys
 # @File    : schema.py
 
+import logging
 from abc import ABC, abstractmethod
 
 from curl_cffi.requests import AsyncSession
-from loguru import logger
 from pydantic import BaseModel, PrivateAttr
 
 from ..credential import CredentialBase
 from ..utils import try_jsonfy
+
+logger = logging.getLogger(__name__)
 
 
 class ApiBaseModel(BaseModel, ABC):
@@ -71,7 +73,7 @@ class ApiBaseModel(BaseModel, ABC):
                 "message": try_jsonfy(response.content) if len(response.content) < max_content_length else content_hint,
             }
         # 日志记录解析出的错误消息
-        logger.trace(f"Parsed error message: {error_message}")
+        logger.debug(f"Parsed error message: {error_message}")
         return error_message
 
     @abstractmethod

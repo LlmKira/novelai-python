@@ -2,12 +2,12 @@
 # @Author  : TimmekHW
 # @File    : suggest_tags.py
 
+import logging
 import os
 from typing import Literal
 
 import curl_cffi
 from curl_cffi.requests import AsyncSession
-from loguru import logger
 from pydantic import Field, PrivateAttr
 
 from novelai_python.sdk.ai._enum import Model
@@ -17,6 +17,8 @@ from ...._response.ai.generate_image import SuggestTagsResp
 from ....credential import CredentialBase
 from ....credential._base import IMPERSONATE, browser_headers
 from ...schema import ApiBaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class SuggestTags(ApiBaseModel):
@@ -101,5 +103,5 @@ class SuggestTags(ApiBaseModel):
         except APIError as e:
             raise e
         except Exception as e:
-            logger.opt(exception=e).exception("Unexpected error occurred during the request.")
+            logger.exception("Unexpected error occurred during the request.")
             raise Exception("An unexpected error occurred.") from e

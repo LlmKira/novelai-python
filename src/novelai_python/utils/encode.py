@@ -5,8 +5,8 @@ import hmac
 from base64 import urlsafe_b64encode
 from hashlib import blake2b
 
-import argon2
 import numpy as np
+from nacl.pwhash import argon2id
 
 
 # https://github.com/HanaokaYuzu/NovelAI-API/blob/master/src/novelai/utils.py#L12
@@ -23,14 +23,14 @@ def encode_access_key(username: str, password: str) -> str:
     blake.update(pre_salt.encode())
     salt = blake.digest()
 
-    raw = argon2.low_level.hash_secret_raw(
-        secret=password.encode(encoding="utf-8"),
-        salt=salt,
-        time_cost=2,
-        memory_cost=int(2000000 / 1024),
-        parallelism=1,
-        hash_len=64,
-        type=argon2.low_level.Type.ID,
+    # libsodium argon2id (single lane, like the web client's parallelism=1);
+    # memlimit is in bytes: 2_000_000 / 1024 KiB rounded down, as argon2-cffi did.
+    raw = argon2id.kdf(
+        64,
+        password.encode(encoding="utf-8"),
+        salt,
+        opslimit=2,
+        memlimit=(2_000_000 // 1024) * 1024,
     )
     hashed = urlsafe_b64encode(raw).decode()
 

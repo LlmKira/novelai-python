@@ -6,8 +6,7 @@ import pathlib
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
-from novelai_python import APIError, LoginCredential
-from novelai_python import GenerateImageInfer, ImageGenerateResp, JwtCredential
+from novelai_python import APIError, GenerateImageInfer, ImageGenerateResp, JwtCredential, LoginCredential
 from novelai_python.sdk.ai.generate_image import Action, Sampler
 from novelai_python.utils.useful import enum_to_list
 

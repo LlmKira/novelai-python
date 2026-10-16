@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from curl_cffi.requests import AsyncSession
 
-from novelai_python import APIError, Upscale, AuthError
+from novelai_python import APIError, AuthError, Upscale
 
 
 @pytest.mark.asyncio

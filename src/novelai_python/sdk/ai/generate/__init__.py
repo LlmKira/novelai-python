@@ -1,13 +1,14 @@
 # @Author  : sudoskys
 import itertools
 import json
+import logging
 from typing import Union
 
 import curl_cffi
 from curl_cffi.requests import AsyncSession
-from loguru import logger
 from pydantic import ConfigDict, Field, PrivateAttr, model_validator
-from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random
+
+from novelai_python._retry import retry_on_server_error
 
 from ...._enum import (
     COLORS_LLM,
@@ -36,6 +37,8 @@ from ._enum import (
     get_end_exclude_sequences as get_end_exclude_sequences,
 )
 from ._schema import AdvanceLLMSetting, Key, KeyOrderEntry, LLMGenerationParams, LogitBiasGroup, PenStyle
+
+logger = logging.getLogger(__name__)
 
 
 class LLM(ApiBaseModel):
@@ -253,7 +256,7 @@ class LLM(ApiBaseModel):
         for cell in logit_bias_group_exp:
             if any(token < 0 or token >= total_tokens for token in cell.sequence):
                 # 超出范围的 Token
-                logger.trace(f"Bias [{cell}] contains tokens that are out of range and will be ignored.")
+                logger.debug(f"Bias [{cell}] contains tokens that are out of range and will be ignored.")
             else:
                 # 将有效偏置组添加到列表
                 valid_sequences.append(cell)
@@ -270,7 +273,7 @@ class LLM(ApiBaseModel):
         self.parameters.bad_words_ids = bad_words_ids
         for ban_word in self.parameters.bad_words_ids:
             if any(token < 0 or token >= total_tokens for token in ban_word):
-                logger.trace(f"Bad word {ban_word} contains tokens that are out of range and will be ignored.")
+                logger.debug(f"Bad word {ban_word} contains tokens that are out of range and will be ignored.")
             else:
                 valid_bad_words_ids.append(ban_word)
         if len(valid_bad_words_ids) > 0:
@@ -332,12 +335,7 @@ class LLM(ApiBaseModel):
         )
         return created
 
-    @retry(
-        wait=wait_random(min=1, max=3),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
-        reraise=True,
-    )
+    @retry_on_server_error()
     async def request(
         self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None
     ) -> LLMResp:
@@ -428,5 +426,5 @@ class LLM(ApiBaseModel):
             except APIError as e:
                 raise e
             except Exception as e:
-                logger.opt(exception=e).exception("An unexpected error occurred")
+                logger.exception("An unexpected error occurred")
                 raise e

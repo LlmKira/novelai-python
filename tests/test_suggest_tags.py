@@ -3,8 +3,9 @@
 # @File    : test_suggest_tags.py
 
 import asyncio
-from novelai_python.sdk.ai.generate_image import SuggestTags
+
 from novelai_python.sdk.ai._enum import Model
+from novelai_python.sdk.ai.generate_image import SuggestTags
 
 
 def test_suggest_tags_default_model():

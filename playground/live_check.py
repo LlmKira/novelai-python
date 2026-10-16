@@ -9,15 +9,16 @@ Optional: NOVELAI_LIVE_GENERATE=1 to also generate one 832x1216 V5 image
 python playground/live_check.py
 """
 import asyncio
+import logging
 import os
 import sys
 import time
 
-from loguru import logger
-
 from novelai_python import ApiCredential, Subscription, UserData
-from novelai_python.sdk.ai.generate_image import GenerateImageInfer
 from novelai_python.sdk.ai._enum import Model
+from novelai_python.sdk.ai.generate_image import GenerateImageInfer
+
+logger = logging.getLogger(__name__)
 
 
 async def main() -> int:
@@ -51,6 +52,5 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
-    logger.remove()
-    logger.add(sys.stderr, level="INFO")
+    logging.basicConfig(level=logging.INFO)
     sys.exit(asyncio.run(main()))

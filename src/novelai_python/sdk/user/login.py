@@ -3,10 +3,10 @@
 # @File    : login.py
 
 import json
+import logging
 
 import curl_cffi
 from curl_cffi.requests import AsyncSession
-from loguru import logger
 from pydantic import Field, PrivateAttr
 
 from ..._exceptions import APIError, SessionHttpError
@@ -15,6 +15,8 @@ from ...credential import CredentialBase
 from ...credential._base import IMPERSONATE, browser_headers
 from ...utils import encode_access_key
 from ..schema import ApiBaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class Login(ApiBaseModel):
@@ -98,5 +100,5 @@ class Login(ApiBaseModel):
             except APIError as e:
                 raise e
             except Exception as e:
-                logger.opt(exception=e).exception("An Unexpected error occurred")
+                logger.exception("An Unexpected error occurred")
                 raise e

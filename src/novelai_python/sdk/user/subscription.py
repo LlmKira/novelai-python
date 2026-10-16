@@ -3,15 +3,18 @@
 # @File    : subscription.py.py
 
 
+import logging
+
 import curl_cffi
 from curl_cffi.requests import AsyncSession
-from loguru import logger
 from pydantic import PrivateAttr
 
 from ..._exceptions import APIError, AuthError, SessionHttpError
 from ..._response.user.subscription import SubscriptionResp
 from ...credential import CredentialBase
 from ..schema import ApiBaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class Subscription(ApiBaseModel):
@@ -74,5 +77,5 @@ class Subscription(ApiBaseModel):
             except APIError as e:
                 raise e
             except Exception as e:
-                logger.opt(exception=e).exception("An Unexpected error occurred")
+                logger.exception("An Unexpected error occurred")
                 raise e

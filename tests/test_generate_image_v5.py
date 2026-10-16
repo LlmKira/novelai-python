@@ -7,8 +7,8 @@ from unittest import mock
 import pytest
 from curl_cffi.requests import AsyncSession
 
-from novelai_python import GenerateImageInfer, DailyLimitExceeded
-from novelai_python.credential._base import DEFAULT_USER_AGENT, browser_headers, CHROME_MAJOR_VERSION
+from novelai_python import DailyLimitExceeded, GenerateImageInfer
+from novelai_python.credential._base import CHROME_MAJOR_VERSION, DEFAULT_USER_AGENT, browser_headers
 from novelai_python.sdk.ai._enum import Model, get_uc_preset_id, is_v5_model
 from novelai_python.sdk.ai.generate_image import build_multipart_request
 from novelai_python.sdk.ai.generate_image.params import Params
@@ -80,7 +80,7 @@ def test_v45_request_uses_params_version_4_too():
 
 
 def test_v5_family_models():
-    from novelai_python.sdk.ai._enum import V5_MODEL_LIST, INPAINTING_MODEL_LIST, get_supported_params
+    from novelai_python.sdk.ai._enum import INPAINTING_MODEL_LIST, V5_MODEL_LIST, get_supported_params
     assert Model.NAI_DIFFUSION_5_CURATED in V5_MODEL_LIST
     assert Model.NAI_DIFFUSION_5_FULL_INPAINTING in INPAINTING_MODEL_LIST
     assert get_supported_params(Model.NAI_DIFFUSION_5_CURATED).img2imgInpainting is True
@@ -89,7 +89,7 @@ def test_v5_family_models():
 
 
 def test_quality_presets():
-    from novelai_python.sdk.ai._enum import get_quality_presets, QualityPreset
+    from novelai_python.sdk.ai._enum import QualityPreset, get_quality_presets
     ids = [q.id for q in get_quality_presets(Model.NAI_DIFFUSION_5_FULL)]
     assert ids == ["standard", "light", "none"]
     light = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL)

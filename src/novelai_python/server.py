@@ -3,15 +3,18 @@
 # @File    : server.py
 
 import io
+import logging
 import sys
 import zipfile
 from typing import Literal
 
-import uvicorn
-from fastapi import Depends, FastAPI, Security
-from fastapi.security import APIKeyHeader
-from loguru import logger
-from starlette.responses import JSONResponse, StreamingResponse
+try:
+    import uvicorn
+    from fastapi import Depends, FastAPI, Security
+    from fastapi.security import APIKeyHeader
+    from starlette.responses import JSONResponse, StreamingResponse
+except ImportError as e:  # pragma: no cover
+    raise ImportError('The server needs extra packages: pip install "novelai-python[server]"') from e
 
 from novelai_python import LLMStream, LLMStreamResp
 from novelai_python.sdk.ai.augment_image import AugmentImageInfer, Moods, ReqType
@@ -28,6 +31,8 @@ from .sdk.user.login import Login
 from .sdk.user.subscription import Subscription
 from .sdk.user.trial_status import TrialStatus
 from .utils.daily_limit import get_default_limiter
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 token_key = APIKeyHeader(name="Authorization")

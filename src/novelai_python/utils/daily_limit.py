@@ -10,14 +10,15 @@ Disable with ``NOVELAI_DAILY_IMAGE_LIMIT=0`` or pass ``limiter=None``.
 """
 
 import json
+import logging
 import os
 import pathlib
 import threading
 import time
 
-from loguru import logger
-
 from .._exceptions import DailyLimitExceeded
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_IMAGE_LIMIT = 2500
 DEFAULT_WINDOW_SECONDS = 24 * 60 * 60

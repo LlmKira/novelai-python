@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 import requests
 from json_repair import repair_json
 from pydantic import BaseModel, model_validator
-from tokenizers import Tokenizer, pre_tokenizers, Regex, decoders
+from tokenizers import Regex, Tokenizer, decoders, pre_tokenizers
 from tokenizers.models import BPE
 
 # https://novelai.net/tokenizer/compressed/llama3nai_tokenizer.def?v=2&static=true

@@ -1,11 +1,10 @@
 # @Author  : sudoskys
+import logging
 from collections.abc import AsyncIterable
 from typing import Union
 
 import curl_cffi
 from curl_cffi.requests import AsyncSession
-from loguru import logger
-from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random
 
 from ..._enum import TextLLMModelTypeAlias
 from ..._exceptions import APIError, SessionHttpError
@@ -13,6 +12,8 @@ from ..._response.ai.generate_stream import LLMStreamResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy
 from .generate import LLM, AdvanceLLMSetting, LLMGenerationParams, PenStyle, TextLLMModel
+
+logger = logging.getLogger(__name__)
 
 
 class LLMStream(LLM):
@@ -55,12 +56,6 @@ class LLMStream(LLM):
         )
         return created
 
-    @retry(
-        wait=wait_random(min=1, max=3),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
-        reraise=True,
-    )
     async def request(
         self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None
     ) -> AsyncIterable[LLMStreamResp]:
@@ -160,5 +155,5 @@ class LLMStream(LLM):
             except APIError as e:
                 raise e
             except Exception as e:
-                logger.opt(exception=e).exception("An unexpected error occurred")
+                logger.exception("An unexpected error occurred")
                 raise e

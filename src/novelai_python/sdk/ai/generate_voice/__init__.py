@@ -1,19 +1,22 @@
 # @Author  : sudoskys
+import logging
 from enum import Enum
 from typing import Literal, Union
 
 import curl_cffi
 import pydantic
 from curl_cffi.requests import AsyncSession
-from loguru import logger
 from pydantic import ConfigDict, Field, PrivateAttr, model_validator
-from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random
+
+from novelai_python._retry import retry_on_server_error
 
 from ...._exceptions import APIError, SessionHttpError
 from ...._response.ai.generate_voice import VoiceResponse
 from ....credential import CredentialBase
 from ...schema import ApiBaseModel
 from ._enum import Speaker, VoiceSpeakerV1, VoiceSpeakerV2
+
+logger = logging.getLogger(__name__)
 
 
 class VoiceGenerate(ApiBaseModel):
@@ -74,12 +77,7 @@ class VoiceGenerate(ApiBaseModel):
             return cls(text=text, voice=-1, seed=speaker, opus=opus, version="v2")
         return cls(text=text, seed=speaker.seed, voice=speaker.sid, opus=opus, version=speaker.version)
 
-    @retry(
-        wait=wait_random(min=1, max=3),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
-        reraise=True,
-    )
+    @retry_on_server_error()
     async def request(
         self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None
     ) -> VoiceResponse:
@@ -126,5 +124,5 @@ class VoiceGenerate(ApiBaseModel):
             except APIError as e:
                 raise e
             except Exception as e:
-                logger.opt(exception=e).exception("An Unexpected error occurred")
+                logger.exception("An Unexpected error occurred")
                 raise e

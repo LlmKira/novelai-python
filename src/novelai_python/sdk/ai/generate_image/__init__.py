@@ -2,6 +2,7 @@
 # @File    : __init__.py
 
 import json
+import logging
 import math
 import random
 import re
@@ -16,10 +17,9 @@ from zipfile import BadZipFile, ZipFile
 import curl_cffi
 import msgpack
 from curl_cffi.requests import AsyncSession
-from loguru import logger
 from pydantic import ConfigDict, Field, PrivateAttr, model_validator
-from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random
 
+from novelai_python._retry import retry_on_server_error
 from novelai_python.sdk.ai._cost import CostCalculator
 from novelai_python.sdk.ai._enum import (
     INPAINTING_MODEL_LIST,
@@ -58,6 +58,8 @@ from ...schema import ApiBaseModel
 from .params import Params, get_default_params
 from .schema import Character, PositionMap, V4NegativePrompt, V4Prompt
 from .suggest_tags import SuggestTags as SuggestTags  # re-export
+
+logger = logging.getLogger(__name__)
 
 ZIP_CONTENT_TYPES = (
     "binary/octet-stream",
@@ -217,11 +219,11 @@ class GenerateImageInfer(ApiBaseModel):
         if isinstance(quality_preset, Enum):
             quality_preset = quality_preset.value
         if self.parameters.qualityToggle and quality_preset != "none":
-            logger.trace("Enhancing input with qualityToggle, will modify input prompt.")
+            logger.debug("Enhancing input with qualityToggle, will modify input prompt.")
             self.input = enhance_message(self.input)
 
         if self._mutual_exclusion:
-            logger.trace("Mutual exclusion is enabled, will modify negative prompt.")
+            logger.debug("Mutual exclusion is enabled, will modify negative prompt.")
             input_prompt = {x.strip(): x for x in self.input.split(",")}
             uc_prompt = {x.strip(): x for x in self.parameters.negative_prompt.split(",")}
             # Remove conflicting negative words
@@ -879,12 +881,7 @@ class GenerateImageInfer(ApiBaseModel):
         if limiter is not None and finals:
             limiter.consume(finals)
 
-    @retry(
-        wait=wait_random(min=1, max=3),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
-        reraise=True,
-    )
+    @retry_on_server_error()
     async def request(
         self,
         session: Union[AsyncSession, "CredentialBase"],
@@ -1033,5 +1030,5 @@ class GenerateImageInfer(ApiBaseModel):
             except APIError as e:
                 raise e
             except Exception as e:
-                logger.opt(exception=e).exception("Unexpected error occurred during the request.")
+                logger.exception("Unexpected error occurred during the request.")
                 raise Exception("An unexpected error occurred.") from e

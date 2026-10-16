@@ -1,0 +1,111 @@
+{
+ "access_keys": [
+  [
+   "user@example.com",
+   "hunter2pass",
+   "PHTF5W1Nd0Hrt60WpeLbcdBog-f78AgjanSpjc0CoN27ucEVdNNPlWXtG0rScdBP"
+  ],
+  [
+   "Тест@mail.ru",
+   "пароль123",
+   "In2AsmzBAv9dIdSg92Wa2g0wTduwKtZzyhnosgXvY57OnuX2XXusKTzVlMPsbBrN"
+  ],
+  [
+   "A@B.c",
+   "x",
+   "SJKonPKetZJuKAnEiwGntW90_0nHKeADnNexFlrniHD_-02o-eNOvs52UDwGxo6f"
+  ],
+  [
+   "mixed.Case@x.io",
+   "!@#$%^&*()_+",
+   "9_FZ8se81t7DLcQXFZeGxf8ilZ4QagcZKG1wBmNRKxAxvQbjRs5jN1O-ZPE7R5Km"
+  ]
+ ],
+ "clip": [
+  [
+   "1girl, solo, {{masterpiece}}, artist:wlop, 初音ミク, café",
+   [
+    272,
+    1611,
+    267,
+    5797,
+    267,
+    90,
+    346,
+    12066,
+    92,
+    92,
+    267,
+    2456,
+    281,
+    86,
+    17066,
+    267,
+    42748,
+    251,
+    165,
+    253,
+    111,
+    2429,
+    253,
+    3909,
+    363,
+    267,
+    15304
+   ]
+  ],
+  [
+   "it's a TEST\n\twith   spaces",
+   [
+    585,
+    568,
+    320,
+    1628,
+    593,
+    9006
+   ]
+  ],
+  [
+   "a &amp; b, (very aesthetic:1.2)",
+   [
+    320,
+    261,
+    321,
+    267,
+    263,
+    1070,
+    16179,
+    281,
+    272,
+    269,
+    273,
+    264
+   ]
+  ],
+  [
+   "",
+   []
+  ]
+ ],
+ "mask_jagged_True_white_frac": 0.25,
+ "mask_jagged_True_bbox": [
+  16,
+  32,
+  63,
+  95
+ ],
+ "mask_jagged_False_white_frac": 0.25,
+ "mask_jagged_False_bbox": [
+  16,
+  32,
+  63,
+  95
+ ],
+ "pad_shape": [
+  448,
+  448,
+  4
+ ],
+ "pad_alpha_border": 255,
+ "pad_center_mean": 121.84139784946237
+}

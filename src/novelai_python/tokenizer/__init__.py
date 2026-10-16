@@ -1,19 +1,20 @@
 import gzip
 import io
 import json
+import logging
 import os
 import pathlib
 import zlib
 
 from curl_cffi import requests as curl_requests
-from json_repair import repair_json
-from loguru import logger
 from pydantic import BaseModel, model_validator
 from tokenizers import Regex, Tokenizer, decoders, pre_tokenizers
 from tokenizers.models import BPE
 
 from ..credential._base import DEFAULT_USER_AGENT
-from .clip_simple_tokenizer import SimpleTokenizer
+from . import clip_tokenizer
+
+logger = logging.getLogger(__name__)
 
 
 def download_file(url, destination_path, session) -> None:
@@ -84,8 +85,7 @@ class NaiTokenizer:
         if not model.endswith(".def"):
             model = f"{model}.def"
         self.model_full_name = model
-        self.tokenizer_setting = None
-        self.tokenizer = None
+        self.tokenizer_setting: ClipTokenizerSetting | LLMTokenizerSetting | str | None = None
         if download_session is None:
             # Only an explicit proxy (NOVELAI_PROXY), never the environment's system proxy.
             px = os.environ.get("NOVELAI_PROXY")
@@ -97,7 +97,7 @@ class NaiTokenizer:
             tokenizer_model_path = pathlib.Path(__file__).parent
         self.tokenizer_model_path = tokenizer_model_path
         self._load_tokenizer_settings()
-        self._create_tokenizer()
+        self.tokenizer: Tokenizer = self._create_tokenizer()
 
     @staticmethod
     def get_model_download_url(model_full_name) -> str:
@@ -161,85 +161,72 @@ class NaiTokenizer:
                 model_path.unlink(missing_ok=True)
                 raise LookupError(f"Failed to download model {self.model_full_name} from {url}: {e}") from e
             decoded_str = self._read_compressed_def(model_path.read_bytes())
-        repaired_data = repair_json(decoded_str, return_objects=True)
+        data = json.loads(decoded_str)
         try:
             if is_clip_model(self.model_full_name):
-                self.tokenizer_setting = ClipTokenizerSetting.model_validate(repaired_data)
+                self.tokenizer_setting = ClipTokenizerSetting.model_validate(data)
             elif is_t5_model(self.model_full_name):
-                self.tokenizer_setting = json.dumps(repaired_data)
+                self.tokenizer_setting = decoded_str
             else:
-                self.tokenizer_setting = LLMTokenizerSetting.model_validate(repaired_data)
+                self.tokenizer_setting = LLMTokenizerSetting.model_validate(data)
         except Exception as e:
             raise ValueError(
                 f"Failed to load tokenizer settings: {e} for {model_path}",
                 "report this issue to https://github.com/LlmKira/novelai-python/issues",
             ) from e
 
-    def _create_tokenizer(self) -> None:
-        if is_clip_model(self.model_full_name):
-            self._create_clip_tokenizer()
-        elif is_t5_model(self.model_full_name):
-            self.tokenizer = Tokenizer.from_str(self.tokenizer_setting)
-        else:
-            self._create_bpe_tokenizer()
-
-    def _create_clip_tokenizer(self) -> None:
+    def _create_tokenizer(self) -> Tokenizer:
         setting = self.tokenizer_setting
-        if not isinstance(setting, ClipTokenizerSetting):
-            raise ValueError(f"Invalid tokenizer setting: {setting}")
-        self.tokenizer = SimpleTokenizer(bpe_model_content=setting.text)
+        if isinstance(setting, ClipTokenizerSetting):
+            return clip_tokenizer.build_clip_tokenizer(setting.text)
+        if isinstance(setting, str):
+            return Tokenizer.from_str(setting)
+        if isinstance(setting, LLMTokenizerSetting):
+            return self._create_bpe_tokenizer(setting)
+        raise ValueError(f"Invalid tokenizer setting: {setting}")
 
-    def _create_bpe_tokenizer(self) -> None:
-        setting = self.tokenizer_setting
-        self.tokenizer = Tokenizer(
+    @staticmethod
+    def _create_bpe_tokenizer(setting: LLMTokenizerSetting) -> Tokenizer:
+        tokenizer = Tokenizer(
             BPE(vocab=setting.vocab, merges=setting.merges, ignore_merges=setting.config.ignoreMerges)
         )
 
-        self.tokenizer.add_special_tokens(setting.specialTokens)
+        tokenizer.add_special_tokens(setting.specialTokens)
         if setting.config.maxEncodeChars:
-            self.tokenizer.enable_truncation(max_length=setting.config.maxEncodeChars)
+            tokenizer.enable_truncation(max_length=setting.config.maxEncodeChars)
 
-        pre_zus = [
+        pre_zus: list[pre_tokenizers.PreTokenizer] = [
             pre_tokenizers.Split(behavior="merged_with_next", pattern=Regex(setting.config.splitRegex)),
         ]
 
-        if self.tokenizer.token_to_id(" ") is None:
+        if tokenizer.token_to_id(" ") is None:
             pre_zus.append(pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=False))
 
-        pre_tokenizer = pre_tokenizers.Sequence(pre_zus)
-        self.tokenizer.pre_tokenizer = pre_tokenizer
-        self.tokenizer.decoder = decoders.ByteLevel()
+        tokenizer.pre_tokenizer = pre_tokenizers.Sequence(pre_zus)
+        tokenizer.decoder = decoders.ByteLevel()
+        return tokenizer
 
-    def tokenize_text(self, text: str) -> list[int]:
-        if isinstance(self.tokenizer, Tokenizer):
-            return [
-                token.replace("Ġ", " ")  # .replace("Ċ", " ").replace("ċ", " ")
-                for token in self.tokenizer.encode(text).tokens
-            ]
-        if isinstance(self.tokenizer, SimpleTokenizer):
-            return self.tokenizer.encode(text).tokens
-        raise NotImplementedError("Tokenizer does not support token encoding")
+    @property
+    def _is_clip(self) -> bool:
+        return is_clip_model(self.model_full_name)
+
+    def tokenize_text(self, text: str) -> list[str]:
+        if self._is_clip:
+            return [t.replace("</w>", " ") for t in self.tokenizer.encode(clip_tokenizer.clean_text(text)).tokens]
+        return [token.replace("Ġ", " ") for token in self.tokenizer.encode(text).tokens]
 
     def total_tokens(self) -> int:
-        if isinstance(self.tokenizer, Tokenizer):
-            return len(self.tokenizer.get_vocab())
-        if isinstance(self.tokenizer, SimpleTokenizer):
-            return len(self.tokenizer.get_vocab())
-        raise NotImplementedError("Tokenizer does not support token encoding")
+        return self.tokenizer.get_vocab_size()
 
     def encode(self, sentence: str) -> list[int]:
-        if isinstance(self.tokenizer, SimpleTokenizer):
-            return self.tokenizer.encode(sentence).ids
-        if isinstance(self.tokenizer, Tokenizer):
-            return self.tokenizer.encode(sentence, add_special_tokens=True).ids
-        raise NotImplementedError("Tokenizer does not support token encoding")
+        if self._is_clip:
+            return self.tokenizer.encode(clip_tokenizer.clean_text(sentence)).ids
+        return self.tokenizer.encode(sentence, add_special_tokens=True).ids
 
     def decode(self, token_ids: list[int]) -> str:
-        if isinstance(self.tokenizer, SimpleTokenizer):
-            return self.tokenizer.decode(token_ids)
-        if isinstance(self.tokenizer, Tokenizer):
-            return self.tokenizer.decode(token_ids)
-        raise NotImplementedError("Tokenizer does not support token decoding")
+        if self._is_clip:
+            return clip_tokenizer.decode(self.tokenizer, token_ids)
+        return self.tokenizer.decode(token_ids)
 
 
 # Example usage:

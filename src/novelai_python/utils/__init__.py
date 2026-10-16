@@ -3,10 +3,11 @@
 # @File    : __init__.py.py
 
 import json
-
-from loguru import logger
+import logging
 
 from .encode import encode_access_key
+
+logger = logging.getLogger(__name__)
 
 
 def try_jsonfy(obj: str | dict | list | tuple, default_when_error=None):
@@ -19,7 +20,7 @@ def try_jsonfy(obj: str | dict | list | tuple, default_when_error=None):
     try:
         return json.loads(obj)
     except Exception as e:
-        logger.trace(f"Decode Error {obj} {e}")
+        logger.debug(f"Decode Error {obj} {e}")
         if default_when_error is None:
             return f"Decode Error {type(obj)}"
         else:

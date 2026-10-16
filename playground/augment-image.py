@@ -10,9 +10,8 @@ import pathlib
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
-from novelai_python import APIError, LoginCredential, JwtCredential, ImageGenerateResp
-from novelai_python import AugmentImageInfer
-from novelai_python.sdk.ai.augment_image import ReqType, Moods
+from novelai_python import APIError, AugmentImageInfer, ImageGenerateResp, JwtCredential, LoginCredential
+from novelai_python.sdk.ai.augment_image import ReqType
 
 
 async def generate(

@@ -212,7 +212,7 @@ for i in range(10):
 #### 📦 Run A Server
 
 ```shell
-pip install novelai_python
+pip install "novelai-python[server]"
 python3 -m novelai_python.server -h '127.0.0.1' -p 7888
 ```
 

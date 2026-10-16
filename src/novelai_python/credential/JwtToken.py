@@ -3,11 +3,14 @@
 # @File    : JwtToken.py
 
 
+import logging
+
 from curl_cffi.requests import AsyncSession
-from loguru import logger
 from pydantic import Field, SecretStr, field_validator
 
 from ._base import CredentialBase, _correlation_id, _initiated_at, browser_headers
+
+logger = logging.getLogger(__name__)
 
 
 class JwtCredential(CredentialBase):

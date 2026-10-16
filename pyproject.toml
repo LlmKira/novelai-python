@@ -8,22 +8,12 @@ authors = [
 dependencies = [
     # every dependency ships Python 3.12-3.14 wheels (checked on PyPI 2026-10-16)
     "pydantic>=2.14",
-    "pydantic-settings>=2.16",
-    "loguru>=0.7.3",
-    "curl-cffi>=0.16.3",          # HTTP + Chrome TLS/HTTP2 impersonation (replaces httpx)
-    "msgpack>=1.2",               # /ai/generate-image-stream frames
-    "Pillow>=12.3",
-    "numpy>=2.5",
-    "opencv-python-headless>=5.0",  # headless: no GUI/Qt, same cv2 API
-    "argon2-cffi>=25.1",          # access-key derivation for /user/login
-    "pynacl>=1.6",                # image metadata signature check
-    "tenacity>=9.2",
-    "tokenizers>=0.23",
-    "ftfy>=6.3",
-    "regex>=2026.9",
-    "json-repair>=0.64",
-    "fastapi>=0.143",
-    "uvicorn[standard]>=0.54",
+    "curl-cffi>=0.16.3",  # HTTP + Chrome TLS/HTTP2 impersonation
+    "msgpack>=1.2",       # /ai/generate-image-stream frames
+    "Pillow>=12.3",       # images, masks, LSB metadata
+    "numpy>=2.5",         # BCH decoder of the metadata watermark
+    "pynacl>=1.6",        # metadata signature check + argon2id access keys
+    "tokenizers>=0.23",   # CLIP/T5/LLM token counting
 ]
 requires-python = ">=3.12"
 readme = "README.md"
@@ -40,7 +30,14 @@ Repository = "https://github.com/LlmKira/novelai-python/"
 Issues = "https://github.com/LlmKira/novelai-python/issues"
 
 [project.optional-dependencies]
+# HTTP proxy server (novelai_python.server)
+server = [
+    "fastapi>=0.143",
+    "uvicorn[standard]>=0.54",
+]
 testing = [
+    "novelai-python[server]",
+    "httpx>=0.28",  # fastapi.testclient
     "pytest>=9.1",
     "pytest-asyncio>=1.4",
 ]
@@ -54,8 +51,7 @@ distribution = true
 
 [tool.pdm.dev-dependencies]
 dev = [
-    "pre-commit>=3.5.0",
-    "wasmtime>=28.0.0",
+    "pre-commit>=4.3",
 ]
 
 [tool.ruff]

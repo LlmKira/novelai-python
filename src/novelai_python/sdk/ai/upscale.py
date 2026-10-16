@@ -3,6 +3,7 @@
 # @File    : upscale.py
 import base64
 import json
+import logging
 from copy import deepcopy
 from io import BytesIO
 from typing import Union
@@ -10,15 +11,17 @@ from zipfile import BadZipFile, ZipFile
 
 import curl_cffi
 from curl_cffi.requests import AsyncSession
-from loguru import logger
 from pydantic import ConfigDict, PrivateAttr, model_validator
-from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random
+
+from novelai_python._retry import retry_on_server_error
 
 from ..._exceptions import APIError, AuthError, DataSerializationError, SessionHttpError
 from ..._response.ai.upscale import UpscaleResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy
 from ..schema import ApiBaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class Upscale(ApiBaseModel):
@@ -64,12 +67,7 @@ class Upscale(ApiBaseModel):
     def endpoint(self, value) -> None:
         self._endpoint = value
 
-    @retry(
-        wait=wait_random(min=1, max=3),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
-        reraise=True,
-    )
+    @retry_on_server_error()
     async def request(
         self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None
     ) -> UpscaleResp:
@@ -165,5 +163,5 @@ class Upscale(ApiBaseModel):
             except APIError as e:
                 raise e
             except Exception as e:
-                logger.opt(exception=e).exception("An Unexpected error occurred")
+                logger.exception("An Unexpected error occurred")
                 raise e

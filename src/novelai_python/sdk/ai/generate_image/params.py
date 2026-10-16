@@ -1,11 +1,9 @@
 import base64
+import logging
 import random
 from collections import OrderedDict
 from io import BytesIO
 
-import cv2
-import numpy as np
-from loguru import logger
 from PIL import Image
 from pydantic import BaseModel, Field, field_validator, model_serializer, model_validator
 
@@ -22,6 +20,8 @@ from novelai_python.sdk.ai._enum import (
     is_v5_model,
 )
 from novelai_python.sdk.ai.generate_image.schema import Character, V4NegativePrompt, V4Prompt
+
+logger = logging.getLogger(__name__)
 
 
 def is_multiple_of_01(num, precision=1e-10):
@@ -354,32 +354,16 @@ class Params(BaseModel):
 
         if isinstance(image, str):
             image = base64.b64decode(image)
-            # Decode the image from the base64 string
-        npimg = np.frombuffer(image, np.uint8)
-        # Load the image with OpenCV
-        img = cv2.imdecode(npimg, cv2.IMREAD_UNCHANGED)
-        # Calculate the aspect ratio (keeping aspect ratio)
-        ratio = min(target_size[0] / img.shape[1], target_size[1] / img.shape[0])
-        new_image_size = (int(img.shape[1] * ratio), int(img.shape[0] * ratio))
-        # Resize the image
-        img = cv2.resize(img, new_image_size, interpolation=cv2.INTER_LINEAR)
-        # Check if the image has alpha channel (transparency)
-        if img.shape[2] == 3:  # no alpha channel, add one
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2BGRA)
-        # Create new image with black background
-        delta_w = target_size[0] - img.shape[1]
-        delta_h = target_size[1] - img.shape[0]
-        top, bottom = delta_h // 2, delta_h - (delta_h // 2)
-        left, right = delta_w // 2, delta_w - (delta_w // 2)
-        # If the transparency flag is set the background is transparent, otherwise it is black
-        color = [0, 0, 0, 0] if transparency else [0, 0, 0, 255]
-        # Add padding to the image
-        new_img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
-        # Convert the image to base64
-        _, buffer = cv2.imencode(".png", new_img)
-        # buffer here is a numpy array, convert it to bytes
-        image_bytes = buffer.tobytes()
-        return base64.b64encode(image_bytes).decode("utf-8")
+        img = Image.open(BytesIO(image)).convert("RGBA")
+        # largest size that fits target_size with the same aspect ratio
+        ratio = min(target_size[0] / img.width, target_size[1] / img.height)
+        img = img.resize((int(img.width * ratio), int(img.height * ratio)), Image.Resampling.BILINEAR)
+        # transparent or opaque black background, image centred on it
+        canvas = Image.new("RGBA", target_size, (0, 0, 0, 0) if transparency else (0, 0, 0, 255))
+        canvas.paste(img, ((target_size[0] - img.width) // 2, (target_size[1] - img.height) // 2))
+        buffered = BytesIO()
+        canvas.save(buffered, format="PNG")
+        return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 
 def get_default_params(model: Model = None) -> Params:
