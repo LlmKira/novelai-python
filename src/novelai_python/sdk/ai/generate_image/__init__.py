@@ -35,12 +35,14 @@ from novelai_python.sdk.ai._enum import (
     UCPresetTypeAlias,
     get_default_noise_schedule,
     get_default_uc_preset,
+    get_max_characters,
     get_model_group,
     get_quality_suffix,
     get_supported_noise_schedule,
     get_supported_params,
     get_uc_preset_id,
     is_v5_model,
+    supports_character_reference,
 )
 from novelai_python.sdk.ai._enum import (
     UCPreset as UCPreset,  # re-export
@@ -56,7 +58,7 @@ from ....utils import try_jsonfy
 from ....utils.daily_limit import DailyImageLimiter, get_default_limiter
 from ...schema import ApiBaseModel
 from .params import Params, get_default_params
-from .schema import Character, PositionMap, V4NegativePrompt, V4Prompt
+from .schema import Character, CharacterReference, PositionMap, V4NegativePrompt, V4Prompt
 from .suggest_tags import SuggestTags as SuggestTags  # re-export
 
 logger = logging.getLogger(__name__)
@@ -174,6 +176,21 @@ class GenerateImageInfer(ApiBaseModel):
         # Add quality prompt based on qualityToggle / qualityPresetId
         modifier = get_quality_suffix(self.model, self.parameters.qualityPresetId)
         quality_tags, suffix = modifier.qualityTags, modifier.suffix
+        quality_preset = self.parameters.qualityPresetId
+        if isinstance(quality_preset, Enum):
+            quality_preset = quality_preset.value
+        use_quality = bool(self.parameters.qualityToggle and quality_preset != "none")
+        if not use_quality:
+            quality_tags, suffix = "", ""
+        # Transparent BG (V5): the web client puts "transparent background" in front of the
+        # quality suffix, or alone when quality tags are off (addQualityToPrompt, 2026-10 bundle).
+        transparent = bool(self.parameters.tag_hint_transparent_background) and is_v5_model(self.model)
+        if transparent:
+            self.parameters.straight_alpha = True
+            if "transparent background" not in self.input:
+                suffix = ", transparent background" + suffix
+            else:
+                transparent = False  # already written by the user, only the quality tags are left to add
 
         def enhance_text_part(_part, _quality_tags, _suffix):
             text_parts = _part.split(" Text:")
@@ -215,11 +232,8 @@ class GenerateImageInfer(ApiBaseModel):
                 )
                 return _prompt
 
-        quality_preset = self.parameters.qualityPresetId
-        if isinstance(quality_preset, Enum):
-            quality_preset = quality_preset.value
-        if self.parameters.qualityToggle and quality_preset != "none":
-            logger.debug("Enhancing input with qualityToggle, will modify input prompt.")
+        if use_quality or transparent:
+            logger.debug("Adding quality / transparent-background tags to the input prompt.")
             self.input = enhance_message(self.input)
 
         if self._mutual_exclusion:
@@ -298,6 +312,18 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.reference_information_extracted_multiple = None  # Auto exclude None values
             self.parameters.reference_strength_multiple = None  # Auto exclude None values
 
+        if get_supported_params(self.model).encodedVibes and any(
+            isinstance(ref, str) and ref.startswith("iVBORw0KGgo")
+            for ref in self.parameters.reference_image_multiple or []
+        ):
+            # the web client never sends raw images here for V4/V4.5: it calls /ai/encode-vibe first
+            logger.warning(
+                f"{self.model} takes encoded vibes: pass EncodeVibe(...).request(...).vibe_b64, not a PNG image."
+            )
+
+        if self.parameters.director_reference_images and not supports_character_reference(self.model):
+            raise ValueError(f"Character reference needs a V4.5 model, {self.model} does not take it")
+
         if not get_supported_params(self.model).controlnet:
             if self.parameters.controlnet_condition is not None:
                 logger.warning("ControlNet is not supported for this model.")
@@ -316,6 +342,11 @@ class GenerateImageInfer(ApiBaseModel):
         :return: self
         """
         if self.parameters.characterPrompts:
+            limit = get_max_characters(self.model)
+            if len(self.parameters.characterPrompts) > limit:
+                raise ValueError(
+                    f"{self.model} takes at most {limit} characters, got {len(self.parameters.characterPrompts)}"
+                )
             self.parameters.use_coords = any([c.center != PositionMap.AUTO for c in self.parameters.characterPrompts])
 
             if get_supported_params(self.model).v4Prompts and self.parameters.v4_prompt is not None:
@@ -529,6 +560,8 @@ class GenerateImageInfer(ApiBaseModel):
         variety_boost: bool | None = None,
         furry_mode: bool | None = None,
         use_trial: bool = False,
+        transparent_background: bool | None = None,
+        character_references: list[CharacterReference] | None = None,
     ):
         """
         Quickly construct a parameter class that meets the requirements.
@@ -555,6 +588,8 @@ class GenerateImageInfer(ApiBaseModel):
         :param decrisp_mode: Reduce artifacts caused by high prompt guidance values.
         :param variety_boost: A new feature to improve the diversity of samples.
         :param furry_mode: Whether to use furry mode.
+        :param transparent_background: V5 only: transparent background, as the web client's "Transparent BG".
+        :param character_references: V4.5 only: Precise Reference images (character / style / costume...).
         :return:
         """
         # Get default parameters for the model
@@ -595,6 +630,11 @@ class GenerateImageInfer(ApiBaseModel):
             params.skip_cfg_above_sigma = get_supported_params(model).cfgDelaySigma if variety_boost else None
         if furry_mode is True:
             prompt = f"fur dataset, {prompt}"
+        if transparent_background is not None:
+            params.tag_hint_transparent_background = transparent_background
+        if character_references:
+            for key, value in CharacterReference.to_params(character_references).items():
+                setattr(params, key, value)
         return GenerateImageInfer(
             input=prompt, model=model, action=Action.GENERATE, parameters=params, use_new_shared_trial=use_trial
         )
@@ -872,6 +912,16 @@ class GenerateImageInfer(ApiBaseModel):
                             image=frame.get("image"),
                             message=frame.get("message"),
                         )
+                        if event.event_type == "error":
+                            # NovelAI fails mid-stream with HTTP 200 and an error frame, e.g.
+                            # {event_type: error, code: 500, message: "Error generating image..."}
+                            code = frame.get("code") or 500
+                            raise APIError(
+                                event.message or "Error event in the image stream",
+                                request=request_data,
+                                code=code,
+                                response=frame,
+                            )
                         if event.is_final:
                             finals += 1
                         yield event

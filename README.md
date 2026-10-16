@@ -138,6 +138,36 @@ print(trial.trialImagesLeft)
 print(get_default_limiter().status())  # {'limit': 2500, 'used': ..., 'remaining': ..., 'reset_at': ...}
 ```
 
+`sub.usage` is the Opus V5 usage bar: `percent`, `purchasedPercent` (bought extra, 0-300),
+`isNegative`, `timeUntilNextPercent`. `Priority().request(session)` returns the task priority balance;
+`CreatePersistentToken(overwrite=True).request(jwt_session)` creates a `pst-...` API key.
+
+#### 🖼️ Transparent background, character reference, vibes
+
+```python
+from novelai_python import CharacterReference, EncodeVibe, GenerateImageInfer
+from novelai_python.sdk.ai._enum import Model
+
+# V5: "Transparent BG" of the web client (tag before the quality suffix + straight alpha)
+gen = GenerateImageInfer.build_generate("1girl, standing", transparent_background=True)
+
+# V4.5: Precise Reference (character / style / costume / character&style / delta)
+gen = GenerateImageInfer.build_generate(
+    "1girl", model=Model.NAI_DIFFUSION_4_5_FULL,
+    character_references=[CharacterReference(image=open("ref.png", "rb").read(), fidelity=0.8)],
+)
+
+# V4 / V4.5 vibe transfer takes encoded vibes: encode once, reuse the result
+vibe = await EncodeVibe(image=open("vibe.png", "rb").read(), information_extracted=0.7).request(session)
+gen = GenerateImageInfer.build_generate(
+    "1girl", model=Model.NAI_DIFFUSION_4_5_FULL,
+    reference_image_multiple=[vibe.vibe_b64], reference_strength_multiple=[0.6],
+    reference_information_extracted_multiple=[0.7],
+)
+```
+
+V5 has no vibe transfer and no character reference; it takes up to 32 characters (V4/V4.5: 6).
+
 Environment:
 
 | variable | default | meaning |
@@ -194,6 +224,18 @@ async def chat(prompt: str):
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(chat("Hello"))
+```
+
+OpenAI-compatible text API (`text.novelai.net/oa/v1`), responses in OpenAI format:
+
+```python
+from novelai_python import OAIChatCompletion, OAIChatMessage, OAIModels
+
+models = await OAIModels().request(session)
+req = OAIChatCompletion(model=models.data[0].id, messages=[OAIChatMessage(role="user", content="Hello")])
+print((await req.request(session))["choices"][0]["message"]["content"])
+async for chunk in req.stream(session):
+    print(chunk["choices"][0]["delta"].get("content", ""), end="")
 ```
 
 #### 📦 Random Prompt

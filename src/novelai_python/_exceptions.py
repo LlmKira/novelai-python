@@ -44,10 +44,12 @@ class APIError(NovelAiError):
     """
 
     request: Any
-    code: str | None = None
-    response: dict[str, Any] | str = None
+    code: int | str | None = None
+    response: dict[str, Any] | str | None = None
 
-    def __init__(self, message: str, request: Any, response: dict[str, Any] | str, code: str | None) -> None:
+    def __init__(
+        self, message: str, request: Any, response: dict[str, Any] | str | None, code: int | str | None
+    ) -> None:
         super().__init__(message)
         self.request = request
         self.response = response

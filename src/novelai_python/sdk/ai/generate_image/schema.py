@@ -1,5 +1,8 @@
+import base64
 from enum import Enum
+from io import BytesIO
 
+from PIL import Image
 from pydantic import BaseModel, Field
 
 
@@ -123,3 +126,53 @@ class V4NegativePrompt(BaseModel):
             char_caption = CharCaption(char_caption=character_prompt.uc, centers=[character_prompt.center])
             caption.char_captions.append(char_caption)
         return cls(caption=caption, legacy_uc=legacy_uc)
+
+
+# Sizes the API accepts for character reference images (validDirectorSizes in the web client)
+DIRECTOR_SIZES: tuple[tuple[int, int], ...] = ((1024, 1536), (1536, 1024), (1472, 1472))
+
+
+class CharacterReference(BaseModel):
+    """One Precise Reference (character reference) entry, V4.5 only.
+
+    Defaults are the web client's for a newly added image.
+    """
+
+    image: str | bytes = Field(..., description="Reference image, raw bytes or base64")
+    description: str = Field(
+        "character&style", description='"character", "style", "costume", "character&style" or "delta"'
+    )
+    strength: float = Field(1.0, ge=0, le=1)
+    fidelity: float = Field(1.0, ge=0, le=1)
+    information_extracted: float = Field(1.0, ge=0, le=1)
+
+    def padded_image_b64(self) -> str:
+        """The image fitted onto opaque black at the director size closest to its aspect ratio, PNG base64."""
+        raw = base64.b64decode(self.image) if isinstance(self.image, str) else self.image
+        with Image.open(BytesIO(raw)) as src:
+            img = src.convert("RGB")
+        aspect = img.width / img.height
+        width, height = min(DIRECTOR_SIZES, key=lambda s: abs(s[0] / s[1] - aspect))
+        ratio = min(width / img.width, height / img.height)
+        img = img.resize(
+            (max(1, round(img.width * ratio)), max(1, round(img.height * ratio))), Image.Resampling.BICUBIC
+        )
+        canvas = Image.new("RGB", (width, height), (0, 0, 0))
+        canvas.paste(img, ((width - img.width) // 2, (height - img.height) // 2))
+        buf = BytesIO()
+        canvas.save(buf, format="PNG")
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
+
+    @staticmethod
+    def to_params(references: "list[CharacterReference]") -> dict:
+        """Request fields the web client builds from the references (applyCharacterReferenceFields)."""
+        return {
+            "director_reference_images": [r.padded_image_b64() for r in references],
+            "director_reference_descriptions": [
+                {"caption": {"base_caption": r.description, "char_captions": []}, "legacy_uc": False}
+                for r in references
+            ],
+            "director_reference_information_extracted": [r.information_extracted for r in references],
+            "director_reference_strength_values": [r.strength for r in references],
+            "director_reference_secondary_strength_values": [round(1 - r.fidelity, 4) for r in references],
+        }

@@ -3,8 +3,8 @@
 import asyncio
 import functools
 import random
-from collections.abc import Awaitable, Callable
-from typing import ParamSpec, TypeVar
+from collections.abc import Callable, Coroutine
+from typing import Any, ParamSpec, TypeVar
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -18,7 +18,7 @@ def _is_server_error(exc: BaseException) -> bool:
 
 def retry_on_server_error(
     attempts: int = 3, min_wait: float = 1.0, max_wait: float = 3.0
-) -> Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]:
+) -> Callable[[Callable[P, Coroutine[Any, Any, T]]], Callable[P, Coroutine[Any, Any, T]]]:
     """Retry an ``async def`` call up to ``attempts`` times while it raises an error with ``code == 500``.
 
     Only server errors are retried: transport errors are not, because the request may already
@@ -26,7 +26,7 @@ def retry_on_server_error(
     has already yielded data cannot be replayed safely.
     """
 
-    def decorator(fn: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[T]]:
+    def decorator(fn: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, Coroutine[Any, Any, T]]:
         @functools.wraps(fn)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             for attempt in range(1, attempts + 1):

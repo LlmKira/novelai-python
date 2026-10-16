@@ -2,12 +2,17 @@
 # @Author  : sudoskys
 # @File    : schema.py
 
+import json
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Coroutine
+from typing import Any, Literal, NoReturn
 
-from curl_cffi.requests import AsyncSession
+import curl_cffi
+from curl_cffi.requests import AsyncSession, Response
 from pydantic import BaseModel, PrivateAttr
 
+from .._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ..credential import CredentialBase
 from ..utils import try_jsonfy
 
@@ -15,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class ApiBaseModel(BaseModel, ABC):
-    _endpoint: str | None = PrivateAttr()
+    _endpoint: str = PrivateAttr("")
 
     @property
     @abstractmethod
@@ -24,7 +29,7 @@ class ApiBaseModel(BaseModel, ABC):
         return f"{self.endpoint.strip('/')}/need-to-override"
 
     @property
-    def endpoint(self):
+    def endpoint(self) -> str:
         return self._endpoint
 
     @endpoint.setter
@@ -76,6 +81,56 @@ class ApiBaseModel(BaseModel, ABC):
         logger.debug(f"Parsed error message: {error_message}")
         return error_message
 
+    async def _send(
+        self,
+        session: AsyncSession | CredentialBase,
+        method: Literal["GET", "POST"],
+        *,
+        json_body: dict | None = None,
+        override_headers: dict | None = None,
+    ) -> Response:
+        """Send one request to ``self.base_url`` and map HTTP errors to the SDK exceptions.
+
+        :return: the successful (2xx) response.
+        :raises AuthError: 400 / 401 / 402.
+        :raises ConcurrentGenerationError: 429.
+        :raises APIError: any other error status.
+        :raises SessionHttpError: transport error (SSL, timeout...).
+        """
+        request_data = json_body or {}
+        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+            if override_headers:
+                sess.headers.clear()
+                sess.headers.update(override_headers)
+            try:
+                response = await sess.request(method, self.base_url, json=json_body)
+            except curl_cffi.requests.errors.RequestsError as exc:
+                logger.exception(exc)
+                raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
+        if response.status_code >= 400:
+            self._raise_for_status(response.status_code, response.content, request_data)
+        return response
+
+    @staticmethod
+    def _raise_for_status(status_code: int, content: bytes, request_data: dict) -> NoReturn:
+        """Raise the SDK exception for an error response body (``{"statusCode", "message"}`` JSON or text)."""
+        try:
+            error_message = json.loads(content)
+            if not isinstance(error_message, dict):
+                raise ValueError
+        except ValueError:
+            error_message = {"statusCode": status_code, "message": content[:200].decode("utf-8", errors="replace")}
+        code = error_message.get("statusCode", status_code)
+        message = str(error_message.get("message", "Unknown error"))
+        if code in (400, 401, 402):
+            raise AuthError(message, request=request_data, code=code, response=error_message)
+        if code == 429:
+            raise ConcurrentGenerationError(message, request=request_data, code=code, response=error_message)
+        raise APIError(message, request=request_data, code=code, response=error_message)
+
     @abstractmethod
-    async def request(self, session: AsyncSession | CredentialBase, *, override_headers: dict | None = None):
+    def request(
+        self, session: AsyncSession | CredentialBase, *, override_headers: dict | None = None
+    ) -> Coroutine[Any, Any, Any]:
+        """Send the request; subclasses implement it as ``async def``."""
         raise NotImplementedError()

@@ -40,8 +40,11 @@ class SubscriptionUsage(BaseModel):
     bar is below zero every V5 generation costs Anlas until it refills."""
 
     percent: int = Field(0, description="Usage bar level, may exceed 100 after bonuses")
+    purchasedPercent: int = Field(0, description="Bought extra usage on top of the bar, 0-300 %")
     isNegative: bool = Field(False, description="Bar is below zero: V5 now costs Anlas")
-    timeUntilNextPercent: int | None = Field(None, description="Seconds per +1 %")
+    timeUntilNextPercent: int | None = Field(
+        None, description="Seconds per +1 %; 0 while the refill is paused above the cap"
+    )
 
     @property
     def refill_percent_per_day(self) -> float | None:

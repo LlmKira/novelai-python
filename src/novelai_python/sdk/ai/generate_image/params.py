@@ -128,6 +128,16 @@ class Params(BaseModel):
         default_factory=list, description="Reference Strength For Vibe Mode"
     )
     """Reference Strength For Vibe Mode"""
+    director_reference_images: list[str] | None = None
+    """Character reference (Precise Reference) images, base64, padded to a valid director size"""
+    director_reference_descriptions: list[dict] | None = None
+    """Character reference: ``{"caption": {"base_caption": "character&style", "char_captions": []}, "legacy_uc": False}``"""
+    director_reference_information_extracted: list[float] | None = None
+    """Character reference: 0-1"""
+    director_reference_strength_values: list[float] | None = None
+    """Character reference strength: 0-1"""
+    director_reference_secondary_strength_values: list[float] | None = None
+    """Character reference: 1 - fidelity"""
     extra_noise_seed: int | None = Field(None, gt=0, le=4294967295 - 7)
     """Extra Noise Seed"""
     color_correct: bool | None = None
@@ -183,8 +193,9 @@ class Params(BaseModel):
 
     @model_validator(mode="after")
     def v_character(self):
-        if len(self.characterPrompts) > 6:
-            raise ValueError("Too many character given")
+        # per-model limit (6 on V4/V4.5, 32 on V5) is checked by GenerateImageInfer, which knows the model
+        if len(self.characterPrompts) > 32:
+            raise ValueError("Too many characters given (max 32)")
         return self
 
     @field_validator("uncond_scale")

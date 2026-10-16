@@ -279,6 +279,23 @@ class SupportCondition:
     img2imgInpainting: bool
 
 
+def supports_character_reference(model: ModelTypeAlias) -> bool:
+    """Precise Reference (director_reference_*): V4.5 only in the web client (characterReferences flag)."""
+    return model in (
+        Model.NAI_DIFFUSION_4_5_FULL,
+        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
+        Model.NAI_DIFFUSION_4_5_CURATED,
+        Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+    )
+
+
+def get_max_characters(model: ModelTypeAlias) -> int:
+    """Character prompts the model takes (web client maxCharacters: V5 32, V4/V4.5 6, older 0)."""
+    if is_v5_model(model):
+        return 32
+    return 6 if get_supported_params(model).characterPrompts else 0
+
+
 def get_supported_params(model: ModelTypeAlias):
     """
     Get supported parameters for a given model
@@ -447,9 +464,10 @@ def get_supported_params(model: ModelTypeAlias):
         Model.NAI_DIFFUSION_4_5_FULL,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
     ]:
+        # vibe transfer with encoded vibes: on in the web client (2026-10 bundle), it was off at the V4.5 launch
         return SupportCondition(
             controlnet=False,
-            vibetransfer=False,
+            vibetransfer=True,
             scaleMax=10,
             negativePromptGuidance=True,
             noiseSchedule=True,
@@ -466,7 +484,7 @@ def get_supported_params(model: ModelTypeAlias):
             scaleRecommendedMin=0,
             scaleRecommendedMax=None,
             numericEmphasis=True,
-            encodedVibes=False,
+            encodedVibes=True,
             cfgDelaySigma=58,
             enhancePromptAdd=True,
             hasFurryMode=True,
