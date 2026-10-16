@@ -1,20 +1,19 @@
 import gzip
 import io
 import json
+import os
 import pathlib
 import zlib
-from typing import Dict, List, Optional
 
-import os
 from curl_cffi import requests as curl_requests
 from json_repair import repair_json
 from loguru import logger
 from pydantic import BaseModel, model_validator
-from tokenizers import Tokenizer, pre_tokenizers, Regex, decoders
+from tokenizers import Regex, Tokenizer, decoders, pre_tokenizers
 from tokenizers.models import BPE
 
-from .clip_simple_tokenizer import SimpleTokenizer
 from ..credential._base import DEFAULT_USER_AGENT
+from .clip_simple_tokenizer import SimpleTokenizer
 
 
 def download_file(url, destination_path, session):
@@ -34,7 +33,7 @@ def download_file(url, destination_path, session):
             "User-Agent": DEFAULT_USER_AGENT,
             "Accept-Encoding": "gzip, deflate, br",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        }
+        },
     )
     response.raise_for_status()
     with open(destination_path, "wb") as f:
@@ -52,13 +51,13 @@ class ClipTokenizerSetting(TokenizerSetting):
 class LLMTokenizerSetting(TokenizerSetting):
     class TokenizerConfig(BaseModel):
         splitRegex: str
-        maxEncodeChars: Optional[int] = None
-        maxNoWhitespaceChars: Optional[int] = None
-        ignoreMerges: Optional[bool] = False
+        maxEncodeChars: int | None = None
+        maxNoWhitespaceChars: int | None = None
+        ignoreMerges: bool | None = False
 
     config: TokenizerConfig
-    specialTokens: List[str]
-    vocab: Dict[str, int]
+    specialTokens: list[str]
+    vocab: dict[str, int]
     merges: list
 
     @model_validator(mode="after")
@@ -76,11 +75,12 @@ def is_t5_model(model_name: str) -> bool:
 
 
 class NaiTokenizer:
-    def __init__(self,
-                 model: str,
-                 tokenizer_model_path: Optional[pathlib.Path] = None,
-                 download_session: Optional[curl_requests.Session] = None,
-                 ):
+    def __init__(
+        self,
+        model: str,
+        tokenizer_model_path: pathlib.Path | None = None,
+        download_session: curl_requests.Session | None = None,
+    ):
         if not model.endswith(".def"):
             model = f"{model}.def"
         self.model_full_name = model
@@ -88,10 +88,10 @@ class NaiTokenizer:
         self.tokenizer = None
         if download_session is None:
             # Only an explicit proxy (NOVELAI_PROXY), never the environment's system proxy.
-            _px = os.environ.get("NOVELAI_PROXY")
+            px = os.environ.get("NOVELAI_PROXY")
             download_session = curl_requests.Session(
-                impersonate="chrome", trust_env=False,
-                proxies={"http": _px, "https": _px} if _px else None)
+                impersonate="chrome", trust_env=False, proxies={"http": px, "https": px} if px else None
+            )
         self._download_session = download_session
         if tokenizer_model_path is None:
             tokenizer_model_path = pathlib.Path(__file__).parent
@@ -114,18 +114,18 @@ class NaiTokenizer:
         """
         try:
             decompress_obj = zlib.decompressobj(-zlib.MAX_WBITS)
-            return decompress_obj.decompress(file_data).decode('utf-8')
+            return decompress_obj.decompress(file_data).decode("utf-8")
         except Exception as e:
             logger.debug(f"Error decompressing with raw deflate: {e}, trying gzip next.")
 
         try:
             with gzip.GzipFile(fileobj=io.BytesIO(file_data)) as gzip_file:
-                return gzip_file.read().decode('utf-8')
+                return gzip_file.read().decode("utf-8")
         except Exception as e:
             logger.debug(f"Error decompressing with gzip: {e}, trying zlib next.")
 
         try:
-            return zlib.decompress(file_data).decode('utf-8')
+            return zlib.decompress(file_data).decode("utf-8")
         except Exception as e:
             logger.debug(f"Error decompressing with zlib: {e}, trying raw deflate next.")
 
@@ -147,9 +147,20 @@ class NaiTokenizer:
                 logger.info(f"Tokenizer {self.model_full_name} downloaded.")
         except Exception as e:
             model_path.unlink(missing_ok=True)
-            raise LookupError(f"Failed to download model {self.model_full_name} from {url}: {e}")
-        model_bytes = model_path.read_bytes()
-        decoded_str = self._read_compressed_def(model_bytes)
+            raise LookupError(f"Failed to download model {self.model_full_name} from {url}: {e}") from e
+        try:
+            decoded_str = self._read_compressed_def(model_path.read_bytes())
+        except RuntimeError:
+            # A cached file can be truncated or stored in the wrong encoding:
+            # fetch it again once instead of failing for good.
+            logger.warning(f"Tokenizer {self.model_full_name} is corrupt, downloading it again.")
+            model_path.unlink(missing_ok=True)
+            try:
+                download_file(url, model_path, self._download_session)
+            except Exception as e:
+                model_path.unlink(missing_ok=True)
+                raise LookupError(f"Failed to download model {self.model_full_name} from {url}: {e}") from e
+            decoded_str = self._read_compressed_def(model_path.read_bytes())
         repaired_data = repair_json(decoded_str, return_objects=True)
         try:
             if is_clip_model(self.model_full_name):
@@ -161,8 +172,8 @@ class NaiTokenizer:
         except Exception as e:
             raise ValueError(
                 f"Failed to load tokenizer settings: {e} for {model_path}",
-                "report this issue to https://github.com/LlmKira/novelai-python/issues"
-            )
+                "report this issue to https://github.com/LlmKira/novelai-python/issues",
+            ) from e
 
     def _create_tokenizer(self):
         if is_clip_model(self.model_full_name):
@@ -180,31 +191,26 @@ class NaiTokenizer:
 
     def _create_bpe_tokenizer(self):
         setting = self.tokenizer_setting
-        self.tokenizer = Tokenizer(BPE(
-            vocab=setting.vocab,
-            merges=setting.merges,
-            ignore_merges=setting.config.ignoreMerges
-        ))
+        self.tokenizer = Tokenizer(
+            BPE(vocab=setting.vocab, merges=setting.merges, ignore_merges=setting.config.ignoreMerges)
+        )
 
         self.tokenizer.add_special_tokens(setting.specialTokens)
         if setting.config.maxEncodeChars:
             self.tokenizer.enable_truncation(max_length=setting.config.maxEncodeChars)
 
         pre_zus = [
-            pre_tokenizers.Split(
-                behavior="merged_with_next",
-                pattern=Regex(setting.config.splitRegex)
-            ),
+            pre_tokenizers.Split(behavior="merged_with_next", pattern=Regex(setting.config.splitRegex)),
         ]
 
         if self.tokenizer.token_to_id(" ") is None:
             pre_zus.append(pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=False))
 
         pre_tokenizer = pre_tokenizers.Sequence(pre_zus)
-        self.tokenizer.pre_tokenizer = pre_tokenizer  # noqa
-        self.tokenizer.decoder = decoders.ByteLevel()  # noqa
+        self.tokenizer.pre_tokenizer = pre_tokenizer
+        self.tokenizer.decoder = decoders.ByteLevel()
 
-    def tokenize_text(self, text: str) -> List[int]:
+    def tokenize_text(self, text: str) -> list[int]:
         if isinstance(self.tokenizer, Tokenizer):
             return [
                 token.replace("Ġ", " ")  # .replace("Ċ", " ").replace("ċ", " ")
@@ -221,14 +227,14 @@ class NaiTokenizer:
             return len(self.tokenizer.get_vocab())
         raise NotImplementedError("Tokenizer does not support token encoding")
 
-    def encode(self, sentence: str) -> List[int]:
+    def encode(self, sentence: str) -> list[int]:
         if isinstance(self.tokenizer, SimpleTokenizer):
             return self.tokenizer.encode(sentence).ids
         if isinstance(self.tokenizer, Tokenizer):
             return self.tokenizer.encode(sentence, add_special_tokens=True).ids
         raise NotImplementedError("Tokenizer does not support token encoding")
 
-    def decode(self, token_ids: List[int]) -> str:
+    def decode(self, token_ids: list[int]) -> str:
         if isinstance(self.tokenizer, SimpleTokenizer):
             return self.tokenizer.decode(token_ids)
         if isinstance(self.tokenizer, Tokenizer):

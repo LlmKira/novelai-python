@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/2/10 上午11:15
 # @Author  : sudoskys
 # @File    : schema.py
 
 from abc import ABC, abstractmethod
-from typing import Optional, Union
 
 from curl_cffi.requests import AsyncSession
 from loguru import logger
@@ -15,7 +13,7 @@ from ..utils import try_jsonfy
 
 
 class ApiBaseModel(BaseModel, ABC):
-    _endpoint: Optional[str] = PrivateAttr()
+    _endpoint: str | None = PrivateAttr()
 
     @property
     @abstractmethod
@@ -42,11 +40,11 @@ class ApiBaseModel(BaseModel, ABC):
             raise AttributeError("SESSION_MUST_HAVE_GET_METHOD")
 
     async def handle_error_response(
-            self,
-            response,
-            request_data: dict,
-            content_hint: str = "Response content too long",
-            max_content_length: int = 50
+        self,
+        response,
+        request_data: dict,
+        content_hint: str = "Response content too long",
+        max_content_length: int = 50,
     ) -> dict:
         """
         Common method to handle error response
@@ -70,18 +68,12 @@ class ApiBaseModel(BaseModel, ABC):
             logger.warning(f"Failed to parse error response: {e}")
             error_message = {
                 "statusCode": response.status_code,
-                "message": try_jsonfy(response.content)
-                if len(response.content) < max_content_length
-                else content_hint,
+                "message": try_jsonfy(response.content) if len(response.content) < max_content_length else content_hint,
             }
         # 日志记录解析出的错误消息
         logger.trace(f"Parsed error message: {error_message}")
         return error_message
 
     @abstractmethod
-    async def request(self,
-                      session: Union[AsyncSession, CredentialBase],
-                      *,
-                      override_headers: Optional[dict] = None
-                      ):
+    async def request(self, session: AsyncSession | CredentialBase, *, override_headers: dict | None = None):
         raise NotImplementedError()

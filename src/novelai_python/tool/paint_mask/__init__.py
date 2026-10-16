@@ -3,11 +3,11 @@ import numpy as np
 
 
 def create_mask_from_sketch(
-        original_img_bytes: bytes,
-        sketch_img_bytes: bytes,
-        min_block_size: int = 15,
-        jagged_edges: bool = True,
-        output_format: str = '.png'
+    original_img_bytes: bytes,
+    sketch_img_bytes: bytes,
+    min_block_size: int = 15,
+    jagged_edges: bool = True,
+    output_format: str = ".png",
 ) -> bytes:
     """
     Function to create a mask from original and sketch images input as bytes. Returns BytesIO object.
@@ -38,11 +38,8 @@ def create_mask_from_sketch(
     _, thresh = cv.threshold(diff_gray, 10, 255, cv.THRESH_BINARY)
 
     # Create bigger kernel for morphological operations
-    if jagged_edges:
-        # Use a bigger kernel for dilation to create larger 'step' effect at the edges
-        kernel = np.ones((7, 7), np.uint8)
-    else:
-        kernel = np.ones((3, 3), np.uint8)
+    # a bigger kernel gives a larger 'step' effect at the edges
+    kernel = np.ones((7, 7), np.uint8) if jagged_edges else np.ones((3, 3), np.uint8)
 
     # Perform morphological opening to remove small noise
     opening = cv.morphologyEx(thresh, cv.MORPH_OPEN, kernel, iterations=2)
@@ -58,8 +55,11 @@ def create_mask_from_sketch(
 
     if min_block_size > 1:
         # Resize to smaller image, then resize back to original size to create a pixelated effect
-        small = cv.resize(smooth, (smooth.shape[1] // min_block_size, smooth.shape[0] // min_block_size),
-                          interpolation=cv.INTER_LINEAR)
+        small = cv.resize(
+            smooth,
+            (smooth.shape[1] // min_block_size, smooth.shape[0] // min_block_size),
+            interpolation=cv.INTER_LINEAR,
+        )
         smooth = cv.resize(small, (smooth.shape[1], smooth.shape[0]), interpolation=cv.INTER_NEAREST)
 
     if jagged_edges:

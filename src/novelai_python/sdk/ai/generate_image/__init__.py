@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # @Author  : sudoskys
 # @File    : __init__.py
 
@@ -7,35 +6,58 @@ import math
 import random
 import re
 import string
+from collections.abc import AsyncIterator
 from copy import deepcopy
 from enum import Enum
 from io import BytesIO
-from typing import Optional, Union, List, Tuple, AsyncIterator
-from zipfile import ZipFile, BadZipFile
+from typing import Union, override
+from zipfile import BadZipFile, ZipFile
 
 import curl_cffi
 import msgpack
 from curl_cffi.requests import AsyncSession
 from loguru import logger
-from pydantic import ConfigDict, PrivateAttr, model_validator, Field
-from tenacity import retry, stop_after_attempt, wait_random, retry_if_exception
-from typing_extensions import override
+from pydantic import ConfigDict, Field, PrivateAttr, model_validator
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random
 
 from novelai_python.sdk.ai._cost import CostCalculator
-from novelai_python.sdk.ai._enum import Model, Sampler, NoiseSchedule, Action, UCPreset, \
-    INPAINTING_MODEL_LIST, get_default_uc_preset, get_uc_preset_id, is_v5_model, QualityPreset, ImageFormat, \
-    V5_MEDIUM_MODEL_LIST, get_quality_suffix, \
-    ModelTypeAlias, UCPresetTypeAlias, get_default_noise_schedule, get_supported_noise_schedule, \
-    get_model_group, ModelGroups, get_supported_params, get_modifiers
-from .params import Params, get_default_params
-from .schema import Character, V4Prompt, V4NegativePrompt, PositionMap
-from .suggest_tags import SuggestTags
-from ...schema import ApiBaseModel
-from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError, DataSerializationError
-from ...._response.ai.generate_image import ImageGenerateResp, RequestParams, ImageStreamEvent
+from novelai_python.sdk.ai._enum import (
+    INPAINTING_MODEL_LIST,
+    V5_MEDIUM_MODEL_LIST,
+    Action,
+    ImageFormat,
+    Model,
+    ModelGroups,
+    ModelTypeAlias,
+    NoiseSchedule,
+    QualityPreset,
+    Sampler,
+    UCPresetTypeAlias,
+    get_default_noise_schedule,
+    get_default_uc_preset,
+    get_model_group,
+    get_quality_suffix,
+    get_supported_noise_schedule,
+    get_supported_params,
+    get_uc_preset_id,
+    is_v5_model,
+)
+from novelai_python.sdk.ai._enum import (
+    UCPreset as UCPreset,  # re-export
+)
+from novelai_python.sdk.ai._enum import (
+    get_modifiers as get_modifiers,
+)
+
+from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, DataSerializationError, SessionHttpError
+from ...._response.ai.generate_image import ImageGenerateResp, ImageStreamEvent, RequestParams
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
 from ....utils.daily_limit import DailyImageLimiter, get_default_limiter
+from ...schema import ApiBaseModel
+from .params import Params, get_default_params
+from .schema import Character, PositionMap, V4NegativePrompt, V4Prompt
+from .suggest_tags import SuggestTags as SuggestTags  # re-export
 
 ZIP_CONTENT_TYPES = (
     "binary/octet-stream",
@@ -46,7 +68,7 @@ ZIP_CONTENT_TYPES = (
 IMAGE_CONTENT_TYPES = ("image/webp", "image/png", "image/jpeg")
 
 
-def _sniff_image_extension(data: bytes) -> Optional[str]:
+def _sniff_image_extension(data: bytes) -> str | None:
     """Return the file extension when ``data`` is a bare image rather than a zip."""
     if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
         return "webp"
@@ -57,7 +79,7 @@ def _sniff_image_extension(data: bytes) -> Optional[str]:
     return None
 
 
-def build_multipart_request(request_json: bytes) -> Tuple[bytes, str]:
+def build_multipart_request(request_json: bytes) -> tuple[bytes, str]:
     """
     Wrap the request JSON the way the web client does for params_version >= 4:
     a single multipart/form-data part named ``request`` with filename ``blob``.
@@ -65,10 +87,14 @@ def build_multipart_request(request_json: bytes) -> Tuple[bytes, str]:
     """
     boundary = "----WebKitFormBoundary" + "".join(random.choices(string.ascii_letters + string.digits, k=16))
     body = (
+        (
             f"--{boundary}\r\n"
             f'Content-Disposition: form-data; name="request"; filename="blob"\r\n'
             f"Content-Type: application/json\r\n\r\n"
-    ).encode("utf-8") + request_json + f"\r\n--{boundary}--\r\n".encode("utf-8")
+        ).encode()
+        + request_json
+        + f"\r\n--{boundary}--\r\n".encode()
+    )
     return body, f"multipart/form-data; boundary={boundary}"
 
 
@@ -101,10 +127,10 @@ class GenerateImageInfer(ApiBaseModel):
 
     input: str = "1girl"
     model: ModelTypeAlias = Model.NAI_DIFFUSION_5_FULL
-    action: Union[str, Action] = Field(Action.GENERATE, description="Mode for img generate")
-    parameters: Union[Params]
+    action: str | Action = Field(Action.GENERATE, description="Mode for img generate")
+    parameters: Params
     use_new_shared_trial: bool = False
-    recaptcha_token: Optional[str] = None
+    recaptcha_token: str | None = None
     """
     reCAPTCHA Enterprise token the web client attaches to free-trial generations.
     Not produced by this library; pass one through only if you already hold it.
@@ -150,7 +176,7 @@ class GenerateImageInfer(ApiBaseModel):
         def enhance_text_part(_part, _quality_tags, _suffix):
             text_parts = _part.split(" Text:")
             enhanced_text_parts = [
-                _quality_tags + text_part + _suffix + ('.' if _suffix and len(text_parts) > 1 else '')
+                _quality_tags + text_part + _suffix + ("." if _suffix and len(text_parts) > 1 else "")
                 if index == 0
                 else text_part
                 for index, text_part in enumerate(text_parts)
@@ -160,7 +186,7 @@ class GenerateImageInfer(ApiBaseModel):
         def enhance_simple_part(_part, _quality_tags, _suffix):
             match = re.search(r"(:[\d.]+$)", _part)
             matched_value = match.group(0) if match else None
-            core_part = _part[:-len(matched_value)] if matched_value else _part
+            core_part = _part[: -len(matched_value)] if matched_value else _part
             return _quality_tags + core_part + _suffix + (matched_value or "")
 
         def enhance_message(_prompt):
@@ -178,10 +204,7 @@ class GenerateImageInfer(ApiBaseModel):
                     return "|".join(enhanced_parts)
                 else:
                     parts = _prompt.split("|")
-                    enhanced_parts = [
-                        enhance_simple_part(part, quality_tags, suffix)
-                        for part in parts
-                    ]
+                    enhanced_parts = [enhance_simple_part(part, quality_tags, suffix) for part in parts]
                     return "|".join(enhanced_parts)
             except Exception as e:
                 logger.error(
@@ -206,12 +229,12 @@ class GenerateImageInfer(ApiBaseModel):
                 if key in uc_prompt:
                     uc_prompt.pop(key)
             self.parameters.negative_prompt = ",".join(uc_prompt.values()).strip()
-            
+
         # Instantly remove nsfw if input contains it
         elif "nsfw" in self.input and "nsfw" in self.parameters.negative_prompt:
             uc_prompt = {x.strip(): x for x in self.parameters.negative_prompt.split(",")}
             uc_prompt.pop("nsfw", None)
-            
+
             self.parameters.negative_prompt = ",".join(uc_prompt.values()).strip()
 
     @model_validator(mode="after")
@@ -236,7 +259,9 @@ class GenerateImageInfer(ApiBaseModel):
                 uc_preset = uc_preset.value
             self.parameters.ucPresetId = get_uc_preset_id(self.model, uc_preset)
         if self.parameters.qualityPresetId is None:
-            self.parameters.qualityPresetId = QualityPreset.STANDARD if self.parameters.qualityToggle else QualityPreset.NONE
+            self.parameters.qualityPresetId = (
+                QualityPreset.STANDARD if self.parameters.qualityToggle else QualityPreset.NONE
+            )
         if is_v5_model(self.model) and self.parameters.image_format is None:
             self.parameters.image_format = ImageFormat.WEBP
         return self
@@ -253,25 +278,23 @@ class GenerateImageInfer(ApiBaseModel):
             if self.parameters.v4_prompt is None:
                 # Remove furry tag from base caption
                 base_caption = self.input
-                if get_supported_params(self.model).hasFurryMode:
-                    if base_caption.startswith("fur dataset, "):
-                        base_caption = base_caption.replace("fur dataset, ", "")
+                if get_supported_params(self.model).hasFurryMode and base_caption.startswith("fur dataset, "):
+                    base_caption = base_caption.replace("fur dataset, ", "")
                 self.parameters.v4_prompt = V4Prompt.build_from_character_prompts(
-                    base_caption=base_caption,
-                    character_prompts=self.parameters.characterPrompts
+                    base_caption=base_caption, character_prompts=self.parameters.characterPrompts
                 )
             if self.parameters.v4_negative_prompt is None:
                 self.parameters.v4_negative_prompt = V4NegativePrompt.build_from_character_prompts(
                     negative_prompt=self.parameters.negative_prompt,
                     character_prompts=self.parameters.characterPrompts,
-                    legacy_uc=self.parameters.legacy_uc
+                    legacy_uc=self.parameters.legacy_uc,
                 )
         if not get_supported_params(self.model).vibetransfer:
             if self.parameters.reference_image_multiple:
                 logger.warning("Vibe transfer is not supported for this model.")
-            self.parameters.reference_image_multiple = None # Auto exclude None values
-            self.parameters.reference_information_extracted_multiple = None # Auto exclude None values
-            self.parameters.reference_strength_multiple = None # Auto exclude None values
+            self.parameters.reference_image_multiple = None  # Auto exclude None values
+            self.parameters.reference_information_extracted_multiple = None  # Auto exclude None values
+            self.parameters.reference_strength_multiple = None  # Auto exclude None values
 
         if not get_supported_params(self.model).controlnet:
             if self.parameters.controlnet_condition is not None:
@@ -292,11 +315,11 @@ class GenerateImageInfer(ApiBaseModel):
         """
         if self.parameters.characterPrompts:
             self.parameters.use_coords = any([c.center != PositionMap.AUTO for c in self.parameters.characterPrompts])
-            
+
             if get_supported_params(self.model).v4Prompts and self.parameters.v4_prompt is not None:
                 self.parameters.v4_prompt.use_coords = self.parameters.use_coords
         # Mix Prompt Warning
-        if self.input.count('|') > 6:
+        if self.input.count("|") > 6:
             logger.warning("Maximum prompt mixes exceeded. Extra will be ignored.")
 
         # Remove the image if the model does not support it
@@ -321,10 +344,7 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.sm_dyn = False
 
         # DDIM DON'T SUPPORT sm and sm_dyn
-        if self.parameters.sampler in [
-            Sampler.DDIM,
-            Sampler.DDIM_V3
-        ]:
+        if self.parameters.sampler in [Sampler.DDIM, Sampler.DDIM_V3]:
             if self.parameters.sm_dyn or self.parameters.sm:
                 logger.warning("sm and sm_dyn is disabled when using ddim sampler.")
             self.parameters.sm = False
@@ -369,11 +389,14 @@ class GenerateImageInfer(ApiBaseModel):
             Sampler.NAI_SMEA,
             Sampler.NAI_SMEA_DYN,
             Sampler.DDIM_V3,
-            Sampler.K_DPM_FAST
+            Sampler.K_DPM_FAST,
         ]:
             self.parameters.noise_schedule = None
 
-        if self.parameters.sampler == Sampler.K_EULER_ANCESTRAL and self.parameters.noise_schedule != NoiseSchedule.NATIVE:
+        if (
+            self.parameters.sampler == Sampler.K_EULER_ANCESTRAL
+            and self.parameters.noise_schedule != NoiseSchedule.NATIVE
+        ):
             self.parameters.deliberate_euler_ancestral_bug = False
             self.parameters.prefer_brownian = True
 
@@ -381,7 +404,7 @@ class GenerateImageInfer(ApiBaseModel):
             scale_divisor, weight = (1, 3) if self.model == Model.DALLE_MINI else (8, 4)
             dimensions_scaled = [
                 math.floor(self.parameters.width) / scale_divisor,
-                math.floor(self.parameters.height) / scale_divisor
+                math.floor(self.parameters.height) / scale_divisor,
             ]
             # 初始化参考值 reference_value，用于标准化计算动态系数
             reference_value = 4 * math.floor(104) * math.floor(152)
@@ -424,9 +447,8 @@ class GenerateImageInfer(ApiBaseModel):
                 raise ValueError(f"You must use {INPAINTING_MODEL_LIST}")
             if not self.parameters.mask:
                 logger.warning("Mask maybe required for infill mode!")
-        if self.action == Action.IMG2IMG:
-            if self.parameters.extra_noise_seed is None:
-                self.parameters.extra_noise_seed = self.parameters.seed
+        if self.action == Action.IMG2IMG and self.parameters.extra_noise_seed is None:
+            self.parameters.extra_noise_seed = self.parameters.seed
         if self.action == Action.IMG2IMG:
             if self.parameters.sm_dyn is True:
                 logger.warning("sm_dyn be disabled when sm in Img2Img mode.")
@@ -440,7 +462,11 @@ class GenerateImageInfer(ApiBaseModel):
         if self.action == Action.IMG2IMG:
             self.parameters.color_correct = True
 
-        if get_supported_params(self.model).img2imgInpainting and self.parameters.mask and self.parameters.inpaintImg2ImgStrength != 1:
+        if (
+            get_supported_params(self.model).img2imgInpainting
+            and self.parameters.mask
+            and self.parameters.inpaintImg2ImgStrength != 1
+        ):
             self.parameters.color_correct = True
 
         return self
@@ -476,31 +502,31 @@ class GenerateImageInfer(ApiBaseModel):
                 is_account_active=True,
             )
         except Exception as e:
-            raise ValueError(f"Failed to calculate cost") from e
+            raise ValueError("Failed to calculate cost") from e
 
     @staticmethod
     def build_generate(
-            prompt: str,
-            *,
-            model: Union[Model, str] = Model.NAI_DIFFUSION_5_FULL,
-            negative_prompt: str = None,
-            ucPreset: UCPresetTypeAlias = None,
-            sm: bool = None,
-            steps: int = None,
-            seed: int = None,
-            sampler: Union[Sampler, str] = None,
-            width: int = None,
-            height: int = None,
-            add_original_image: bool = None,
-            character_prompts: List[Character] = None,
-            reference_image_multiple: List[Union[str, bytes]] = None,
-            reference_strength_multiple: List[float] = None,
-            reference_information_extracted_multiple: List[float] = None,
-            qualityToggle: bool = None,
-            decrisp_mode: bool = None,
-            variety_boost: bool = None,
-            furry_mode: bool = None,
-            use_trial: bool = False
+        prompt: str,
+        *,
+        model: Model | str = Model.NAI_DIFFUSION_5_FULL,
+        negative_prompt: str | None = None,
+        ucPreset: UCPresetTypeAlias = None,
+        sm: bool | None = None,
+        steps: int | None = None,
+        seed: int | None = None,
+        sampler: Sampler | str = None,
+        width: int | None = None,
+        height: int | None = None,
+        add_original_image: bool | None = None,
+        character_prompts: list[Character] | None = None,
+        reference_image_multiple: list[str | bytes] | None = None,
+        reference_strength_multiple: list[float] | None = None,
+        reference_information_extracted_multiple: list[float] | None = None,
+        qualityToggle: bool | None = None,
+        decrisp_mode: bool | None = None,
+        variety_boost: bool | None = None,
+        furry_mode: bool | None = None,
+        use_trial: bool = False,
     ):
         """
         Quickly construct a parameter class that meets the requirements.
@@ -568,38 +594,34 @@ class GenerateImageInfer(ApiBaseModel):
         if furry_mode is True:
             prompt = f"fur dataset, {prompt}"
         return GenerateImageInfer(
-            input=prompt,
-            model=model,
-            action=Action.GENERATE,
-            parameters=params,
-            use_new_shared_trial=use_trial
+            input=prompt, model=model, action=Action.GENERATE, parameters=params, use_new_shared_trial=use_trial
         )
 
     @staticmethod
     def build_img2img(
-            prompt: str,
-            *,
-            model: Union[Model, str] = Model.NAI_DIFFUSION_4_5_FULL,
-            image: Union[bytes, str],
-            strength: float = None,
-            noise: float = None,
-            seed: int = None,
-            extra_noise_seed: int = None,
-            negative_prompt: str = None,
-            ucPreset: UCPresetTypeAlias = None,
-            steps: int = None,
-            sampler: Union[Sampler, str] = None,
-            width: int = None,
-            height: int = None,
-            add_original_image: bool = None,
-            character_prompts: List[Character] = None,
-            reference_image_multiple: List[Union[str, bytes]] = None,
-            reference_strength_multiple: List[float] = None,
-            reference_information_extracted_multiple: List[float] = None,
-            qualityToggle: bool = None,
-            decrisp_mode: bool = None,
-            variety_boost: bool = None,
-            use_trial: bool = True
+        prompt: str,
+        *,
+        model: Model | str = Model.NAI_DIFFUSION_4_5_FULL,
+        image: bytes | str,
+        strength: float | None = None,
+        noise: float | None = None,
+        seed: int | None = None,
+        extra_noise_seed: int | None = None,
+        negative_prompt: str | None = None,
+        ucPreset: UCPresetTypeAlias = None,
+        steps: int | None = None,
+        sampler: Sampler | str = None,
+        width: int | None = None,
+        height: int | None = None,
+        add_original_image: bool | None = None,
+        character_prompts: list[Character] | None = None,
+        reference_image_multiple: list[str | bytes] | None = None,
+        reference_strength_multiple: list[float] | None = None,
+        reference_information_extracted_multiple: list[float] | None = None,
+        qualityToggle: bool | None = None,
+        decrisp_mode: bool | None = None,
+        variety_boost: bool | None = None,
+        use_trial: bool = True,
     ):
         """
         Quickly construct a parameter class that meets the requirements.
@@ -673,36 +695,32 @@ class GenerateImageInfer(ApiBaseModel):
             params.skip_cfg_above_sigma = 19 if variety_boost else None
 
         return GenerateImageInfer(
-            input=prompt,
-            model=model,
-            action=Action.IMG2IMG,
-            parameters=params,
-            use_new_shared_trial=use_trial
+            input=prompt, model=model, action=Action.IMG2IMG, parameters=params, use_new_shared_trial=use_trial
         )
 
     @staticmethod
     def build_infill(
-            prompt: str,
-            *,
-            model: Union[Model, str],
-            image: Union[bytes, str],
-            mask: Union[bytes, str],
-            strength: float = None,
-            negative_prompt: str = None,
-            ucPreset: UCPresetTypeAlias = None,
-            steps: int = None,
-            seed: int = None,
-            sampler: Union[Sampler, str] = None,
-            width: int = None,
-            height: int = None,
-            add_original_image: bool = None,
-            character_prompts: List[Character] = None,
-            reference_image_multiple: List[Union[str, bytes]] = None,
-            reference_strength_multiple: List[float] = None,
-            reference_information_extracted_multiple: List[float] = None,
-            qualityToggle: bool = None,
-            decrisp_mode: bool = None,
-            variety_boost: bool = None,
+        prompt: str,
+        *,
+        model: Model | str,
+        image: bytes | str,
+        mask: bytes | str,
+        strength: float | None = None,
+        negative_prompt: str | None = None,
+        ucPreset: UCPresetTypeAlias = None,
+        steps: int | None = None,
+        seed: int | None = None,
+        sampler: Sampler | str = None,
+        width: int | None = None,
+        height: int | None = None,
+        add_original_image: bool | None = None,
+        character_prompts: list[Character] | None = None,
+        reference_image_multiple: list[str | bytes] | None = None,
+        reference_strength_multiple: list[float] | None = None,
+        reference_information_extracted_multiple: list[float] | None = None,
+        qualityToggle: bool | None = None,
+        decrisp_mode: bool | None = None,
+        variety_boost: bool | None = None,
     ):
         """
         Quickly construct a parameter class that meets the requirements.
@@ -771,12 +789,7 @@ class GenerateImageInfer(ApiBaseModel):
         if variety_boost is not None:
             params.skip_cfg_above_sigma = get_supported_params(model).cfgDelaySigma if variety_boost else None
 
-        return GenerateImageInfer(
-            input=prompt,
-            model=model,
-            action=Action.INFILL,
-            parameters=params
-        )
+        return GenerateImageInfer(input=prompt, model=model, action=Action.INFILL, parameters=params)
 
     @staticmethod
     def _iter_msgpack_frames(buffer: bytearray):
@@ -785,16 +798,16 @@ class GenerateImageInfer(ApiBaseModel):
             length = int.from_bytes(buffer[:4], "big")
             if len(buffer) < 4 + length:
                 return
-            frame = bytes(buffer[4:4 + length])
-            del buffer[:4 + length]
+            frame = bytes(buffer[4 : 4 + length])
+            del buffer[: 4 + length]
             yield msgpack.unpackb(frame, raw=False)
 
     async def request_stream(
-            self,
-            session: Union[AsyncSession, "CredentialBase"],
-            *,
-            override_headers: Optional[dict] = None,
-            limiter: Union[DailyImageLimiter, bool, None] = True,
+        self,
+        session: Union[AsyncSession, "CredentialBase"],
+        *,
+        override_headers: dict | None = None,
+        limiter: DailyImageLimiter | bool | None = True,
     ) -> AsyncIterator[ImageStreamEvent]:
         """
         **Stream a generation**: intermediate previews and the final image per sample,
@@ -841,8 +854,9 @@ class GenerateImageInfer(ApiBaseModel):
                     if status_code in [400, 401, 402]:
                         raise AuthError(message, request=request_data, code=status_code, response=error_message)
                     if status_code == 429:
-                        raise ConcurrentGenerationError(message, request=request_data, code=status_code,
-                                                        response=error_message)
+                        raise ConcurrentGenerationError(
+                            message, request=request_data, code=status_code, response=error_message
+                        )
                     raise APIError(message, request=request_data, code=status_code, response=error_message)
 
                 buffer = bytearray()
@@ -861,7 +875,7 @@ class GenerateImageInfer(ApiBaseModel):
                         yield event
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
-                raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.")
+                raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
         if limiter is not None and finals:
             limiter.consume(finals)
 
@@ -869,14 +883,14 @@ class GenerateImageInfer(ApiBaseModel):
         wait=wait_random(min=1, max=3),
         stop=stop_after_attempt(3),
         retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
-        reraise=True
+        reraise=True,
     )
     async def request(
-            self,
-            session: Union[AsyncSession, "CredentialBase"],
-            *,
-            override_headers: Optional[dict] = None,
-            limiter: Union[DailyImageLimiter, bool, None] = True,
+        self,
+        session: Union[AsyncSession, "CredentialBase"],
+        *,
+        override_headers: dict | None = None,
+        limiter: DailyImageLimiter | bool | None = True,
     ) -> ImageGenerateResp:
         """
         **Generate images using NovelAI's diffusion models.**
@@ -922,16 +936,16 @@ class GenerateImageInfer(ApiBaseModel):
 
             # Log the request data (sanitize sensitive content)
             try:
-                _log_data = deepcopy(request_data)
+                log_data = deepcopy(request_data)
                 if self.parameters.image:
-                    _log_data["parameters"]["image"] = "base64 data hidden"
+                    log_data["parameters"]["image"] = "base64 data hidden"
                 if self.parameters.mask:
-                    _log_data["parameters"]["mask"] = "base64 data hidden"
+                    log_data["parameters"]["mask"] = "base64 data hidden"
                 if self.parameters.reference_image_multiple:
-                    _log_data["parameters"]["reference_image_multiple"] = ["base64 data hidden"] * len(
+                    log_data["parameters"]["reference_image_multiple"] = ["base64 data hidden"] * len(
                         self.parameters.reference_image_multiple
                     )
-                logger.debug(f"Request Data: {json.dumps(_log_data, indent=2)}")
+                logger.debug(f"Request Data: {json.dumps(log_data, indent=2)}")
             except Exception as e:
                 logger.warning(f"Failed to log request data: {e}")
 
@@ -945,10 +959,7 @@ class GenerateImageInfer(ApiBaseModel):
                 )
                 # Validate response content type and status code
                 response_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
-                if (
-                        response_type not in ZIP_CONTENT_TYPES + IMAGE_CONTENT_TYPES
-                        or response.status_code >= 400
-                ):
+                if response_type not in ZIP_CONTENT_TYPES + IMAGE_CONTENT_TYPES or response.status_code >= 400:
                     error_message = await self.handle_error_response(response, request_data)
                     status_code = error_message.get("statusCode", response.status_code)
                     message = error_message.get("message", "Unknown error")
@@ -1018,7 +1029,7 @@ class GenerateImageInfer(ApiBaseModel):
                     ) from e
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
-                raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.")
+                raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
             except APIError as e:
                 raise e
             except Exception as e:

@@ -1,6 +1,6 @@
 from novelai_python._enum import TextTokenizerGroup
-from novelai_python.sdk.ai.generate_image import Model
 from novelai_python.sdk.ai._enum import is_v5_model
+from novelai_python.sdk.ai.generate_image import Model
 from novelai_python.tokenizer import NaiTokenizer
 
 # Prompt budget shown by the web client for V5 (base prompt + all characters).

@@ -178,3 +178,6 @@ cython_debug/
 /playground/unpack/
 /playground/boom-train/
 /frontend/
+
+# tokenizer definitions are downloaded on first use
+src/novelai_python/tokenizer/*.def

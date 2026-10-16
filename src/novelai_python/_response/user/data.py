@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
 # @File    : data.py
 
-from typing import Optional, Any, Dict
+from typing import Any
 
 from pydantic import ConfigDict, Field
 
@@ -17,14 +16,15 @@ class UserDataResp(RespBase):
     Aggregated account payload the web client loads right after sign-in.
     Nested blocks are optional and extra keys are kept.
     """
+
     model_config = ConfigDict(extra="allow")
 
-    subscription: Optional[SubscriptionResp] = Field(None, description="Same shape as /user/subscription")
-    information: Optional[InformationResp] = Field(None, description="Same shape as /user/information")
-    priority: Optional[Dict[str, Any]] = Field(None, description="Queue priority block")
-    keystore: Optional[Dict[str, Any]] = Field(None, description="Encrypted keystore block")
-    settings: Optional[Any] = Field(None, description="Client settings blob")
+    subscription: SubscriptionResp | None = Field(None, description="Same shape as /user/subscription")
+    information: InformationResp | None = Field(None, description="Same shape as /user/information")
+    priority: dict[str, Any] | None = Field(None, description="Queue priority block")
+    keystore: dict[str, Any] | None = Field(None, description="Encrypted keystore block")
+    settings: Any | None = Field(None, description="Client settings blob")
 
     @property
-    def anlas_left(self) -> Optional[int]:
+    def anlas_left(self) -> int | None:
         return self.subscription.anlas_left if self.subscription else None

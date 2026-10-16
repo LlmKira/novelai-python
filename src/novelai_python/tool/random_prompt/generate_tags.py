@@ -1,11 +1,11 @@
 import base64
 import random
 from datetime import datetime
-from typing import List, Optional, Any, Union
+from typing import Any
 
 from pydantic import BaseModel
 
-Options = List[List[Union[str, int, Optional[List]]]]
+Options = list[list[str | int | list | None]]
 
 cameraAngles = [
     ["dutch angle", 5],
@@ -1991,22 +1991,22 @@ holidayThemes = [
 
 
 class NsfwDecode(BaseModel):
-    p: List[List[Union[str, int, List]]]
-    mp: List[List[Union[str, int, List]]]
-    n: List[List[Union[str, int, List]]]
-    u: List[List[Union[str, int, List]]]
-    nk: List[List[Union[str, int, List]]]
-    bd: List[List[Union[str, int, List]]]
-    nEx: List[List[Union[str, int, List]]]
-    nSM: List[List[Union[str, int, List]]]
-    nSA: List[List[Union[str, int, List]]]
-    nSP: List[List[Union[str, int, List]]]
-    nPM: List[List[Union[str, int, List]]]
-    nPA: List[List[Union[str, int, List]]]
-    nPP: List[List[Union[str, int, List]]]
-    sMod: List[List[Union[str, int, List]]]
-    sActMod: List[List[Union[str, int, List]]]
-    sT: List[List[Union[str, int, List]]]
+    p: list[list[str | int | list]]
+    mp: list[list[str | int | list]]
+    n: list[list[str | int | list]]
+    u: list[list[str | int | list]]
+    nk: list[list[str | int | list]]
+    bd: list[list[str | int | list]]
+    nEx: list[list[str | int | list]]
+    nSM: list[list[str | int | list]]
+    nSA: list[list[str | int | list]]
+    nSP: list[list[str | int | list]]
+    nPM: list[list[str | int | list]]
+    nPA: list[list[str | int | list]]
+    nPP: list[list[str | int | list]]
+    sMod: list[list[str | int | list]]
+    sActMod: list[list[str | int | list]]
+    sT: list[list[str | int | list]]
     h: str
     yu: str
     ya: str
@@ -2021,12 +2021,10 @@ def decode_nsfw_data(nsfw_data):
     decoded_data = base64.b64decode(nsfw_data)
 
     # Apply XOR operation on each byte with its index, and clamp values within the valid range
-    decoded_array = bytearray(
-        (decoded_data[i] ^ i) & 0xFF for i in range(len(decoded_data))
-    )
+    decoded_array = bytearray((decoded_data[i] ^ i) & 0xFF for i in range(len(decoded_data)))
 
     # Decode the resulting byte array into a UTF-8 string, and parse it as JSON
-    return NsfwDecode.model_validate_json(decoded_array.decode('utf-8'))
+    return NsfwDecode.model_validate_json(decoded_array.decode("utf-8"))
 
 
 def random_range(a, b):
@@ -2040,8 +2038,7 @@ def random_range(a, b):
 nsfwDecode = decode_nsfw_data(nsfwData)
 
 
-def get_weighted_choice(options: Options,
-                        tags: Optional[List[str]] = None) -> Any:
+def get_weighted_choice(options: Options, tags: list[str] | None = None) -> Any:
     filtered_options = []
 
     # 要么不存在第三个参数，要么第三个参数存在tags中的任意一个元素
@@ -2065,13 +2062,8 @@ def get_weighted_choice(options: Options,
     raise ValueError("getWeightedChoice: should not reach here")
 
 
-def generate_character_attributes(
-        gender: str,
-        view_type: Optional[str],
-        is_nsfw: bool,
-        level: int
-) -> List[Any]:
-    attributes: List[Any] = []
+def generate_character_attributes(gender: str, view_type: str | None, is_nsfw: bool, level: int) -> list[Any]:
+    attributes: list[Any] = []
 
     # Adding attributes based on randomness
     if random.random() < 0.1:
@@ -2095,7 +2087,8 @@ def generate_character_attributes(
         attributes.append(get_weighted_choice(hairColors, attributes))
     if random.random() < 0.1:
         attributes.extend(
-            [get_weighted_choice(hairMutiColors, attributes), get_weighted_choice(hairColors, attributes)])
+            [get_weighted_choice(hairMutiColors, attributes), get_weighted_choice(hairColors, attributes)]
+        )
     if random.random() < 0.1:
         attributes.append(get_weighted_choice(hairStyles, attributes))
     if random.random() < 0.2:
@@ -2113,7 +2106,7 @@ def generate_character_attributes(
                 [2, 15],
                 [3, 5],
             ],
-            attributes
+            attributes,
         )
     elif level == 2:
         number_of_body_features = get_weighted_choice(
@@ -2122,7 +2115,7 @@ def generate_character_attributes(
                 [1, 40],
                 [2, 10],
             ],
-            attributes
+            attributes,
         )
     else:
         number_of_body_features = get_weighted_choice(
@@ -2130,7 +2123,7 @@ def generate_character_attributes(
                 [0, 30],
                 [1, 30],
             ],
-            attributes
+            attributes,
         )
 
     for _ in range(number_of_body_features):
@@ -2151,7 +2144,7 @@ def generate_character_attributes(
             ["bodysuit", 5],
             ["normal clothes", 40],
         ],
-        attributes
+        attributes,
     )
 
     # Handling NSFW-specific clothing
@@ -2162,7 +2155,7 @@ def generate_character_attributes(
                 ["u", 10],
                 ["nk", 5],
             ],
-            attributes
+            attributes,
         )
 
         if nsfw_choice == "n":
@@ -2242,7 +2235,7 @@ def generate_character_attributes(
                 [2, 15],
                 [3, 5],
             ],
-            attributes
+            attributes,
         )
     elif level == 2:
         accessory_count = get_weighted_choice(
@@ -2251,7 +2244,7 @@ def generate_character_attributes(
                 [1, 40],
                 [2, 10],
             ],
-            attributes
+            attributes,
         )
     else:
         accessory_count = get_weighted_choice(
@@ -2259,7 +2252,7 @@ def generate_character_attributes(
                 [0, 30],
                 [1, 30],
             ],
-            attributes
+            attributes,
         )
 
     for _ in range(accessory_count):
@@ -2283,7 +2276,7 @@ def generate_tags(isNSFW: bool) -> str:
     Returns:
         str: Comma-separated tags.
     """
-    tags: List[str] = []
+    tags: list[str] = []
     is_explicit = isNSFW
     character_count = get_weighted_choice(
         [
@@ -2292,7 +2285,7 @@ def generate_tags(isNSFW: bool) -> str:
             [3, 7],
             [0, 5],
         ],
-        tags
+        tags,
     )
     if is_explicit:
         character_count = get_weighted_choice(
@@ -2301,7 +2294,7 @@ def generate_tags(isNSFW: bool) -> str:
                 [2, 20],
                 [3, 7],
             ],
-            tags
+            tags,
         )
     if character_count == 0:
         tags.append("no humans")
@@ -2317,7 +2310,7 @@ def generate_tags(isNSFW: bool) -> str:
                 [4, 15],
                 [5, 5],
             ],
-            tags
+            tags,
         )
         for _ in range(environment_count):
             tags.append(get_weighted_choice(environmentElements, tags))
@@ -2331,7 +2324,7 @@ def generate_tags(isNSFW: bool) -> str:
                 [4, 20],
                 [5, 15],
             ],
-            tags
+            tags,
         )
         small_object_count -= character_count
         if small_object_count < 0:
@@ -2354,7 +2347,7 @@ def generate_tags(isNSFW: bool) -> str:
                 ["f", 50],
                 ["o", 10],
             ],
-            tags
+            tags,
         )
         if gender == "m":
             male_count += 1
@@ -2454,8 +2447,11 @@ def generate_tags(isNSFW: bool) -> str:
         include_futa_tag = is_explicit and male_count == 1 and character_count == 1 and random.random() < 0.2
         if include_futa_tag:
             tags.append(nsfwDecode.fu)
-        tags.extend(generate_character_attributes("fu" if include_futa_tag else "m", background_option, is_explicit,
-                                                  character_count))
+        tags.extend(
+            generate_character_attributes(
+                "fu" if include_futa_tag else "m", background_option, is_explicit, character_count
+            )
+        )
 
     for _ in range(female_count):
         tags.extend(generate_character_attributes("f", background_option, is_explicit, character_count))

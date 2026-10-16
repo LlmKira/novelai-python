@@ -57,3 +57,24 @@ dev = [
     "pre-commit>=3.5.0",
     "wasmtime>=28.0.0",
 ]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.format]
+# generated lookup tables: keep them on one line
+exclude = ["**/_const.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "I", "SIM", "RUF"]
+ignore = ["E501", "RUF001", "RUF002", "RUF003", "RUF012", "SIM105", "B008"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+include = ["src"]
+typeCheckingMode = "standard"
+
+[tool.ruff.lint.per-file-ignores]
+# package __init__ files re-export the public API
+"**/__init__.py" = ["F401"]

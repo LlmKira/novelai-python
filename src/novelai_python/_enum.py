@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional, Union
 
 
 class TextLLMModel(Enum):
@@ -30,7 +29,7 @@ class TextLLMModel(Enum):
     ERATO = "llama-3-erato-v1"
 
 
-class TextTokenizerGroup(object):
+class TextTokenizerGroup:
     GENJI = "genji_tokenizer.def"
     PILE = "pile_tokenizer.def"
     PILE_NAI = "pile_tokenizer.def"
@@ -45,7 +44,7 @@ class TextTokenizerGroup(object):
     QWEN35 = "qwen35_tokenizer.def"
 
 
-TextLLMModelTypeAlias = Union[TextLLMModel, str]
+TextLLMModelTypeAlias = TextLLMModel | str
 
 TOKENIZER_MODEL_MAP = {
     TextLLMModel.GENJI_JP_6B_V2: TextTokenizerGroup.GENJI,
@@ -77,10 +76,10 @@ COLORS_LLM = [
 ]
 
 
-def get_llm_group(model: TextLLMModel) -> Optional[TextTokenizerGroup]:
+def get_llm_group(model: TextLLMModel) -> TextTokenizerGroup | None:
     if isinstance(model, str):
         model = TextLLMModel(model)
-    return TOKENIZER_MODEL_MAP.get(model, None)
+    return TOKENIZER_MODEL_MAP.get(model)
 
 
 def get_tokenizer_model(model: TextLLMModel) -> str:

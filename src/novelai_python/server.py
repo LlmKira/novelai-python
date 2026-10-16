@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/1/30 下午11:05
 # @Author  : sudoskys
 # @File    : server.py
@@ -6,16 +5,17 @@
 import io
 import sys
 import zipfile
-from typing import Optional, Literal, Union
+from typing import Literal
 
 import uvicorn
-from fastapi import FastAPI, Depends, Security
+from fastapi import Depends, FastAPI, Security
 from fastapi.security import APIKeyHeader
 from loguru import logger
 from starlette.responses import JSONResponse, StreamingResponse
 
 from novelai_python import LLMStream, LLMStreamResp
-from novelai_python.sdk.ai.augment_image import ReqType, Moods, AugmentImageInfer
+from novelai_python.sdk.ai.augment_image import AugmentImageInfer, Moods, ReqType
+
 from .credential import JwtCredential, SecretStr
 from .sdk.ai.generate import LLM
 from .sdk.ai.generate_image import GenerateImageInfer, Model
@@ -59,24 +59,22 @@ async def image_limit():
 
 
 @app.get("/user/anlas")
-async def anlas(
-        current_token: str = Depends(get_current_token)
-):
+async def anlas(current_token: str = Depends(get_current_token)):
     """
     Anlas balance + subscription tier, for monitoring
     :param current_token: Authorization
     :return:
     """
     try:
-        _result = await Subscription().request(session=get_session(current_token))
+        result = await Subscription().request(session=get_session(current_token))
         return {
-            "anlas_left": _result.anlas_left,
-            "fixed": _result.trainingStepsLeft.fixedTrainingStepsLeft,
-            "purchased": _result.trainingStepsLeft.purchasedTrainingSteps,
-            "tier": _result.get_tier_name,
-            "active": _result.is_active,
-            "unlimited_image_generation": _result.is_unlimited_image_generation,
-            "expires_at": _result.expiresAt,
+            "anlas_left": result.anlas_left,
+            "fixed": result.trainingStepsLeft.fixedTrainingStepsLeft,
+            "purchased": result.trainingStepsLeft.purchasedTrainingSteps,
+            "tier": result.get_tier_name,
+            "active": result.is_active,
+            "unlimited_image_generation": result.is_unlimited_image_generation,
+            "expires_at": result.expiresAt,
         }
     except Exception as e:
         logger.exception(e)
@@ -84,95 +82,82 @@ async def anlas(
 
 
 @app.get("/user/trial-status")
-async def trial_status(
-        current_token: str = Depends(get_current_token)
-):
+async def trial_status(current_token: str = Depends(get_current_token)):
     """
     Free-trial counters
     :param current_token: Authorization
     :return:
     """
     try:
-        _result = await TrialStatus().request(session=get_session(current_token))
-        return _result.model_dump()
+        result = await TrialStatus().request(session=get_session(current_token))
+        return result.model_dump()
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)
 
 
 @app.get("/user/data")
-async def user_data(
-        current_token: str = Depends(get_current_token)
-):
+async def user_data(current_token: str = Depends(get_current_token)):
     """
     Aggregated account data (subscription + information + priority)
     :param current_token: Authorization
     :return:
     """
     try:
-        _result = await UserData().request(session=get_session(current_token))
-        return _result.model_dump()
+        result = await UserData().request(session=get_session(current_token))
+        return result.model_dump()
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)
 
 
 @app.post("/user/login")
-async def login(
-        req: Login
-):
+async def login(req: Login):
     """
     用户登录
     :param req: Login
     :return:
     """
     try:
-        _result = await req.request()
-        return _result.model_dump()
+        result = await req.request()
+        return result.model_dump()
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)
 
 
 @app.get("/user/information")
-async def information(
-        current_token: str = Depends(get_current_token)
-):
+async def information(current_token: str = Depends(get_current_token)):
     """
     用户信息
     :param current_token: Authorization
     :return:
     """
     try:
-        _result = await Information().request(session=get_session(current_token))
-        return _result.model_dump()
+        result = await Information().request(session=get_session(current_token))
+        return result.model_dump()
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)
 
 
 @app.get("/user/subscription")
-async def subscription(
-        current_token: str = Depends(get_current_token)
-):
+async def subscription(current_token: str = Depends(get_current_token)):
     """
     订阅信息
     :param current_token: Authorization
     :return:
     """
     try:
-        _result = await Subscription().request(session=get_session(current_token))
-        return _result.model_dump()
+        result = await Subscription().request(session=get_session(current_token))
+        return result.model_dump()
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)
 
 
 @app.post("/ai/upscale")
-async def upscale(
-        req: Upscale,
-        current_token: str = Depends(get_current_token)
-):
+async def upscale(req: Upscale, current_token: str = Depends(get_current_token)):
     """
     生成图片
     :param current_token: Authorization
@@ -180,27 +165,25 @@ async def upscale(
     :return:
     """
     try:
-        _result = await req.request(session=get_session(current_token))
+        result = await req.request(session=get_session(current_token))
         zip_file_bytes = io.BytesIO()
         with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
-            file = _result.files  # ONLY TUPLE
+            file = result.files  # ONLY TUPLE
             zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
         # return the zip file
         zip_file_bytes.seek(0)
-        return StreamingResponse(zip_file_bytes, media_type='application/zip', headers={
-            'Content-Disposition': 'attachment;filename=image.zip'
-        })
+        return StreamingResponse(
+            zip_file_bytes,
+            media_type="application/zip",
+            headers={"Content-Disposition": "attachment;filename=image.zip"},
+        )
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)
 
 
 @app.get("/ai/generate-image/suggest_tags")
-async def suggest_tags(
-        model: Model,
-        prompt: str,
-        current_token: str = Depends(get_current_token)
-):
+async def suggest_tags(model: Model, prompt: str, current_token: str = Depends(get_current_token)):
     """
     生成建议
     :param current_token: Authorization
@@ -210,18 +193,15 @@ async def suggest_tags(
     """
     try:
         req = SuggestTags(model=model, prompt=prompt)
-        _result = await req.request(session=get_session(current_token))
-        return _result.model_dump()
+        result = await req.request(session=get_session(current_token))
+        return result.model_dump()
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)
 
 
 @app.post("/ai/generate-image")
-async def generate_image(
-        req: GenerateImageInfer,
-        current_token: str = Depends(get_current_token)
-):
+async def generate_image(req: GenerateImageInfer, current_token: str = Depends(get_current_token)):
     """
     生成图片
     :param current_token: Authorization
@@ -229,26 +209,25 @@ async def generate_image(
     :return:
     """
     try:
-        _result = await req.request(session=get_session(current_token))
+        result = await req.request(session=get_session(current_token))
         zip_file_bytes = io.BytesIO()
         with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
-            for file in _result.files:
+            for file in result.files:
                 zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
         # return the zip file
         zip_file_bytes.seek(0)
-        return StreamingResponse(zip_file_bytes, media_type='application/zip', headers={
-            'Content-Disposition': 'attachment;filename=image.zip'
-        })
+        return StreamingResponse(
+            zip_file_bytes,
+            media_type="application/zip",
+            headers={"Content-Disposition": "attachment;filename=image.zip"},
+        )
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)
 
 
 @app.post("/ai/generate-stream")
-async def generate(
-        req: LLMStream,
-        current_token: str = Depends(get_current_token)
-):
+async def generate_stream(req: LLMStream, current_token: str = Depends(get_current_token)):
     """
     流式生成
     :param current_token: Authorization
@@ -268,10 +247,7 @@ async def generate(
 
 
 @app.post("/ai/generate")
-async def generate(
-        req: LLM,
-        current_token: str = Depends(get_current_token)
-):
+async def generate(req: LLM, current_token: str = Depends(get_current_token)):
     """
     对话生成
     :param current_token: Authorization
@@ -279,8 +255,8 @@ async def generate(
     :return:
     """
     try:
-        _result = await req.request(session=get_session(current_token))
-        return _result.model_dump()
+        result = await req.request(session=get_session(current_token))
+        return result.model_dump()
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)
@@ -288,12 +264,12 @@ async def generate(
 
 @app.get("/ai/generate-voice")
 async def generate_voice(
-        text: str,
-        voice: int = -1,
-        seed: Optional[str] = None,
-        opus: bool = False,
-        version: Union[Literal["v2", "v1"], str] = "v2",
-        current_token: str = Depends(get_current_token)
+    text: str,
+    voice: int = -1,
+    seed: str | None = None,
+    opus: bool = False,
+    version: Literal["v2", "v1"] | str = "v2",
+    current_token: str = Depends(get_current_token),
 ):
     """
     生成图片
@@ -307,10 +283,12 @@ async def generate_voice(
     """
     try:
         req = VoiceGenerate(text=text, voice=voice, seed=seed, opus=opus, version=version)
-        _result = await req.request(session=get_session(current_token))
-        return StreamingResponse(io.BytesIO(_result.audio), media_type='audio/mpeg', headers={
-            'Content-Disposition': 'attachment;filename=audio.mp3'
-        })
+        result = await req.request(session=get_session(current_token))
+        return StreamingResponse(
+            io.BytesIO(result.audio),
+            media_type="audio/mpeg",
+            headers={"Content-Disposition": "attachment;filename=audio.mp3"},
+        )
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)
@@ -318,12 +296,12 @@ async def generate_voice(
 
 @app.post("/ai/augment-image")
 async def augment_image(
-        req_type: ReqType,
-        image: bytes,
-        mood: Optional[Moods] = None,
-        prompt: Optional[str] = None,
-        defry: Optional[int] = None,
-        current_token: str = Depends(get_current_token)
+    req_type: ReqType,
+    image: bytes,
+    mood: Moods | None = None,
+    prompt: str | None = None,
+    defry: int | None = None,
+    current_token: str = Depends(get_current_token),
 ):
     """
     生成图片
@@ -343,16 +321,18 @@ async def augment_image(
             prompt=prompt,
             defry=defry,
         )
-        _result = await req.request(session=get_session(current_token))
+        result = await req.request(session=get_session(current_token))
         zip_file_bytes = io.BytesIO()
         with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
-            for file in _result.files:
+            for file in result.files:
                 zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
         # return the zip file
         zip_file_bytes.seek(0)
-        return StreamingResponse(zip_file_bytes, media_type='application/zip', headers={
-            'Content-Disposition': 'attachment;filename=image.zip'
-        })
+        return StreamingResponse(
+            zip_file_bytes,
+            media_type="application/zip",
+            headers={"Content-Disposition": "attachment;filename=image.zip"},
+        )
     except Exception as e:
         logger.exception(e)
         return JSONResponse(status_code=500, content=e.__dict__)
@@ -364,7 +344,7 @@ def usage():
     sys.exit(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import getopt
 
     opts = {}

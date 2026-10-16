@@ -1,18 +1,27 @@
 import base64
 import random
-from io import BytesIO
 from collections import OrderedDict
-from typing import Optional, List, Set, Union, Tuple
+from io import BytesIO
 
 import cv2
 import numpy as np
-from PIL import Image
 from loguru import logger
-from pydantic import BaseModel, Field, model_serializer, model_validator, field_validator
+from PIL import Image
+from pydantic import BaseModel, Field, field_validator, model_serializer, model_validator
 
-from novelai_python.sdk.ai._enum import Sampler, UCPresetTypeAlias, NoiseSchedule, ImageBytesTypeAlias, ControlNetModel, \
-    Model, QualityPreset, ImageFormat, is_v5_model, V5_MEDIUM_MODEL_LIST
-from novelai_python.sdk.ai.generate_image.schema import Character, V4Prompt, V4NegativePrompt
+from novelai_python.sdk.ai._enum import (
+    V5_MEDIUM_MODEL_LIST,
+    ControlNetModel,
+    ImageBytesTypeAlias,
+    ImageFormat,
+    Model,
+    NoiseSchedule,
+    QualityPreset,
+    Sampler,
+    UCPresetTypeAlias,
+    is_v5_model,
+)
+from novelai_python.sdk.ai.generate_image.schema import Character, V4NegativePrompt, V4Prompt
 
 
 def is_multiple_of_01(num, precision=1e-10):
@@ -39,35 +48,35 @@ class Params(BaseModel):
     """The Negative Prompt Preset, Bigger or equal to 0"""
     qualityToggle: bool = True
     """Whether to add the quality prompt"""
-    ucPresetId: Optional[str] = None
+    ucPresetId: str | None = None
     """params_version>=4: negative preset by name ("heavy", "light", "human", "furry", "none"); derived from ucPreset when unset"""
-    qualityPresetId: Optional[Union[QualityPreset, str]] = None
+    qualityPresetId: QualityPreset | str | None = None
     """params_version>=4: quality preset by name, "standard" when qualityToggle is on"""
-    autoSmea: Optional[bool] = False
+    autoSmea: bool | None = False
     dynamic_thresholding: bool = False
     """Decrisp:Reduce artifacts caused by high prompt guidance values"""
     controlnet_strength: float = Field(1.0, ge=0.1, le=2, multiple_of=0.1)
     """ControlNet Strength"""
     legacy: bool = False
     """Legacy Mode"""
-    add_original_image: Optional[bool] = Field(False, description="Overlay Original Image")
+    add_original_image: bool | None = Field(False, description="Overlay Original Image")
     """
     Overlay Original Image.Prevents the existing image from changing,
     but can introduce seams along the edge of the mask.
     """
-    cfg_rescale: Optional[float] = Field(0, ge=0, le=1, multiple_of=0.02)
+    cfg_rescale: float | None = Field(0, ge=0, le=1, multiple_of=0.02)
     """Prompt Guidance Rescale"""
-    noise_schedule: Optional[NoiseSchedule] = None
+    noise_schedule: NoiseSchedule | None = None
     """Noise Schedule"""
-    legacy_v3_extend: Optional[bool] = False
+    legacy_v3_extend: bool | None = False
     """Legacy V3 Extend"""
-    skip_cfg_above_sigma: Optional[int] = None
+    skip_cfg_above_sigma: int | None = None
     """Variety Boost, a new feature to improve the diversity of samples."""
     use_coords: bool = Field(False, description="Use Coordinates")
     """Use Coordinates"""
     legacy_uc: bool = False
     normalize_reference_strength_multiple: bool = True
-    inpaintImg2ImgStrength: Optional[float] = Field(None, ge=0, le=1, multiple_of=0.01)
+    inpaintImg2ImgStrength: float | None = Field(None, ge=0, le=1, multiple_of=0.01)
     """For SameFeel"""
     seed: int = Field(
         default_factory=lambda: random.randint(0, 4294967295 - 7),
@@ -75,69 +84,68 @@ class Params(BaseModel):
         le=4294967295 - 7,
     )
     """Seed"""
-    characterPrompts: List[Character] = Field(default_factory=list)
+    characterPrompts: list[Character] = Field(default_factory=list)
     """Character Prompts"""
-    straight_alpha: Optional[bool] = None
+    straight_alpha: bool | None = None
     """params_version>=4: keep straight (non-premultiplied) alpha in the output"""
-    tag_hint_qt: Optional[int] = None
+    tag_hint_qt: int | None = None
     """params_version>=4: quality-tag hint level sent by the web client (1)"""
-    tag_hint_uc_preset: Optional[int] = None
+    tag_hint_uc_preset: int | None = None
     """params_version>=4: uc-preset hint sent by the web client (2)"""
-    tag_hint_transparent_background: Optional[bool] = None
+    tag_hint_transparent_background: bool | None = None
     """V5: ask for a transparent background (web client default False)"""
-    v4_prompt: Optional[V4Prompt] = Field(None, description="V4 Prompt")
+    v4_prompt: V4Prompt | None = Field(None, description="V4 Prompt")
     """V4 Prompt"""
-    v4_negative_prompt: Optional[V4NegativePrompt] = Field(None, description="V4 Negative Prompt")
+    v4_negative_prompt: V4NegativePrompt | None = Field(None, description="V4 Negative Prompt")
     """V4 Negative Prompt"""
-    negative_prompt: Optional[str] = ''
+    negative_prompt: str | None = ""
     """Negative Prompt"""
-    deliberate_euler_ancestral_bug: Optional[bool] = Field(False, description="Deliberate Euler Ancestral Bug")
+    deliberate_euler_ancestral_bug: bool | None = Field(False, description="Deliberate Euler Ancestral Bug")
     """Deliberate Euler Ancestral Bug"""
     prefer_brownian: bool = Field(True, description="Prefer Brownian")
     """Prefer Brownian"""
-    image_format: Optional[Union[ImageFormat, str]] = None
+    image_format: ImageFormat | str | None = None
     """params_version>=4: output encoding, the web client asks for webp"""
 
     # Other fields
-    strength: Optional[float] = Field(0.7, ge=0.01, le=0.99, multiple_of=0.01)
+    strength: float | None = Field(0.7, ge=0.01, le=0.99, multiple_of=0.01)
     """Strength for img2img"""
-    noise: Optional[float] = Field(0, ge=0, le=0.99, multiple_of=0.01)
+    noise: float | None = Field(0, ge=0, le=0.99, multiple_of=0.01)
     """Noise for img2img"""
-    sm: Optional[bool] = False
+    sm: bool | None = False
     # TODO: find out the usage
-    sm_dyn: Optional[bool] = False
+    sm_dyn: bool | None = False
     # TODO: find out the usage
     mask: ImageBytesTypeAlias = None
     """Mask for Inpainting"""
     image: ImageBytesTypeAlias = None
     """Image for img2img"""
-    reference_image_multiple: Optional[List[Union[str, bytes]]] = Field(default_factory=list)
+    reference_image_multiple: list[str | bytes] | None = Field(default_factory=list)
     """Reference Image For Vibe Mode"""
-    reference_information_extracted_multiple: Optional[List[float]] = Field(default_factory=list)
+    reference_information_extracted_multiple: list[float] | None = Field(default_factory=list)
     """Reference Information Extracted For Vibe Mode"""
-    reference_strength_multiple: Optional[List[float]] = Field(
-        default_factory=list,
-        description="Reference Strength For Vibe Mode"
+    reference_strength_multiple: list[float] | None = Field(
+        default_factory=list, description="Reference Strength For Vibe Mode"
     )
     """Reference Strength For Vibe Mode"""
-    extra_noise_seed: Optional[int] = Field(None, gt=0, le=4294967295 - 7)
+    extra_noise_seed: int | None = Field(None, gt=0, le=4294967295 - 7)
     """Extra Noise Seed"""
-    color_correct: Optional[bool] = None
+    color_correct: bool | None = None
     """For Inpaint"""
-    controlnet_condition: Optional[str] = None
+    controlnet_condition: str | None = None
     """ControlNet Condition"""
-    controlnet_model: Optional[ControlNetModel] = None
+    controlnet_model: ControlNetModel | None = None
     """ControlNet Model"""
-    uncond_scale: Optional[float] = Field(None, ge=0, le=1.5, multiple_of=0.05)
+    uncond_scale: float | None = Field(None, ge=0, le=1.5, multiple_of=0.05)
     """Undesired Content Strength"""
 
     # region Custom serializer
-    __strong_values__: Set[str] = {
-        "skip_cfg_above_sigma", # See models before Anime V3
+    __strong_values__: set[str] = {
+        "skip_cfg_above_sigma",  # See models before Anime V3
     }
     """Settings with none value to strongly include"""
 
-    __v4_dropped_fields__: Set[str] = {
+    __v4_dropped_fields__: set[str] = {
         # The params_version 4 web client replaces these with ucPresetId / qualityPresetId
         # before sending (see its migration: `delete t.qualityToggle, delete t.ucPreset`).
         "ucPreset",
@@ -170,6 +178,7 @@ class Params(BaseModel):
                 ordered_data[field_name] = getattr(self, field_name, None)
 
         return ordered_data
+
     # endregion
 
     @model_validator(mode="after")
@@ -178,7 +187,7 @@ class Params(BaseModel):
             raise ValueError("Too many character given")
         return self
 
-    @field_validator('uncond_scale')
+    @field_validator("uncond_scale")
     def v_uncond_scale(cls, v: float):
         """
         Align
@@ -189,7 +198,7 @@ class Params(BaseModel):
             v = 0.00001
         return v
 
-    @field_validator('width')
+    @field_validator("width")
     def v_width(cls, v: int):
         """
         Must be multiple of 64
@@ -200,7 +209,7 @@ class Params(BaseModel):
             raise ValueError("Invalid width, must be multiple of 64.")
         return v
 
-    @field_validator('height')
+    @field_validator("height")
     def v_height(cls, v: int):
         """
         Must be multiple of 64
@@ -217,8 +226,7 @@ class Params(BaseModel):
         if self.mask is not None:
             if isinstance(self.mask, str) and self.mask.startswith("data:"):
                 raise ValueError(
-                    "Invalid `mask` format, must be base64 encoded directly, "
-                    "you can also provide bytes directly."
+                    "Invalid `mask` format, must be base64 encoded directly, you can also provide bytes directly."
                 )
             if isinstance(self.mask, bytes):
                 self.mask = base64.b64encode(self.mask).decode("utf-8")
@@ -227,16 +235,11 @@ class Params(BaseModel):
         if self.image is not None:
             if isinstance(self.image, str) and self.image.startswith("data:"):
                 raise ValueError(
-                    "Invalid `image` format, must be base64 encoded directly, "
-                    "you can also provide bytes directly."
+                    "Invalid `image` format, must be base64 encoded directly, you can also provide bytes directly."
                 )
             if isinstance(self.image, bytes):
                 self.image = base64.b64encode(self.image).decode("utf-8")
-            self.image = self.resize_image(
-                self.image,
-                self.width,
-                self.height
-            )
+            self.image = self.resize_image(self.image, self.width, self.height)
         return self
 
     @model_validator(mode="after")
@@ -251,9 +254,7 @@ class Params(BaseModel):
                     new_images.append(reference_image)
                 elif isinstance(reference_image, bytes):
                     new_image = self.add_image_to_black_background(
-                        reference_image,
-                        target_size=(448, 448),
-                        transparency=True
+                        reference_image, target_size=(448, 448), transparency=True
                     )
                     if isinstance(new_image, bytes):
                         new_image = base64.b64encode(new_image).decode("utf-8")
@@ -262,13 +263,18 @@ class Params(BaseModel):
                     raise ValueError("Invalid `reference_image` format, must be base64 encoded directly.")
             self.reference_image_multiple = new_images
         # 如果都不是 None 时，比较他们的长度
-        if all([
-            self.reference_strength_multiple,
-            self.reference_image_multiple,
-            self.reference_information_extracted_multiple
-        ]):
-            if len(self.reference_strength_multiple) != len(self.reference_image_multiple) != len(
-                    self.reference_information_extracted_multiple):
+        if all(
+            [
+                self.reference_strength_multiple,
+                self.reference_image_multiple,
+                self.reference_information_extracted_multiple,
+            ]
+        ):
+            if (
+                len(self.reference_strength_multiple)
+                != len(self.reference_image_multiple)
+                != len(self.reference_information_extracted_multiple)
+            ):
                 raise ValueError(
                     f"All three reference_* must be of equal length, "
                     f"strength:{len(self.reference_strength_multiple)}, "
@@ -278,14 +284,16 @@ class Params(BaseModel):
             if len(self.reference_image_multiple) > 16:
                 raise ValueError("The maximum number of reference images is 16")
         # 如果有一个存在，其他都必须存在
-        ref_items = [self.reference_strength_multiple,
-                     self.reference_image_multiple,
-                     self.reference_information_extracted_multiple]
+        ref_items = [
+            self.reference_strength_multiple,
+            self.reference_image_multiple,
+            self.reference_information_extracted_multiple,
+        ]
         if any(ref_items) and not all(ref_items):
             raise ValueError("All fields must be present together or none should be present")
         return self
 
-    @field_validator('reference_strength_multiple')
+    @field_validator("reference_strength_multiple")
     def v_reference_strength_multiple(cls, v):
         # Field(0.6,ge=0,le=1,multiple_of=0.01,description="the stronger the AI will try to emulate visual cues.")
         if v is None:
@@ -297,7 +305,7 @@ class Params(BaseModel):
                 raise ValueError("Invalid reference_strength_multiple item, must be multiple of 0.01.")
         return v
 
-    @field_validator('reference_information_extracted_multiple')
+    @field_validator("reference_information_extracted_multiple")
     def v_reference_information_extracted_multiple(cls, v):
         # List[Field(..., ge=0, le=1, multiple_of=0.01)]
         if v is None:
@@ -310,7 +318,7 @@ class Params(BaseModel):
         return v
 
     @staticmethod
-    def resize_image(image: Union[str, bytes], width: int, height: int):
+    def resize_image(image: str | bytes, width: int, height: int):
         """
         Resize the image to the specified size.
         :param image: The image to be resized
@@ -334,11 +342,8 @@ class Params(BaseModel):
 
     @staticmethod
     def add_image_to_black_background(
-            image: Union[str, bytes],
-            target_size: Tuple[int, int] = (448, 448),
-            transparency: bool = False
+        image: str | bytes, target_size: tuple[int, int] = (448, 448), transparency: bool = False
     ):
-
         """
         缩放图像到指定的黑色透明背景上，使其尽可能大且保持比例。
         :param transparency: 是否透明
@@ -414,7 +419,7 @@ def get_default_params(model: Model = None) -> Params:
             noise_schedule=NoiseSchedule.NATIVE,
             legacy_v3_extend=False,
             skip_cfg_above_sigma=None,
-            params_version=4
+            params_version=4,
         )
 
     if model == Model.NAI_DIFFUSION_2:
@@ -440,7 +445,7 @@ def get_default_params(model: Model = None) -> Params:
             noise_schedule=NoiseSchedule.NATIVE,
             legacy_v3_extend=False,
             skip_cfg_above_sigma=None,
-            params_version=4
+            params_version=4,
         )
 
     if model in [
@@ -475,7 +480,7 @@ def get_default_params(model: Model = None) -> Params:
             legacy_uc=False,
             normalize_reference_strength_multiple=True,
             inpaintImg2ImgStrength=1.0,
-            params_version=4
+            params_version=4,
         )
 
     if is_v5_model(model):
@@ -514,7 +519,7 @@ def get_default_params(model: Model = None) -> Params:
             deliberate_euler_ancestral_bug=False,
             prefer_brownian=True,
             image_format=ImageFormat.PNG,
-            params_version=4
+            params_version=4,
         )
 
     if model in [
@@ -553,7 +558,7 @@ def get_default_params(model: Model = None) -> Params:
             tag_hint_qt=1,
             tag_hint_uc_preset=2,
             image_format=ImageFormat.PNG,
-            params_version=4
+            params_version=4,
         )
 
     if model == Model.NAI_DIFFUSION_3:
@@ -579,7 +584,7 @@ def get_default_params(model: Model = None) -> Params:
             noise_schedule=NoiseSchedule.KARRAS,
             legacy_v3_extend=False,
             skip_cfg_above_sigma=None,
-            params_version=4
+            params_version=4,
         )
 
     if model == Model.NAI_DIFFUSION_FURRY_3:
@@ -605,7 +610,7 @@ def get_default_params(model: Model = None) -> Params:
             noise_schedule=NoiseSchedule.KARRAS,
             legacy_v3_extend=False,
             skip_cfg_above_sigma=None,
-            params_version=4
+            params_version=4,
         )
 
     # Default parameters if model is not specified or not matched
@@ -631,5 +636,5 @@ def get_default_params(model: Model = None) -> Params:
         noise_schedule=NoiseSchedule.NATIVE,
         legacy_v3_extend=False,
         skip_cfg_above_sigma=None,
-        params_version=4
+        params_version=4,
     )

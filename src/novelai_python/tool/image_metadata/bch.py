@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Binary BCH codec compatible with Linux-kernel ``lib/bch.c`` / ``bchlib``.
 
 NovelAI protects the LSB stealth metadata of its images with
@@ -9,7 +8,6 @@ kernel exactly (checked against vectors produced by bchlib 2.1.3, see
 ``tests/fixtures/bch_vectors.json``): data bytes MSB-first, followed by the
 ECC bits; ECC = data(x) * x^(m*t) mod g(x).
 """
-from __future__ import annotations
 
 from functools import lru_cache
 
@@ -63,7 +61,7 @@ def _generator(m: int, t: int, prim_poly: int) -> int:
         poly = [1]  # highest degree first, field elements
         for j in coset:
             root = int(exp[j])
-            nxt = poly + [0]
+            nxt = [*poly, 0]
             for k in range(len(poly)):
                 c = poly[k]
                 if c:
@@ -124,16 +122,18 @@ class BCH:
         if degs.size == 0:
             return 0
         js = np.arange(1, 2 * t + 1, dtype=np.int64)
-        powers = (np.outer(js, degs) % n)
+        powers = np.outer(js, degs) % n
         S = np.bitwise_xor.reduce(exp[powers], axis=1).astype(np.int64)
         if not S.any():
             return 0
+
         # Berlekamp–Massey over GF(2^m)
         def mul(a, b):
             return 0 if a == 0 or b == 0 else int(exp[(log[a] + log[b]) % n])
 
         def inv(a):
             return int(exp[(n - log[a]) % n])
+
         C, B = [1], [1]
         L, mshift, b = 0, 1, 1
         for k in range(2 * t):
@@ -152,12 +152,12 @@ class BCH:
             for i, bi in enumerate(B):
                 if bi:
                     C[i + mshift] ^= mul(coef, bi)
-            if 2 * L <= k:
+            if k >= 2 * L:
                 L, B, b, mshift = k + 1 - L, T, d, 1
             else:
                 mshift += 1
         C = C[: L + 1]
-        if L > t:
+        if t < L:
             return -1
         # Chien search: roots X^-1 of the locator, X = alpha^deg, deg in [0, N)
         degrees = np.arange(N, dtype=np.int64)
@@ -170,7 +170,7 @@ class BCH:
         roots = np.nonzero(acc == 0)[0]
         if roots.size != L:
             return -1
-        self._errloc = [int(N - 1 - d) for d in roots]   # bit index in data||ecc stream
+        self._errloc = [int(N - 1 - d) for d in roots]  # bit index in data||ecc stream
         return L
 
     def correct(self, data: bytearray, ecc: bytearray) -> None:

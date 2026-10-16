@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/2/13 下午8:08
 # @Author  : sudoskys
 # @File    : __init__.py.py
@@ -9,31 +8,32 @@ import json
 import pathlib
 from copy import deepcopy
 from io import BytesIO
-from typing import Optional, Union, IO, Any
-from urllib.parse import urlparse
-from zipfile import ZipFile, BadZipFile
+from typing import IO, Any, Union
+from zipfile import BadZipFile, ZipFile
 
 import curl_cffi
-from PIL import Image
 from curl_cffi.requests import AsyncSession
 from loguru import logger
-from pydantic import ConfigDict, PrivateAttr, model_validator, Field
-from tenacity import retry, stop_after_attempt, wait_random, retry_if_exception
+from PIL import Image
+from pydantic import ConfigDict, Field, PrivateAttr, model_validator
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random
 
 from novelai_python.sdk.ai._cost import CostCalculator
 from novelai_python.sdk.ai._enum import Model
-from ._enum import ReqType, Moods
-from ...schema import ApiBaseModel
-from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError, DataSerializationError
+
+from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, DataSerializationError, SessionHttpError
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
+from ...schema import ApiBaseModel
+from ._enum import Moods, ReqType
 
 
 class AugmentImageInfer(ApiBaseModel):
     """
     https://docs.novelai.net/image/directortools.html
     """
+
     _endpoint: str = PrivateAttr("https://image.novelai.net")
 
     @property
@@ -47,10 +47,10 @@ class AugmentImageInfer(ApiBaseModel):
     req_type: ReqType = Field(..., description="Type of augmentation")
     width: int = Field(..., description="Width of the image")
     height: int = Field(..., description="Height of the image")
-    image: Union[str, bytes] = Field(..., description="Base64 encoded image")
-    prompt: Optional[str] = None
+    image: str | bytes = Field(..., description="Base64 encoded image")
+    prompt: str | None = None
     """For mood based generation, prompt should be in the format of `mood;;prompt`"""
-    defry: Optional[int] = Field(0, ge=0, le=5, multiple_of=1)
+    defry: int | None = Field(0, ge=0, le=5, multiple_of=1)
     """The larger the value, the weaker the defry effect"""
     model_config = ConfigDict(extra="ignore")
 
@@ -82,21 +82,25 @@ class AugmentImageInfer(ApiBaseModel):
         # NOTE: its unclear how the cost is calculated
         try:
             if self.req_type == ReqType.BG_REMOVAL:
-                return CostCalculator.calculate(
-                    width=self.width,
-                    height=self.height,
-                    steps=28,
-                    model=Model.NAI_DIFFUSION_3,
-                    image=bool(self.image),
-                    n_samples=1,
-                    account_tier=1,
-                    strength=1,
-                    sampler=None,
-                    is_sm_enabled=False,
-                    is_sm_dynamic=False,
-                    is_account_active=True,
-                    tool=self.req_type.value,
-                ) * 3 + 5
+                return (
+                    CostCalculator.calculate(
+                        width=self.width,
+                        height=self.height,
+                        steps=28,
+                        model=Model.NAI_DIFFUSION_3,
+                        image=bool(self.image),
+                        n_samples=1,
+                        account_tier=1,
+                        strength=1,
+                        sampler=None,
+                        is_sm_enabled=False,
+                        is_sm_dynamic=False,
+                        is_account_active=True,
+                        tool=self.req_type.value,
+                    )
+                    * 3
+                    + 5
+                )
             return CostCalculator.calculate(
                 width=self.width,
                 height=self.height,
@@ -113,10 +117,10 @@ class AugmentImageInfer(ApiBaseModel):
                 tool=self.req_type.value,
             )
         except Exception as e:
-            raise ValueError(f"Error when calculating cost") from e
+            raise ValueError("Error when calculating cost") from e
 
     @staticmethod
-    def _to_bytes_io(image: Union[bytes, IO, pathlib.Path, Any]) -> io.BytesIO:
+    def _to_bytes_io(image: bytes | IO | pathlib.Path | Any) -> io.BytesIO:
         """
         将输入图像转换为 BytesIO 对象。
 
@@ -127,22 +131,23 @@ class AugmentImageInfer(ApiBaseModel):
         if isinstance(image, bytes):
             return io.BytesIO(image)
         elif isinstance(image, pathlib.Path):
-            with open(image, 'rb') as f:
+            with open(image, "rb") as f:
                 return io.BytesIO(f.read())
-        elif hasattr(image, 'read') and callable(image.read):
+        elif hasattr(image, "read") and callable(image.read):
             return io.BytesIO(image.read())
         else:
             raise ValueError("Invalid image input type. Expected bytes, IO, pathlib.Path, or any readable object.")
 
     @classmethod
-    def build(cls,
-              image: Union[bytes, IO, pathlib.Path],
-              req_type: ReqType = ReqType.SKETCH,
-              *,
-              defry: Optional[int] = None,
-              prompt: Optional[str] = None,
-              mood: Optional[Moods] = None,
-              ):
+    def build(
+        cls,
+        image: bytes | IO | pathlib.Path,
+        req_type: ReqType = ReqType.SKETCH,
+        *,
+        defry: int | None = None,
+        prompt: str | None = None,
+        mood: Moods | None = None,
+    ):
         """
         Build the request data
         :param req_type: Request type
@@ -177,13 +182,14 @@ class AugmentImageInfer(ApiBaseModel):
         wait=wait_random(min=1, max=3),
         stop=stop_after_attempt(3),
         retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
-        reraise=True
+        reraise=True,
     )
-    async def request(self,
-                      session: Union[AsyncSession, "CredentialBase"],
-                      *,
-                      override_headers: Optional[dict] = None,
-                      ) -> ImageGenerateResp:
+    async def request(
+        self,
+        session: Union[AsyncSession, "CredentialBase"],
+        *,
+        override_headers: dict | None = None,
+    ) -> ImageGenerateResp:
         """
         生成图片
         :param override_headers: the headers to override
@@ -199,24 +205,20 @@ class AugmentImageInfer(ApiBaseModel):
 
             # Log the request data (sanitize sensitive content)
             try:
-                _log_data = deepcopy(request_data)
+                log_data = deepcopy(request_data)
                 if self.image:
-                    _log_data["image"] = "base64 data hidden"
-                logger.debug(f"Request Data: {json.dumps(_log_data, indent=2)}")
+                    log_data["image"] = "base64 data hidden"
+                logger.debug(f"Request Data: {json.dumps(log_data, indent=2)}")
             except Exception as e:
                 logger.warning(f"Failed to log request data: {e}")
 
             # Perform request and handle response
             try:
                 self.ensure_session_has_post_method(sess)
-                response = await sess.post(
-                    self.base_url,
-                    data=json.dumps(request_data).encode("utf-8")
-                )
+                response = await sess.post(self.base_url, data=json.dumps(request_data).encode("utf-8"))
                 if (
-                        response.headers.get('Content-Type') not in ['binary/octet-stream',
-                                                                     'application/x-zip-compressed']
-                        or response.status_code >= 400
+                    response.headers.get("Content-Type") not in ["binary/octet-stream", "application/x-zip-compressed"]
+                    or response.status_code >= 400
                 ):
                     error_message = await self.handle_error_response(response, request_data)
                     status_code = error_message.get("statusCode", response.status_code)
@@ -281,7 +283,7 @@ class AugmentImageInfer(ApiBaseModel):
                     ) from e
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
-                raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.")
+                raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
             except APIError as e:
                 raise e
             except Exception as e:

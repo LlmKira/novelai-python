@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/2/13 上午11:29
 # @Author  : sudoskys
 # @File    : upscale.py
 
-from typing import Tuple
 
 from pydantic import BaseModel
 
@@ -16,4 +14,4 @@ class UpscaleResp(RespBase):
         raw_request: dict = None
 
     meta: RequestParams
-    files: Tuple[str, bytes] = None
+    files: tuple[str, bytes] = None

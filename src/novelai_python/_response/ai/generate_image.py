@@ -1,11 +1,9 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/1/26 上午11:16
 # @Author  : sudoskys
 # @File    : generate_image.py
 
 import pathlib
 import time
-from typing import Tuple, List, Union, Optional
 
 from pydantic import BaseModel
 
@@ -23,11 +21,12 @@ class ImageStreamEvent(BaseModel):
 
     event_type: "intermediate" (preview), "final" (finished sample) or "error".
     """
+
     event_type: str
     samp_ix: int = 0
-    step_ix: Optional[int] = None
-    image: Optional[bytes] = None
-    message: Optional[str] = None
+    step_ix: int | None = None
+    image: bytes | None = None
+    message: str | None = None
 
     @property
     def is_final(self) -> bool:
@@ -40,7 +39,7 @@ class ImageStreamEvent(BaseModel):
 
 class ImageGenerateResp(RespBase):
     meta: RequestParams
-    files: List[Tuple[str, bytes]] = None
+    files: list[tuple[str, bytes]] = None
 
     def query_params(self, key: str, default=None):
         if not isinstance(self.meta.raw_request.get("parameters"), dict):
@@ -48,11 +47,11 @@ class ImageGenerateResp(RespBase):
         return self.meta.raw_request.get("parameters").get(key, default)
 
     def save(
-            self,
-            directory: Union[str, pathlib.Path],
-            *,
-            prefix: Optional[str] = None,
-    ) -> List[pathlib.Path]:
+        self,
+        directory: str | pathlib.Path,
+        *,
+        prefix: str | None = None,
+    ) -> list[pathlib.Path]:
         """
         Write every returned file into ``directory`` and return the paths.
         :param directory: created if missing
@@ -78,4 +77,4 @@ class SuggestTagsResp(RespBase):
         count: int
         confidence: float
 
-    tags: List[Tag] = None
+    tags: list[Tag] = None

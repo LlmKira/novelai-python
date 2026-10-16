@@ -1,24 +1,21 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/2/8 下午3:09
 # @Author  : sudoskys
 # @File    : information.py
 
-from typing import Optional, Union
-from urllib.parse import urlparse
 
 import curl_cffi
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import PrivateAttr
 
-from ..schema import ApiBaseModel
 from ..._exceptions import APIError, AuthError, SessionHttpError
 from ..._response.user.information import InformationResp
 from ...credential import CredentialBase
+from ..schema import ApiBaseModel
 
 
 class Information(ApiBaseModel):
-    _endpoint: Optional[str] = PrivateAttr("https://api.novelai.net")
+    _endpoint: str | None = PrivateAttr("https://api.novelai.net")
 
     @property
     def base_url(self):
@@ -32,16 +29,14 @@ class Information(ApiBaseModel):
     def endpoint(self, value):
         self._endpoint = value
 
-    async def request(self,
-                      session: Union[AsyncSession, CredentialBase],
-                      *,
-                      override_headers: Optional[dict] = None
-                      ) -> InformationResp:
+    async def request(
+        self, session: AsyncSession | CredentialBase, *, override_headers: dict | None = None
+    ) -> InformationResp:
         """
         Request to get user subscription information
         :param override_headers:
         :param session:
-        :return: 
+        :return:
         """
         request_data = {}
         async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
@@ -52,10 +47,8 @@ class Information(ApiBaseModel):
             logger.debug("Information")
             try:
                 self.ensure_session_has_get_method(sess)
-                response = await sess.get(
-                    self.base_url
-                )
-                if "application/json" not in response.headers.get('Content-Type') or response.status_code != 200:
+                response = await sess.get(self.base_url)
+                if "application/json" not in response.headers.get("Content-Type") or response.status_code != 200:
                     error_message = await self.handle_error_response(response=response, request_data=request_data)
                     status_code = error_message.get("statusCode", response.status_code)
                     message = error_message.get("message", "Unknown error")
@@ -70,10 +63,12 @@ class Information(ApiBaseModel):
                         raise APIError(message, request=request_data, code=status_code, response=error_message)
                     raise APIError(message, request=request_data, code=status_code, response=error_message)
 
-                return InformationResp.model_validate(response.json())
+                return InformationResp.model_validate_json(response.content)
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
-                raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
+                raise SessionHttpError(
+                    "An AsyncSession RequestsError occurred, maybe SSL error. Try again later!"
+                ) from exc
             except APIError as e:
                 raise e
             except Exception as e:

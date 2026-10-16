@@ -1,12 +1,11 @@
 import random
-from typing import List, Tuple, Union
 
 from pydantic import dataclasses
 
-WeightedOption = Tuple[str, int, list, list, list]
-WeightedSimpleOption = List[int]
-WeightedOptions = List[WeightedOption]
-WeightedSimpleOptions = List[WeightedSimpleOption]
+WeightedOption = tuple[str, int, list, list, list]
+WeightedSimpleOption = list[int]
+WeightedOptions = list[WeightedOption]
+WeightedSimpleOptions = list[WeightedSimpleOption]
 
 cameraAnglesL = [
     ["dutch angle", 12, [], [], []],
@@ -2545,7 +2544,7 @@ colorsL = [
 
 @dataclasses.dataclass
 class Conditions:
-    tags: List[str]
+    tags: list[str]
 
     def add(self, v: str):
         if v not in self.tags:
@@ -2568,9 +2567,9 @@ def random_range(a, b):
 
 
 def select_weighted_option(
-        options: Union[WeightedOptions, WeightedSimpleOptions],
-        conditions: Conditions,
-) -> Union[str,int]:
+    options: WeightedOptions | WeightedSimpleOptions,
+    conditions: Conditions,
+) -> str | int:
     """
     选择一个加权选项
     :param options: 权重
@@ -2579,12 +2578,12 @@ def select_weighted_option(
     """
 
     # 如果 conditions 的元素存在于最后两个数组中，则不会被选中
-    def get_fourth_array(item: WeightedOption) -> List[str]:
+    def get_fourth_array(item: WeightedOption) -> list[str]:
         if len(item) < 4:
             return []
         return item[3]
 
-    def get_fifth_array(item: WeightedOption) -> List[str]:
+    def get_fifth_array(item: WeightedOption) -> list[str]:
         if len(item) < 5:
             return []
         return item[4]
@@ -2609,7 +2608,7 @@ def select_weighted_option(
     random.shuffle(filtered_options)
 
     # 计算总权重
-    def get_weight(item: Union[str,int]) -> int:
+    def get_weight(item: str | int) -> int:
         return len(item) if isinstance(item, str) else item
 
     total_weight = sum(get_weight(option[1]) for option in filtered_options)
@@ -2688,7 +2687,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
                 [2, 15],
                 [3, 5],
             ],
-            uni_tags
+            uni_tags,
         )
     elif character_limit == 2:
         body_feature_num = select_weighted_option(
@@ -2697,7 +2696,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
                 [1, 40],
                 [2, 10],
             ],
-            uni_tags
+            uni_tags,
         )
     else:
         body_feature_num = select_weighted_option(
@@ -2705,7 +2704,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
                 [0, 30],
                 [1, 30],
             ],
-            uni_tags
+            uni_tags,
         )
 
     for _ in range(body_feature_num):
@@ -2725,7 +2724,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
             ["bodysuit", 5],
             ["normal clothes", 40],
         ],
-        uni_tags
+        uni_tags,
     )
 
     if outfit_type == "uniform":
@@ -2784,7 +2783,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
                 [2, 15],
                 [3, 5],
             ],
-            uni_tags
+            uni_tags,
         )
     elif character_limit == 2:
         accessory_iterations = select_weighted_option(
@@ -2793,7 +2792,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
                 [1, 40],
                 [2, 10],
             ],
-            uni_tags
+            uni_tags,
         )
     else:
         accessory_iterations = select_weighted_option(
@@ -2801,7 +2800,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
                 [0, 30],
                 [1, 30],
             ],
-            uni_tags
+            uni_tags,
         )
 
     for _ in range(accessory_iterations):
@@ -2822,7 +2821,7 @@ def generate_scene_composition():
             [3, 7],
             [0, 5],
         ],
-        condition_set
+        condition_set,
     )
 
     if character_count == 0:
@@ -2838,7 +2837,7 @@ def generate_scene_composition():
                 [4, 15],
                 [5, 5],
             ],
-            condition_set
+            condition_set,
         )
 
         for _ in range(scene_element_count):
@@ -2853,7 +2852,7 @@ def generate_scene_composition():
                 [4, 20],
                 [5, 15],
             ],
-            condition_set
+            condition_set,
         )
         object_count -= character_count
         object_count = max(0, object_count)
@@ -2877,7 +2876,7 @@ def generate_scene_composition():
                 ["f", 60],
                 ["o", 0],
             ],
-            condition_set
+            condition_set,
         )
         if gender == "m":
             male_count += 1
@@ -2913,17 +2912,17 @@ def generate_scene_composition():
 
     # 为女性生成外貌描述
     for _ in range(female_count):
-        female_appearance = ["girl"] + generate_appearance(condition_set, "f", framing_type, character_count)
+        female_appearance = ["girl", *generate_appearance(condition_set, "f", framing_type, character_count)]
         character_details.append(female_appearance)
 
     # 为男性生成外貌描述
     for _ in range(male_count):
-        male_appearance = ["boy"] + generate_appearance(condition_set, "m", framing_type, character_count)
+        male_appearance = ["boy", *generate_appearance(condition_set, "m", framing_type, character_count)]
         character_details.append(male_appearance)
 
     # 为其他生成外貌描述
     for _ in range(other_count):
-        other_appearance = ["other"] + generate_appearance(condition_set, "o", framing_type, character_count)
+        other_appearance = ["other", *generate_appearance(condition_set, "o", framing_type, character_count)]
         character_details.append(other_appearance)
 
     # 添加场景元素
@@ -2950,10 +2949,7 @@ def generate_scene_composition():
 
     # 去重
     scene_tags = list({tag: True for tag in scene_tags}.keys())
-    return [
-        ", ".join(scene_tags),
-        *[", ".join(details) for details in character_details]
-    ]
+    return [", ".join(scene_tags), *[", ".join(details) for details in character_details]]
 
 
 if __name__ == "__main__":

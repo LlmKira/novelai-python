@@ -7,6 +7,7 @@ class Speaker(BaseModel):
     """
     Speaker for /ai/generated_voice
     """
+
     sid: int = -1
     seed: str = "kurumuz12"
     name: str
@@ -21,6 +22,7 @@ class VoiceSpeakerV1(Enum):
     """
     Speaker for /ai/generated_voice
     """
+
     Cyllene = Speaker(sid=17, name="Cyllene", category="female")
     Leucosia = Speaker(sid=95, name="Leucosia", category="female")
     Crina = Speaker(sid=44, name="Crina", category="female")
@@ -38,6 +40,7 @@ class VoiceSpeakerV2(Enum):
     """
     Speaker for /ai/generated_voice
     """
+
     Ligeia = Speaker(name="Ligeia", category="unisex", seed="Anananan")
     Aini = Speaker(name="Aini", category="female", seed="Aini")
     Orea = Speaker(name="Orea", category="female", seed="Orea")

@@ -1,22 +1,20 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/2/7 上午11:46
 # @Author  : sudoskys
 # @File    : login.py
 
 import json
-from typing import Optional, Union
 
 import curl_cffi
 from curl_cffi.requests import AsyncSession
 from loguru import logger
-from pydantic import PrivateAttr, Field
+from pydantic import Field, PrivateAttr
 
-from ..schema import ApiBaseModel
 from ..._exceptions import APIError, SessionHttpError
 from ..._response.user.login import LoginResp
 from ...credential import CredentialBase
-from ...credential._base import browser_headers, IMPERSONATE
+from ...credential._base import IMPERSONATE, browser_headers
 from ...utils import encode_access_key
+from ..schema import ApiBaseModel
 
 
 class Login(ApiBaseModel):
@@ -37,9 +35,15 @@ class Login(ApiBaseModel):
 
     @property
     def session(self):
-        return AsyncSession(timeout=180, headers=browser_headers({
-            "Content-Type": "application/json",
-        }), impersonate=IMPERSONATE)
+        return AsyncSession(
+            timeout=180,
+            headers=browser_headers(
+                {
+                    "Content-Type": "application/json",
+                }
+            ),
+            impersonate=IMPERSONATE,
+        )
 
     @classmethod
     def build(cls, *, user_name: str, password: str):
@@ -51,11 +55,12 @@ class Login(ApiBaseModel):
         """
         return cls(key=encode_access_key(user_name, password))
 
-    async def request(self,
-                      session: Union[AsyncSession, CredentialBase] = None,
-                      *,
-                      override_headers: Optional[dict] = None,
-                      ) -> LoginResp:
+    async def request(
+        self,
+        session: AsyncSession | CredentialBase = None,
+        *,
+        override_headers: dict | None = None,
+    ) -> LoginResp:
         """
         Request to get user access token
         :return:
@@ -71,11 +76,8 @@ class Login(ApiBaseModel):
             logger.debug("Fetching login-credential")
             try:
                 self.ensure_session_has_post_method(sess)
-                response = await sess.post(
-                    self.base_url,
-                    data=json.dumps(request_data).encode("utf-8")
-                )
-                if "application/json" not in response.headers.get('Content-Type') or response.status_code != 201:
+                response = await sess.post(self.base_url, data=json.dumps(request_data).encode("utf-8"))
+                if "application/json" not in response.headers.get("Content-Type") or response.status_code != 201:
                     error_message = await self.handle_error_response(response=response, request_data=request_data)
                     status_code = error_message.get("statusCode", response.status_code)
                     message = error_message.get("message", "Unknown error")
@@ -87,10 +89,12 @@ class Login(ApiBaseModel):
                         # An unknown error occured.
                         raise APIError(message, request=request_data, code=status_code, response=error_message)
                     raise APIError(message, request=request_data, code=status_code, response=error_message)
-                return LoginResp.model_validate(response.json())
+                return LoginResp.model_validate_json(response.content)
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
-                raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
+                raise SessionHttpError(
+                    "An AsyncSession RequestsError occurred, maybe SSL error. Try again later!"
+                ) from exc
             except APIError as e:
                 raise e
             except Exception as e:

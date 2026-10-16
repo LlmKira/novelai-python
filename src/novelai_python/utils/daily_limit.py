@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # @File    : daily_limit.py
 """
 Local image budget: at most N images per rolling window (default 2500 / 24h).
@@ -15,7 +14,6 @@ import os
 import pathlib
 import threading
 import time
-from typing import Optional, Union
 
 from loguru import logger
 
@@ -29,11 +27,11 @@ ENV_STATE_FILE = "NOVELAI_LIMIT_STATE_FILE"
 
 class DailyImageLimiter:
     def __init__(
-            self,
-            limit: int = DEFAULT_IMAGE_LIMIT,
-            *,
-            window_seconds: int = DEFAULT_WINDOW_SECONDS,
-            state_file: Optional[Union[str, pathlib.Path]] = None,
+        self,
+        limit: int = DEFAULT_IMAGE_LIMIT,
+        *,
+        window_seconds: int = DEFAULT_WINDOW_SECONDS,
+        state_file: str | pathlib.Path | None = None,
     ):
         """
         :param limit: images allowed per window; 0 or less disables the limiter
@@ -44,7 +42,7 @@ class DailyImageLimiter:
         self.window_seconds = int(window_seconds)
         self.state_file = pathlib.Path(state_file) if state_file else None
         self._lock = threading.Lock()
-        self._window_start: Optional[float] = None
+        self._window_start: float | None = None
         self._used = 0
         self._load()
 
@@ -99,7 +97,7 @@ class DailyImageLimiter:
         return max(self.limit - self.used, 0)
 
     @property
-    def reset_at(self) -> Optional[float]:
+    def reset_at(self) -> float | None:
         """Unix timestamp when the current window ends, None if no window has started."""
         with self._lock:
             if self._window_start is None:
@@ -152,7 +150,7 @@ class DailyImageLimiter:
         }
 
 
-_default_limiter: Optional[DailyImageLimiter] = None
+_default_limiter: DailyImageLimiter | None = None
 _default_lock = threading.Lock()
 
 
@@ -181,7 +179,7 @@ def get_default_limiter() -> DailyImageLimiter:
         return _default_limiter
 
 
-def set_default_limiter(limiter: Optional[DailyImageLimiter]) -> None:
+def set_default_limiter(limiter: DailyImageLimiter | None) -> None:
     global _default_limiter
     with _default_lock:
         _default_limiter = limiter

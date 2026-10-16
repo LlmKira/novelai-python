@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/2/7 上午9:57
 # @Author  : sudoskys
 # @File    : subscription.py
 
-from typing import Optional, Dict, Any, List
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -28,7 +27,7 @@ class Perks(BaseModel):
     voiceGeneration: bool
     imageGeneration: bool
     unlimitedImageGeneration: bool
-    unlimitedImageGenerationLimits: List[ImageGenerationLimit]
+    unlimitedImageGenerationLimits: list[ImageGenerationLimit]
     contextTokens: int
 
 
@@ -39,12 +38,13 @@ class SubscriptionUsage(BaseModel):
     86400 / timeUntilNextPercent), not a countdown. While ``isNegative`` is
     false, V5 generations at normal resolution / <= 28 steps are free; once the
     bar is below zero every V5 generation costs Anlas until it refills."""
+
     percent: int = Field(0, description="Usage bar level, may exceed 100 after bonuses")
     isNegative: bool = Field(False, description="Bar is below zero: V5 now costs Anlas")
-    timeUntilNextPercent: Optional[int] = Field(None, description="Seconds per +1 %")
+    timeUntilNextPercent: int | None = Field(None, description="Seconds per +1 %")
 
     @property
-    def refill_percent_per_day(self) -> Optional[float]:
+    def refill_percent_per_day(self) -> float | None:
         if not self.timeUntilNextPercent:
             return None
         return 86400 / self.timeUntilNextPercent
@@ -60,10 +60,10 @@ class SubscriptionResp(RespBase):
     active: bool = Field(..., description="Subscription status")
     expiresAt: int = Field(..., description="Subscription expiration time")
     perks: Perks = Field(..., description="Subscription perks")
-    paymentProcessorData: Optional[Dict[Any, Any]]
+    paymentProcessorData: dict[Any, Any] | None
     trainingStepsLeft: TrainingSteps = Field(..., description="Training steps left")
     accountType: int = Field(..., description="Account type")
-    usage: Optional[SubscriptionUsage] = Field(None, description="Opus V5 usage bar (absent on non-Opus)")
+    usage: SubscriptionUsage | None = Field(None, description="Opus V5 usage bar (absent on non-Opus)")
 
     @property
     def is_active(self):

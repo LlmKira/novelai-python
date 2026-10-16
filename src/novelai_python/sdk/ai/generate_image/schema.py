@@ -1,16 +1,15 @@
 from enum import Enum
-from typing import List, Union
 
 from pydantic import BaseModel, Field
 
 
 class CharacterPosition(BaseModel):
-    x: Union[float, int] = Field(0, le=0.9, ge=0, description="X")
+    x: float | int = Field(0, le=0.9, ge=0, description="X")
     """
     0 Auto 
     0.1 0.3 0.5 0.7 0.9
     """
-    y: Union[float, int] = Field(0, le=0.9, ge=0, description="Y")
+    y: float | int = Field(0, le=0.9, ge=0, description="Y")
     """
     0 Auto
     0.1 0.3 0.5 0.7 0.9
@@ -49,16 +48,14 @@ class PositionMap(Enum):
 class Character(BaseModel):
     prompt: str = Field(None, description="Prompt")
     uc: str = Field("", description="Negative Prompt")
-    center: Union[PositionMap, CharacterPosition] = Field(PositionMap.AUTO, description="Center")
+    center: PositionMap | CharacterPosition = Field(PositionMap.AUTO, description="Center")
     """Center"""
     enabled: bool = Field(True, description="Enabled")
 
     @classmethod
-    def build(cls,
-              prompt: str,
-              uc: str = '',
-              center: Union[PositionMap, CharacterPosition] = PositionMap.AUTO
-              ) -> "Character":
+    def build(
+        cls, prompt: str, uc: str = "", center: PositionMap | CharacterPosition = PositionMap.AUTO
+    ) -> "Character":
         """
         Build CharacterPrompt from prompt
         :param prompt: The main prompt
@@ -70,15 +67,15 @@ class Character(BaseModel):
 
 
 class CharCaption(BaseModel):
-    char_caption: str = Field('', description="Character Caption")
-    centers: List[Union[PositionMap, CharacterPosition]] = Field([PositionMap.AUTO], description="Center")
+    char_caption: str = Field("", description="Character Caption")
+    centers: list[PositionMap | CharacterPosition] = Field([PositionMap.AUTO], description="Center")
     """Center"""
 
 
 class Caption(BaseModel):
     base_caption: str = Field("", description="Main Prompt")
     """Main Prompt"""
-    char_captions: List[CharCaption] = Field(default_factory=list, description="Character Captions")
+    char_captions: list[CharCaption] = Field(default_factory=list, description="Character Captions")
     """Character Captions"""
 
 
@@ -88,12 +85,9 @@ class V4Prompt(BaseModel):
     use_order: bool = Field(True, description="Use Order")
 
     @classmethod
-    def build_from_character_prompts(cls,
-                                     base_caption: str,
-                                     character_prompts: List[Character],
-                                     use_coords: bool = False,
-                                     use_order: bool = True
-                                     ) -> "V4Prompt":
+    def build_from_character_prompts(
+        cls, base_caption: str, character_prompts: list[Character], use_coords: bool = False, use_order: bool = True
+    ) -> "V4Prompt":
         """
         Build V4Prompt from character prompts
         :param prompt: The main prompt
@@ -114,11 +108,9 @@ class V4NegativePrompt(BaseModel):
     legacy_uc: bool = False
 
     @classmethod
-    def build_from_character_prompts(cls,
-                                     negative_prompt: str,
-                                     character_prompts: List[Character],
-                                     legacy_uc: bool
-                                     ) -> "V4NegativePrompt":
+    def build_from_character_prompts(
+        cls, negative_prompt: str, character_prompts: list[Character], legacy_uc: bool
+    ) -> "V4NegativePrompt":
         """
         Build V4NegativePrompt from character prompts
         :param negative_prompt: The main prompt

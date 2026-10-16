@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/2/13 上午10:48
 # @Author  : sudoskys
 # @File    : upscale.py
@@ -6,28 +5,27 @@ import base64
 import json
 from copy import deepcopy
 from io import BytesIO
-from typing import Optional, Union
-from urllib.parse import urlparse
-from zipfile import ZipFile, BadZipFile
+from typing import Union
+from zipfile import BadZipFile, ZipFile
 
 import curl_cffi
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import ConfigDict, PrivateAttr, model_validator
-from tenacity import wait_random, retry, stop_after_attempt, retry_if_exception
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random
 
-from ..schema import ApiBaseModel
-from ..._exceptions import APIError, AuthError, SessionHttpError, DataSerializationError
+from ..._exceptions import APIError, AuthError, DataSerializationError, SessionHttpError
 from ..._response.ai.upscale import UpscaleResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy
+from ..schema import ApiBaseModel
 
 
 class Upscale(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://api.novelai.net")
-    image: Union[str, bytes]  # base64
-    width: Optional[int] = None
-    height: Optional[int] = None
+    image: str | bytes  # base64
+    width: int | None = None
+    height: int | None = None
     scale: float = 4
     model_config = ConfigDict(extra="ignore")
 
@@ -40,12 +38,13 @@ class Upscale(ApiBaseModel):
         # Auto detect image size
         try:
             from PIL import Image
+
             with Image.open(BytesIO(base64.b64decode(self.image))) as img:
                 width, height = img.size
         except Exception as e:
             logger.warning(f"Error when validate image size: {e}")
             if self.width is None or self.height is None:
-                raise ValueError("Invalid image size and cant auto detect, must be set width and height.")
+                raise ValueError("Invalid image size and cant auto detect, must be set width and height.") from e
         else:
             if self.width is None:
                 self.width = width
@@ -69,13 +68,11 @@ class Upscale(ApiBaseModel):
         wait=wait_random(min=1, max=3),
         stop=stop_after_attempt(3),
         retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
-        reraise=True
+        reraise=True,
     )
-    async def request(self,
-                      session: Union[AsyncSession, "CredentialBase"],
-                      *,
-                      override_headers: Optional[dict] = None
-                      ) -> UpscaleResp:
+    async def request(
+        self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None
+    ) -> UpscaleResp:
         """
         生成图片
         :param override_headers:
@@ -91,24 +88,20 @@ class Upscale(ApiBaseModel):
 
             # Log the request data (sanitize sensitive content)
             try:
-                _log_data = deepcopy(request_data)
+                log_data = deepcopy(request_data)
                 if self.image:
-                    _log_data["image"] = "base64 data hidden"
-                logger.debug(f"Request Data: {json.dumps(_log_data, indent=2)}")
+                    log_data["image"] = "base64 data hidden"
+                logger.debug(f"Request Data: {json.dumps(log_data, indent=2)}")
             except Exception as e:
                 logger.warning(f"Failed to log request data: {e}")
 
             # Perform request and handle response
             try:
                 self.ensure_session_has_post_method(sess)
-                response = await sess.post(
-                    self.base_url,
-                    data=json.dumps(request_data).encode("utf-8")
-                )
+                response = await sess.post(self.base_url, data=json.dumps(request_data).encode("utf-8"))
                 if (
-                        response.headers.get('Content-Type') not in ['binary/octet-stream',
-                                                                     'application/x-zip-compressed']
-                        or response.status_code >= 400
+                    response.headers.get("Content-Type") not in ["binary/octet-stream", "application/x-zip-compressed"]
+                    or response.status_code >= 400
                 ):
                     error_message = await self.handle_error_response(response=response, request_data=request_data)
                     status_code = error_message.get("statusCode", response.status_code)
@@ -145,7 +138,7 @@ class Upscale(ApiBaseModel):
                             endpoint=self.base_url,
                             raw_request=request_data,
                         ),
-                        files=unzip_content[0]
+                        files=unzip_content[0],
                     )
                 except BadZipFile as e:
                     # Invalid ZIP file - indicate serialization error
@@ -166,7 +159,9 @@ class Upscale(ApiBaseModel):
                     ) from e
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
-                raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
+                raise SessionHttpError(
+                    "An AsyncSession RequestsError occurred, maybe SSL error. Try again later!"
+                ) from exc
             except APIError as e:
                 raise e
             except Exception as e:

@@ -1,18 +1,18 @@
-# -*- coding: utf-8 -*-
 import base64
 import json
 from io import BytesIO
-from typing import Union, Optional, List, Tuple
 
 import numpy as np
-from PIL import Image
-from PIL.PngImagePlugin import PngInfo
 from loguru import logger
 from nacl.encoding import Base64Encoder
 from nacl.signing import VerifyKey
+from PIL import Image
+from PIL.PngImagePlugin import PngInfo
 from pydantic import BaseModel, ConfigDict
 
-from novelai_python.sdk.ai._enum import PROMOTION, Model, find_model_by_hashcode
+from novelai_python.sdk.ai._enum import PROMOTION as PROMOTION
+from novelai_python.sdk.ai._enum import Model, find_model_by_hashcode
+
 from .bch_utils import fec_decode
 from .lsb_extractor import ImageLsbDataExtractor
 from .lsb_injector import inject_data
@@ -27,50 +27,50 @@ class BrokenCommentError(Exception):
 
 
 class CommentModel(BaseModel):
-    prompt: Optional[str] = None
-    steps: Optional[int] = None
-    height: Optional[int] = None
-    width: Optional[int] = None
-    scale: Optional[float] = None
-    uncond_scale: Optional[float] = None
-    cfg_rescale: Optional[float] = None
-    seed: Optional[int] = None
-    n_samples: Optional[int] = None
-    hide_debug_overlay: Optional[bool] = None
-    noise_schedule: Optional[str] = None
-    legacy_v3_extend: Optional[bool] = None
-    reference_information_extracted: Optional[float] = None
-    reference_strength: Optional[float] = None
-    reference_strength_multiple: Optional[List[float]] = None
-    reference_information_extracted_multiple: Optional[List[float]] = None
-    sampler: Optional[str] = None
-    controlnet_strength: Optional[float] = None
-    controlnet_model: Optional[Union[None, str]] = None
-    dynamic_thresholding: Optional[bool] = None
-    dynamic_thresholding_percentile: Optional[float] = None
-    dynamic_thresholding_mimic_scale: Optional[float] = None
-    sm: Optional[bool] = None
-    sm_dyn: Optional[bool] = None
-    skip_cfg_below_sigma: Optional[float] = None
-    lora_unet_weights: Optional[Union[None, str]] = None
-    lora_clip_weights: Optional[Union[None, str]] = None
-    uc: Optional[str] = None
-    request_type: Optional[str] = None
-    signed_hash: Optional[str] = None
-    skip_cfg_above_sigma: Optional[float] = None
-    deliberate_euler_ancestral_bug: Optional[bool] = None
-    prefer_brownian: Optional[bool] = None
-    cfg_sched_eligibility: Optional[str] = None
-    explike_fine_detail: Optional[bool] = None
-    minimize_sigma_inf: Optional[bool] = None
-    uncond_per_vibe: Optional[bool] = None
-    wonky_vibe_correlation: Optional[bool] = None
-    version: Optional[int] = None
+    prompt: str | None = None
+    steps: int | None = None
+    height: int | None = None
+    width: int | None = None
+    scale: float | None = None
+    uncond_scale: float | None = None
+    cfg_rescale: float | None = None
+    seed: int | None = None
+    n_samples: int | None = None
+    hide_debug_overlay: bool | None = None
+    noise_schedule: str | None = None
+    legacy_v3_extend: bool | None = None
+    reference_information_extracted: float | None = None
+    reference_strength: float | None = None
+    reference_strength_multiple: list[float] | None = None
+    reference_information_extracted_multiple: list[float] | None = None
+    sampler: str | None = None
+    controlnet_strength: float | None = None
+    controlnet_model: None | str | None = None
+    dynamic_thresholding: bool | None = None
+    dynamic_thresholding_percentile: float | None = None
+    dynamic_thresholding_mimic_scale: float | None = None
+    sm: bool | None = None
+    sm_dyn: bool | None = None
+    skip_cfg_below_sigma: float | None = None
+    lora_unet_weights: None | str | None = None
+    lora_clip_weights: None | str | None = None
+    uc: str | None = None
+    request_type: str | None = None
+    signed_hash: str | None = None
+    skip_cfg_above_sigma: float | None = None
+    deliberate_euler_ancestral_bug: bool | None = None
+    prefer_brownian: bool | None = None
+    cfg_sched_eligibility: str | None = None
+    explike_fine_detail: bool | None = None
+    minimize_sigma_inf: bool | None = None
+    uncond_per_vibe: bool | None = None
+    wonky_vibe_correlation: bool | None = None
+    version: int | None = None
 
-    extra_passthrough_testing: Optional[dict] = None
+    extra_passthrough_testing: dict | None = None
     """More test infomation"""
-    v4_prompt: Optional[dict] = None
-    v4_negative_prompt: Optional[dict] = None
+    v4_prompt: dict | None = None
+    v4_negative_prompt: dict | None = None
 
     model_config = ConfigDict(extra="allow")
 
@@ -83,7 +83,7 @@ class CommentModel(BaseModel):
         return self.uc
 
     @property
-    def vibe_transfer_strength(self) -> List[float]:
+    def vibe_transfer_strength(self) -> list[float]:
         """
         Get the vibe transfer strength totally
         """
@@ -93,14 +93,15 @@ class CommentModel(BaseModel):
         return reference_strength
 
     @property
-    def vibe_transfer_information(self) -> List[float]:
+    def vibe_transfer_information(self) -> list[float]:
         """
         Get the vibe transfer information totally
         """
         if self.reference_information_extracted_multiple:
             return self.reference_information_extracted_multiple
-        reference_information = [] if self.reference_information_extracted is None else [
-            self.reference_information_extracted]
+        reference_information = (
+            [] if self.reference_information_extracted is None else [self.reference_information_extracted]
+        )
         return reference_information
 
 
@@ -109,18 +110,18 @@ class ImageMetadata(BaseModel):
     ImageMetadata is a class that represents the metadata of a NovelAI generated image.
     """
 
-    Generation_time: Optional[float] = None
-    Comment: Optional[CommentModel] = None
-    Title: Optional[str] = None
-    Description: Optional[str] = None
-    Software: Optional[str] = None
-    Source: Optional[str] = None
-    dpi: Optional[Tuple[float, float]] = None
+    Generation_time: float | None = None
+    Comment: CommentModel | None = None
+    Title: str | None = None
+    Description: str | None = None
+    Software: str | None = None
+    Source: str | None = None
+    dpi: tuple[float, float] | None = None
 
     model_config = ConfigDict(extra="allow")
 
     @property
-    def used_model(self) -> Union[Model, None]:
+    def used_model(self) -> Model | None:
         """
         Get the model used to generate the image from the Model code
         :return:  Model or None
@@ -134,13 +135,13 @@ class ImageMetadata(BaseModel):
         :param image: Type: Union[str, bytes, Path, BytesIO]
         :return: BytesIO
         """
-        image = image.convert('RGBA')
+        image = image.convert("RGBA")
         data = np.array(image)
         data[..., 3] = 254
-        new_image = Image.fromarray(data, 'RGBA')
-        _new_img_io = BytesIO()
-        new_image.save(_new_img_io, format="PNG")
-        return _new_img_io
+        new_image = Image.fromarray(data, "RGBA")
+        new_img_io = BytesIO()
+        new_image.save(new_img_io, format="PNG")
+        return new_img_io
 
     def apply_to_image(self, image: Image.Image, *, inject_lsb: bool = True) -> BytesIO:
         """
@@ -174,7 +175,7 @@ class ImageMetadata(BaseModel):
         :param image: IMAGE_INPUT_TYPE
         """
         try:
-            image_meta_data, fec_data = ImageLsbDataExtractor().extract_data(image)
+            image_meta_data, _fec_data = ImageLsbDataExtractor().extract_data(image)
             return cls.model_validate(image_meta_data)
         except Exception as e:
             logger.trace(f"Error extracting data in LSB: {e}")
@@ -192,14 +193,14 @@ class ImageMetadata(BaseModel):
             comment_dict = json.loads(comment)
         except Exception as e:
             raise BrokenMetaDataError(
-                f"ImageMetadata: non-standard comment json cant be loaded, given image maybe be modified!"
+                "ImageMetadata: non-standard comment json cant be loaded, given image maybe be modified!"
             ) from e
         comment_dict["prompt"] = comment_dict.get("prompt", "")
         try:
             comment_model = CommentModel.model_validate(comment_dict)
         except Exception as e:
             raise BrokenCommentError(
-                f"ImageMetadata: comment model validate failed, given image maybe be modified."
+                "ImageMetadata: comment model validate failed, given image maybe be modified."
                 "If you are sure that the image is from novelai.net, please issue this problem to "
                 "https://github.com/LlmKira/novelai-python/issues."
             ) from e
@@ -212,7 +213,7 @@ class ImageMetadata(BaseModel):
             )
         except Exception as e:
             raise BrokenMetaDataError(
-                f"ImageMetadata: some error occurred when validate the model, are the image from novelai.net?"
+                "ImageMetadata: some error occurred when validate the model, are the image from novelai.net?"
             ) from e
 
     @classmethod
@@ -260,7 +261,6 @@ class ImageMetadata(BaseModel):
 
 
 class ImageVerifier:
-
     @staticmethod
     def verify_latents(image: Image.Image, signed_hash: bytes, verify_key: VerifyKey):
         sig = None
@@ -268,21 +268,21 @@ class ImageVerifier:
         try:
             for cid, data, after_idat in image.private_chunks:
                 if after_idat:
-                    if cid == b'ltns':
+                    if cid == b"ltns":
                         sig = data
-                    elif cid == b'ltnt':
+                    elif cid == b"ltnt":
                         latents = data
         except Exception as e:
             logger.trace(f"Error extracting latents: {e}")
             return True, False, None
         if sig is None or latents is None:
             return True, False, None
-        if not sig.startswith(b'NovelAI_ltntsig'):
+        if not sig.startswith(b"NovelAI_ltntsig"):
             return False, False, None
-        sig = sig[len(b'NovelAI_ltntsig'):]
-        if not latents.startswith(b'NovelAI_latents'):
+        sig = sig[len(b"NovelAI_ltntsig") :]
+        if not latents.startswith(b"NovelAI_latents"):
             return False, False, None
-        latents = latents[len(b'NovelAI_latents'):]
+        latents = latents[len(b"NovelAI_latents") :]
         if len(sig) != 64:
             return False, False, None
         w, h = image.size
@@ -297,10 +297,9 @@ class ImageVerifier:
             logger.trace(f"Error verifying latents: {e}")
             return False, False, None
 
-    def verify(self,
-               image: Image.Image,
-               verify_key_hex: str = "Y2JcQAOhLwzwSDUJPNgL04nS0Tbqm7cSRc4xk0vRMic="
-               ) -> Tuple[bool, bool]:
+    def verify(
+        self, image: Image.Image, verify_key_hex: str = "Y2JcQAOhLwzwSDUJPNgL04nS0Tbqm7cSRc4xk0vRMic="
+    ) -> tuple[bool, bool]:
         """
         Verify if the image is a NovelAI generated image
 
@@ -326,7 +325,7 @@ class ImageVerifier:
         # Build verify key
         verify_key = VerifyKey(verify_key_hex.encode("utf-8"), encoder=Base64Encoder)
         # Verify latents
-        good_latents, have_latents, latents = self.verify_latents(image, signed_hash, verify_key)
+        good_latents, have_latents, _latents = self.verify_latents(image, signed_hash, verify_key)
         if not good_latents:
             return False, False
         rgb = image_array[:, :, :3].tobytes()
@@ -337,7 +336,7 @@ class ImageVerifier:
         except Exception as e:
             logger.trace(f"Error verifying image [1]: {e}")
             try:
-                rgb, errs = fec_decode(bytearray(rgb), bytearray(fec_data), w, h)
+                rgb, _errs = fec_decode(bytearray(rgb), bytearray(fec_data), w, h)
                 image_and_comment = rgb + parameter
                 verify_key.verify(image_and_comment, signed_hash)
             except Exception as e:

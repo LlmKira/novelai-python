@@ -1,17 +1,14 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/2/7 下午12:14
 # @Author  : sudoskys
 # @File    : _shema.py
 
-from typing import Dict, Optional
 
-from curl_cffi.requests import AsyncSession
 import secrets
 import string
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+from curl_cffi.requests import AsyncSession
 from pydantic import BaseModel
-
 
 # Browser identity sent with every request.
 # Captured from the novelai.net web client (Chrome 155 / Windows; stable с 06.10.2026, цикл теперь 2 недели). Bump both
@@ -37,14 +34,15 @@ def _correlation_id() -> str:
 
 def _initiated_at() -> str:
     """x-initiated-at in the web client format: 2026-10-16T15:54:25.576Z"""
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 NOVELAI_WEB_ORIGIN = "https://novelai.net"
 
 
-def browser_headers(extra: Optional[Dict[str, str]] = None,
-                    accept_language: str = DEFAULT_ACCEPT_LANGUAGE) -> Dict[str, str]:
+def browser_headers(
+    extra: dict[str, str] | None = None, accept_language: str = DEFAULT_ACCEPT_LANGUAGE
+) -> dict[str, str]:
     """
     Headers the novelai.net web client sends on API calls, in the order a real
     Chrome 155 emits them (HAR capture 2026-10-16). ``accept-encoding`` and
@@ -81,6 +79,7 @@ def get_impersonate_target() -> str:
     """
     try:
         from curl_cffi.requests.impersonate import DEFAULT_CHROME
+
         return str(DEFAULT_CHROME)
     except Exception:
         return "chrome136"
@@ -92,7 +91,7 @@ IMPERSONATE = get_impersonate_target()
 class CredentialBase(BaseModel):
     _session: AsyncSession = None
     """会话"""
-    proxy: Optional[str] = None
+    proxy: str | None = None
     """Outbound proxy for every request, e.g. ``http://user:pass@host:port``
     (curl_cffi ``proxies`` for http and https). None = direct."""
 
@@ -105,5 +104,5 @@ class CredentialBase(BaseModel):
             kw["proxies"] = {"http": self.proxy, "https": self.proxy}
         return kw
 
-    async def get_session(self, timeout: int = 180, update_headers: dict = None):
+    async def get_session(self, timeout: int = 180, update_headers: dict | None = None):
         raise NotImplementedError

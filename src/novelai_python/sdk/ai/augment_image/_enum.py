@@ -5,6 +5,7 @@ class ReqType(Enum):
     """
     typing.Literal["bg-removal", "colorize", "lineart", "sketch", "emotion", "declutter", "declutter-keep-bubbles"]
     """
+
     BG_REMOVAL = "bg-removal"
     COLORIZE = "colorize"
     LINEART = "lineart"
@@ -18,6 +19,7 @@ class Moods(Enum):
     """
     The mood of the character in the image
     """
+
     Neutral = "neutral"
     Happy = "happy"
     Saf = "sad"

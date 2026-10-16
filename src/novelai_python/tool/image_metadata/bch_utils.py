@@ -2,8 +2,9 @@
 # MIT: https://github.com/NovelAI/novelai-image-metadata/blob/main/nai_bch.py
 import functools
 
-from .bch import BCH  # pure-NumPy, bit-exact with bchlib (no C extension needed)
 import numpy as np
+
+from .bch import BCH  # pure-NumPy, bit-exact with bchlib (no C extension needed)
 
 correctable_bits = 16
 block_length = 2019
@@ -36,8 +37,9 @@ def bit_shuffle(data_bytes, w, h, use_bytes=False):
     rest_tiles = rest_tiles.reshape(-1, tile_hr * tile_w)
     rest_tiles = rest_tiles.T
     rest_dim = rest_tiles.shape[-1]
-    rest_tiles = np.pad(rest_tiles, ((0, 0), (0, easy_tiles.shape[-1] - rest_tiles.shape[-1])), mode='constant',
-                        constant_values=0)
+    rest_tiles = np.pad(
+        rest_tiles, ((0, 0), (0, easy_tiles.shape[-1] - rest_tiles.shape[-1])), mode="constant", constant_values=0
+    )
     bits = np.concatenate((easy_tiles, rest_tiles), axis=0)
     dim = bits.shape[-1]
     bits = bits.reshape((-1,))
@@ -107,9 +109,14 @@ def rand_byte_unshuffle(data_bytes):
 
 
 use_bytes = True  # Bit shuffling provides better resilience, but byte shuffling is much faster and still sufficient
-shuffle_fn = lambda data_bytes, w, h: bit_shuffle(data_bytes, w, h, use_bytes=use_bytes)
-unshuffle_fn = lambda data_bytes, w, h, dim, rest_size, rest_dim: bit_unshuffle(data_bytes, w, h, dim, rest_size,
-                                                                                rest_dim, use_bytes=use_bytes)
+
+
+def shuffle_fn(data_bytes, w, h):
+    return bit_shuffle(data_bytes, w, h, use_bytes=use_bytes)
+
+
+def unshuffle_fn(data_bytes, w, h, dim, rest_size, rest_dim):
+    return bit_unshuffle(data_bytes, w, h, dim, rest_size, rest_dim, use_bytes=use_bytes)
 
 
 def split_byte_ranges(data_bytes, n, w, h, shuffle=False):
@@ -117,14 +124,14 @@ def split_byte_ranges(data_bytes, n, w, h, shuffle=False):
         data_bytes, dim, rest_size, rest_dim = shuffle_fn(data_bytes.copy(), w, h)
     chunks = []
     for i in range(0, len(data_bytes), n):
-        chunks.append(data_bytes[i:i + n])
+        chunks.append(data_bytes[i : i + n])
     if shuffle:
         return chunks, dim, rest_size, rest_dim
     return chunks
 
 
 def pad(data_bytes):
-    return bytearray(data_bytes + b'\x00' * (2019 - len(data_bytes)))
+    return bytearray(data_bytes + b"\x00" * (2019 - len(data_bytes)))
 
 
 # Returns codes for the data in data_bytes
@@ -133,7 +140,7 @@ def fec_encode(data_bytes, w, h):
     # import galois
     # encoder = galois.BCH(16383, 16383-224, d=17, c=224)
     chunks = [bytearray(encoder.encode(pad(x))) for x in split_byte_ranges(data_bytes, 2019, w, h, shuffle=True)[0]]
-    return b''.join(chunks)
+    return b"".join(chunks)
 
 
 # Returns the error corrected data and number of corrected errors or None, None if errors are not correctable
@@ -155,6 +162,6 @@ def fec_decode(data_bytes, codes, w, h):
         # if n_err < 0:
         #    raise ValueError("Too many errors to correct")
         corrected.append(chunk[:c_len])
-    corrected = b''.join(corrected)
+    corrected = b"".join(corrected)
     corrected = unshuffle_fn(corrected, w, h, dim, rest_size, rest_dim)
     return corrected, total_errors

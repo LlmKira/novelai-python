@@ -1,7 +1,7 @@
 import random
-from typing import Any, List, Optional, Union
+from typing import Any
 
-Options = List[List[Union[str, int, Optional[List]]]]
+Options = list[list[str | int | list | None]]
 
 viewF = [
     ["front view", 6],
@@ -1744,7 +1744,7 @@ def random_range(a, b):
     return random.randint(a, b)
 
 
-def get_weighted_random_choice(options: Options, tags: List[Any]) -> Any:
+def get_weighted_random_choice(options: Options, tags: list[Any]) -> Any:
     """
     从加权选项中随机选择一项。
     :param options: 元组列表, 每个元组包含一个选项值和其权重。
@@ -1771,9 +1771,7 @@ def get_weighted_random_choice(options: Options, tags: List[Any]) -> Any:
     raise RuntimeError("get_weighted_choice: should not reach here")
 
 
-def generate_character_traits(
-        gender: str, portrait_type: str, level: int
-) -> tuple:
+def generate_character_traits(gender: str, portrait_type: str, level: int) -> tuple:
     """
     生成角色特性。
     :param gender: 性别 (例如 'f' 表示女性)。
@@ -1781,8 +1779,8 @@ def generate_character_traits(
     :param level: 等级 (影响特征和服饰数量)。
     :return: 包含 tags 和 flags。
     """
-    traits: List[Any] = []
-    flags: List[str] = []
+    traits: list[Any] = []
+    flags: list[str] = []
 
     # 随机选择一个 "种类"
     category = get_weighted_random_choice(
@@ -1791,7 +1789,7 @@ def generate_character_traits(
             ["humanoid", 20],
             ["other", 5],
         ],
-        traits
+        traits,
     )
 
     # 根据选择种类，选择不同特征或标志
@@ -1820,7 +1818,7 @@ def generate_character_traits(
                 ["two tone body", 30],
                 ["rainbow body", 2],
             ],
-            traits
+            traits,
         )
 
         if body_style in {"multicolored body", "two tone body"} and random.random() < 0.5:
@@ -1873,9 +1871,7 @@ def generate_character_traits(
             traits.append(get_weighted_random_choice(hairSpecificsF, traits))
 
     # 人物性别特征
-    if gender == "f" and random.random() < 0.5 and "feral" not in traits:
-        traits.append(get_weighted_random_choice(chestSizesF, traits))
-    elif gender == "f" and random.random() < 0.1:
+    if (gender == "f" and random.random() < 0.5 and "feral" not in traits) or (gender == "f" and random.random() < 0.1):
         traits.append(get_weighted_random_choice(chestSizesF, traits))
 
     # 身体特征数量，通过级别决定权重
@@ -1887,7 +1883,7 @@ def generate_character_traits(
                 [2, 15],
                 [3, 5],
             ],
-            traits
+            traits,
         )
         if level == 1
         else get_weighted_random_choice(
@@ -1896,7 +1892,7 @@ def generate_character_traits(
                 [1, 40],
                 [2, 10],
             ],
-            traits
+            traits,
         )
         if level == 2
         else get_weighted_random_choice(
@@ -1904,7 +1900,7 @@ def generate_character_traits(
                 [0, 30],
                 [1, 30],
             ],
-            traits
+            traits,
         )
     )
 
@@ -1925,7 +1921,7 @@ def generate_character_traits(
             ["bodysuit", 5],
             ["normal clothes", 40],
         ],
-        traits
+        traits,
     )
 
     # 处理服饰类型和附加逻辑（如颜色等）
@@ -1958,10 +1954,10 @@ def generate_character_traits(
             color = get_weighted_random_choice(colorsF, traits)
             traits.append(f"{color + ' ' if addColor else ''}{get_weighted_random_choice(topsF, traits)}")
         if (
-                not hasIntermediateFeatures
-                and random.random() < 0.7
-                and portrait_type
-                and portrait_type in intermediatePortraitsF
+            not hasIntermediateFeatures
+            and random.random() < 0.7
+            and portrait_type
+            and portrait_type in intermediatePortraitsF
         ):
             addColor = random.random() < 0.5
             color = get_weighted_random_choice(colorsF, traits)
@@ -1984,31 +1980,10 @@ def generate_character_traits(
         traits.append(get_weighted_random_choice(posesAndActionsF, traits))
 
     # 筛选逻辑：去除某些特定的眼睛特征
-    if any(
-            "sleeping" in trait or "zzz" in trait or "eyes closed" in trait
-            for trait in traits
-    ):
-        traits = [
-            trait
-            for trait in traits
-            if all(
-                trait != eyeOption[0] for eyeOption in eyeColorsF
-            )
-        ]
-        traits = [
-            trait
-            for trait in traits
-            if all(
-                trait != scleraOption[0] for scleraOption in scleraColorsF
-            )
-        ]
-        traits = [
-            trait
-            for trait in traits
-            if all(
-                trait != eyeFeature[0] for eyeFeature in eyeFeaturesF
-            )
-        ]
+    if any("sleeping" in trait or "zzz" in trait or "eyes closed" in trait for trait in traits):
+        traits = [trait for trait in traits if all(trait != eyeOption[0] for eyeOption in eyeColorsF)]
+        traits = [trait for trait in traits if all(trait != scleraOption[0] for scleraOption in scleraColorsF)]
+        traits = [trait for trait in traits if all(trait != eyeFeature[0] for eyeFeature in eyeFeaturesF)]
 
     # 根据 level 确定 clothingItemsCount
     if level == 1:
@@ -2051,19 +2026,11 @@ def generate_character_traits(
 
 
 # 核心函数：场景标签生成器
-def generate_scene_tags() -> List[str]:
-    tags: List[str] = []
+def generate_scene_tags() -> list[str]:
+    tags: list[str] = []
 
     # 随机选择角色数及其权重分布
-    character_count = get_weighted_random_choice(
-        [
-            [1, 80],
-            [2, 15],
-            [3, 5],
-            [0, 5]
-        ],
-        tags
-    )
+    character_count = get_weighted_random_choice([[1, 80], [2, 15], [3, 5], [0, 5]], tags)
     if character_count == 0:
         tags.append("zero pictured")
         # 概率分支：30% 概率添加艺术风格
@@ -2072,39 +2039,13 @@ def generate_scene_tags() -> List[str]:
         tags.append(get_weighted_random_choice(backgroundCategoriesF, tags))
 
         # 随机环境细节生成
-        environment_count = get_weighted_random_choice(
-            [
-                [2, 15],
-                [3, 50],
-                [4, 15],
-                [5, 5]
-            ],
-            tags
-        )
+        environment_count = get_weighted_random_choice([[2, 15], [3, 50], [4, 15], [5, 5]], tags)
         for _ in range(environment_count):
-            tags.append(
-                get_weighted_random_choice(
-                    [
-                        ["inside", 50],
-                        ["outside", 50]
-                    ],
-                    tags
-                )
-            )
+            tags.append(get_weighted_random_choice([["inside", 50], ["outside", 50]], tags))
             tags.append(get_weighted_random_choice(environmentDetailsF, tags))
 
         # 随机小物件生成
-        small_object_count = get_weighted_random_choice(
-            [
-                [0, 15],
-                [1, 20],
-                [2, 15],
-                [3, 15],
-                [4, 10],
-                [5, 5]
-            ],
-            tags
-        )
+        small_object_count = get_weighted_random_choice([[0, 15], [1, 20], [2, 15], [3, 15], [4, 10], [5, 5]], tags)
         for _ in range(small_object_count):
             tags.append(get_weighted_random_choice(smallObjectsF, tags))
 
@@ -2117,14 +2058,7 @@ def generate_scene_tags() -> List[str]:
 
     # 根据角色数随机分配性别
     for _ in range(character_count):
-        gender_choice = get_weighted_random_choice(
-            [
-                ["m", 45],
-                ["f", 45],
-                ["o", 10]
-            ],
-            tags
-        )
+        gender_choice = get_weighted_random_choice([["m", 45], ["f", 45], ["o", 10]], tags)
         if gender_choice == "m":
             male_count += 1
         elif gender_choice == "f":
@@ -2159,22 +2093,8 @@ def generate_scene_tags() -> List[str]:
 
         # 详细背景样式
         if background_style in {"detailed background", "amazing background"}:
-            environment_detail_count = get_weighted_random_choice(
-                [
-                    [1, 50],
-                    [2, 20]
-                ],
-                tags
-            )
-            tags.append(
-                get_weighted_random_choice(
-                    [
-                        ["inside", 50],
-                        ["outside", 50]
-                    ],
-                    tags
-                )
-            )
+            environment_detail_count = get_weighted_random_choice([[1, 50], [2, 20]], tags)
+            tags.append(get_weighted_random_choice([["inside", 50], ["outside", 50]], tags))
             for _ in range(environment_detail_count):
                 tags.append(get_weighted_random_choice(environmentDetailsF, tags))
 
@@ -2189,25 +2109,25 @@ def generate_scene_tags() -> List[str]:
             tags.append(portrait_option)
 
     has_furry_elements = False
-    character_tags: List[str] = []
+    character_tags: list[str] = []
 
     # 根据性别计数生成角色特征
     for _ in range(female_count):
-        _tags, _flags = generate_character_traits("f", portrait_option, character_count)
-        character_tags.extend(_tags)
-        if "not_furry" not in _flags:
+        tags_, flags = generate_character_traits("f", portrait_option, character_count)
+        character_tags.extend(tags_)
+        if "not_furry" not in flags:
             has_furry_elements = True
 
     for _ in range(male_count):
-        _tags, _flags = generate_character_traits("m", portrait_option, character_count)
-        character_tags.extend(_tags)
-        if "not_furry" not in _flags:
+        tags_, flags = generate_character_traits("m", portrait_option, character_count)
+        character_tags.extend(tags_)
+        if "not_furry" not in flags:
             has_furry_elements = True
 
     for _ in range(ambiguous_gender_count):
-        _tags, _flags = generate_character_traits("o", portrait_option, character_count)
-        character_tags.extend(_tags)
-        if "not_furry" not in _flags:
+        tags_, flags = generate_character_traits("o", portrait_option, character_count)
+        character_tags.extend(tags_)
+        if "not_furry" not in flags:
             has_furry_elements = True
 
     # 如果没有毛绒元素，添加 "not furry"
@@ -2218,44 +2138,17 @@ def generate_scene_tags() -> List[str]:
 
     # 概率分支：20% 添加小物件
     if random.random() < 0.2:
-        small_object_count = get_weighted_random_choice(
-            [
-                [0, 40],
-                [1, 20],
-                [2, 10],
-                [3, 2]
-            ],
-            tags
-        )
+        small_object_count = get_weighted_random_choice([[0, 40], [1, 20], [2, 10], [3, 2]], tags)
         if character_count == 2:
-            small_object_count = get_weighted_random_choice(
-                [
-                    [0, 30],
-                    [1, 20],
-                    [2, 5]
-                ],
-                tags
-            )
+            small_object_count = get_weighted_random_choice([[0, 30], [1, 20], [2, 5]], tags)
         elif character_count == 3:
-            small_object_count = get_weighted_random_choice(
-                [
-                    [0, 20],
-                    [1, 10]
-                ],
-                tags
-            )
+            small_object_count = get_weighted_random_choice([[0, 20], [1, 10]], tags)
         for _ in range(small_object_count):
             tags.append(get_weighted_random_choice(smallObjectsF, tags))
 
     # 概率分支：25% 添加视觉效果
     if random.random() < 0.25:
-        visual_effect_count = get_weighted_random_choice(
-            [
-                [1, 80],
-                [2, 20]
-            ],
-            tags
-        )
+        visual_effect_count = get_weighted_random_choice([[1, 80], [2, 20]], tags)
         for _ in range(visual_effect_count):
             tags.append(get_weighted_random_choice(visualEffectsF, tags))
 

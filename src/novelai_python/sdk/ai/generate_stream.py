@@ -1,19 +1,18 @@
-# -*- coding: utf-8 -*-
 # @Author  : sudoskys
-import json
-from typing import Optional, Union, AsyncIterable
+from collections.abc import AsyncIterable
+from typing import Union
 
 import curl_cffi
 from curl_cffi.requests import AsyncSession
 from loguru import logger
-from tenacity import wait_random, retry, stop_after_attempt, retry_if_exception
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_random
 
-from .generate import LLM, TextLLMModel, PenStyle, AdvanceLLMSetting, LLMGenerationParams
 from ..._enum import TextLLMModelTypeAlias
 from ..._exceptions import APIError, SessionHttpError
 from ..._response.ai.generate_stream import LLMStreamResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy
+from .generate import LLM, AdvanceLLMSetting, LLMGenerationParams, PenStyle, TextLLMModel
 
 
 class LLMStream(LLM):
@@ -26,19 +25,20 @@ class LLMStream(LLM):
         return f"{self.endpoint.strip('/')}/ai/generate-stream"
 
     @classmethod
-    def build(cls,
-              prompt: str,
-              model: TextLLMModelTypeAlias = TextLLMModel.ERATO,
-              phrase_rep_pen: PenStyle = PenStyle.Off,
-              *,
-              advanced_setting: AdvanceLLMSetting = AdvanceLLMSetting(),
-              parameters: Optional[LLMGenerationParams] = None,
-              default_bias: Optional[bool] = True,
-              logprobs_count: Optional[int] = 10,
-              bias_dinkus_asterism: Optional[bool] = False,
-              prefix: Optional[str] = "vanilla",
-              **kwargs
-              ) -> "LLMStream":
+    def build(
+        cls,
+        prompt: str,
+        model: TextLLMModelTypeAlias = TextLLMModel.ERATO,
+        phrase_rep_pen: PenStyle = PenStyle.Off,
+        *,
+        advanced_setting: AdvanceLLMSetting = AdvanceLLMSetting(),
+        parameters: LLMGenerationParams | None = None,
+        default_bias: bool | None = True,
+        logprobs_count: int | None = 10,
+        bias_dinkus_asterism: bool | None = False,
+        prefix: str | None = "vanilla",
+        **kwargs,
+    ) -> "LLMStream":
         """
         Generate Prompt
         """
@@ -59,13 +59,11 @@ class LLMStream(LLM):
         wait=wait_random(min=1, max=3),
         stop=stop_after_attempt(3),
         retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
-        reraise=True
+        reraise=True,
     )
-    async def request(self,
-                      session: Union[AsyncSession, "CredentialBase"],
-                      *,
-                      override_headers: Optional[dict] = None
-                      ) -> AsyncIterable[LLMStreamResp]:
+    async def request(
+        self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None
+    ) -> AsyncIterable[LLMStreamResp]:
         """
         生成图片
         :param override_headers:
@@ -97,53 +95,59 @@ class LLMStream(LLM):
                 response = await sess.post(
                     self.base_url,
                     json=request_data,
-                    stream=True  # 使用 stream=True 参数
+                    stream=True,  # 使用 stream=True 参数
                 )
                 response_data = try_jsonfy(response.content, default_when_error={})
-                message = response_data.get("error") or response_data.get(
-                    "message") or f"Server error with status_code {response.status_code}"
+                message = (
+                    response_data.get("error")
+                    or response_data.get("message")
+                    or f"Server error with status_code {response.status_code}"
+                )
                 status_code = response_data.get("statusCode", response.status_code)
-                header_type = response.headers.get('Content-Type')
+                header_type = response.headers.get("Content-Type")
                 # 检查 'Content-Type' 是否为 'text/event-stream'
-                if header_type not in ['text/event-stream']:
+                if header_type not in ["text/event-stream"]:
                     if status_code == 400:
                         raise APIError(
-                            "A validation error occured.",
-                            request=request_data, code=status_code, response=message
+                            "A validation error occured.", request=request_data, code=status_code, response=message
                         )
                     elif status_code == 401:
                         raise APIError(
-                            "Access Token is incorrect.",
-                            request=request_data, code=status_code, response=message
+                            "Access Token is incorrect.", request=request_data, code=status_code, response=message
                         )
                     elif status_code == 402:
                         raise APIError(
                             "An active subscription is required to access this endpoint.",
-                            request=request_data, code=status_code, response=message
+                            request=request_data,
+                            code=status_code,
+                            response=message,
                         )
                     elif status_code == 409:
                         raise APIError(
-                            "A conflict error occured.",
-                            request=request_data, code=status_code, response=message
+                            "A conflict error occured.", request=request_data, code=status_code, response=message
                         )
                     else:
                         raise APIError(
                             f"Server did not send text/event-stream, status code {status_code}",
-                            request=request_data, code=status_code, response=message
+                            request=request_data,
+                            code=status_code,
+                            response=message,
                         )
                 else:
                     if response.status_code not in [200, 201]:
                         raise APIError(
                             f"Server error with status code {response.status_code}",
-                            request=request_data, code=response.status_code, response=response.content
+                            request=request_data,
+                            code=response.status_code,
+                            response=response.content,
                         )
                     # Streaming data processing
                     async for line in response.aiter_lines():
                         event = line.decode().strip().split(":", 1)
                         if len(event) == 2:
                             event_type, content = event
-                            if event_type == 'data':
-                                llm_stream_resp = LLMStreamResp.model_validate(json.loads(content))
+                            if event_type == "data":
+                                llm_stream_resp = LLMStreamResp.model_validate_json(content)
                                 llm_stream_resp.text = LLMStreamResp.decode(llm_stream_resp.token, self.model)
                                 yield llm_stream_resp
                                 if llm_stream_resp.final:  # Stop returning when final is True
@@ -151,7 +155,8 @@ class LLMStream(LLM):
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError(
-                    "An AsyncSession RequestsError occurred, perhaps it's an SSL error. Please try again later!")
+                    "An AsyncSession RequestsError occurred, perhaps it's an SSL error. Please try again later!"
+                ) from exc
             except APIError as e:
                 raise e
             except Exception as e:
