@@ -1,0 +1,3122 @@
+{
+    "schemes": [],
+    "swagger": "2.0",
+    "info": {
+        "description": "Hello, fellow API developer!\n\nCurrently, you have access to three APIs:\n\n- Primary NovelAI API: https://api.novelai.net/docs/\n- Image Generation API: https://image.novelai.net/docs/index.html\n- Text Generation API: https://text.novelai.net/docs/index.html\n\nWhen building applications that leverage the NovelAI API, you need to request a user's Persistent API token for integration and use it in the Authorization header.\nFor security reasons, storing user credentials in plaintext is strongly discouraged.\nThese credentials are essential, as they provide the encryption key for a user's stories, and improper handling can compromise user data.\n\nAll API users must adhere to the NovelAI Terms of Service: https://novelai.net/terms.\n\nNotice for Existing API Users:\n\nAs part of our ongoing efforts to enhance service stability, we have separated the primary API (used for logins, subscriptions, story saving, etc.) from the generation APIs.\nWhile the generation API is designed to be similar to api.novelai.net, a few backward-incompatible changes have been made:\n\n- repetition_penalty_whitelist is now strictly an array. Nested arrays are no longer allowed.\n- Improved context size validation (more detail in `input` field's documentation).\n- Improved `max_length` validation (more detail in `input` field's documentation).\n\nTo ensure that all users benefit from these stability improvements, we will be decommissioning Kayra for subscribed API users on api.novelai.net.\nStarting from September 30th, 2024, Kayra will only be available on text.novelai.net.\n\nOlder models, such as Clio, will remain available on the old API for now, with decommissioning planned at a later date.",
+        "title": "Omegalaser API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "",
+    "basePath": "/",
+    "paths": {
+        "/ai/augment-image": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Augment image using NovelAI's diffusion models (Director Tools)",
+                "produces": [
+                    "application/zip"
+                ],
+                "summary": "Augment image",
+                "parameters": [
+                    {
+                        "description": "JSON request body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/image.AugmentImageRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The Correlation ID of the request. Useful to show to a user on a 500 error for reporting. Format: 6 alphanumerical upper or lowercase letters.",
+                        "name": "x-correlation-id",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "A zip file containing the generated images.",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/encode-vibe": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get a binary containing the vibes of a given image",
+                "produces": [
+                    "application/binary"
+                ],
+                "summary": "Encode vibes for vibe transfer",
+                "parameters": [
+                    {
+                        "description": "JSON request body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/image.EncodeVibeRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The Correlation ID of the request. Useful to show to a user on a 500 error for reporting. Format: 6 alphanumerical upper or lowercase letters.",
+                        "name": "x-correlation-id",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "A binary file containing the vibes of the image",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/generate": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Generate text using NovelAI's large language models. According to our Terms of Service, all generation requests must be initiated by a human action. Automating text or image generation to create excessive load on our systems is not allowed.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Generate text",
+                "parameters": [
+                    {
+                        "description": "JSON request body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/text.LMGenerateRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The Correlation ID of the request. Useful to show to a user on a 500 error for reporting. Format: 6 alphanumerical upper or lowercase letters.",
+                        "name": "x-correlation-id",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Text generation reply",
+                        "schema": {
+                            "$ref": "#/definitions/text.LMGenerationResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limited. API clients should not attempt to retry.",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/generate-image": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Generate images using NovelAI's diffusion models. According to our Terms of Service, all generation requests must be initiated by a human action. Automating text or image generation to create excessive load on our systems is not allowed.",
+                "produces": [
+                    "application/zip",
+                    "application/json"
+                ],
+                "summary": "Generate image",
+                "parameters": [
+                    {
+                        "description": "JSON request body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/image.ImageGenerationRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The Correlation ID of the request. Useful to show to a user on a 500 error for reporting. Format: 6 alphanumerical upper or lowercase letters.",
+                        "name": "x-correlation-id",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "A JSON array of base64-encoded images (when Accept: application/json is sent).",
+                        "schema": {
+                            "$ref": "#/definitions/image.ImageGenerationJsonResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/generate-image-stream": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Generate images using NovelAI's diffusion models. According to our Terms of Service, all generation requests must be initiated by a human action. Automating text or image generation to create excessive load on our systems is not allowed. Different from the regular image generation endpoint, this endpoint streams the responses as SSE.",
+                "produces": [
+                    "text/event-stream"
+                ],
+                "summary": "Generate image(streaming)",
+                "parameters": [
+                    {
+                        "description": "JSON request body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/image.ImageGenerationRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The Correlation ID of the request. Useful to show to a user on a 500 error for reporting. Format: 6 alphanumerical upper or lowercase letters.",
+                        "name": "x-correlation-id",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A stream of SSE events representing the image generation process. The stream will contain events of type StreamingEventTypeIntermediate, StreamingEventTypeFinal, and StreamingEventTypeError.",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/generate-image/suggest-tags": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Get tag suggestions given a certain incomplete tag",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Receive tag suggestions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The image model (e.g nai-diffusion-3)",
+                        "name": "model",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "The incomplete tag query",
+                        "name": "prompt",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "The language of the tag query, defaults to 'en'. Available languages: en, jp",
+                        "name": "lang",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The tag suggestions given by the model",
+                        "schema": {
+                            "$ref": "#/definitions/image.TagSuggestionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/generate-stream": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Generate text using NovelAI's large language models (streaming mode). According to our Terms of Service, all generation requests must be initiated by a human action. Automating text or image generation to create excessive load on our systems is not allowed.",
+                "produces": [
+                    "application/json"
+                ],
+                "summary": "Generate text (streaming mode)",
+                "parameters": [
+                    {
+                        "description": "JSON request body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/text.LMGenerateRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The Correlation ID of the request. Useful to show to a user on a 500 error for reporting. Format: 6 alphanumerical upper or lowercase letters.",
+                        "name": "x-correlation-id",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Text generation reply (sent as SSE events)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate limited. API clients should not attempt to retry.",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/ai/upscale": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Upscale an image using NovelAI's standalone upscaler. The returned image carries the NovelAI metadata provided by the upscaler, if any.",
+                "produces": [
+                    "application/zip",
+                    "application/json"
+                ],
+                "summary": "Upscale image",
+                "parameters": [
+                    {
+                        "description": "JSON request body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/image.UpscaleRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The Correlation ID of the request. Useful to show to a user on a 500 error for reporting. Format: 6 alphanumerical upper or lowercase letters.",
+                        "name": "x-correlation-id",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A JSON array of base64-encoded images (when Accept: application/json is sent).",
+                        "schema": {
+                            "$ref": "#/definitions/image.ImageGenerationJsonResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "402": {
+                        "description": "Not enough Anlas",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "504": {
+                        "description": "Gateway Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/oa/v1/chat/completions": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create a chat completion for the provided messages using OpenAI-compatible API. Supports both streaming and non-streaming responses.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json",
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "OpenAI"
+                ],
+                "summary": "Create chat completion",
+                "parameters": [
+                    {
+                        "description": "Chat completion request body following OpenAI API format",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/text.OAIChatGenerateRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The Correlation ID of the request. Format: 6 alphanumerical upper or lowercase letters.",
+                        "name": "x-correlation-id",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Chat completion response following OpenAI API format",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - Model not allowed for user tier",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate Limited",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/oa/v1/completions": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Create a completion for the provided prompt using OpenAI-compatible API. Supports both streaming and non-streaming responses.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json",
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "OpenAI"
+                ],
+                "summary": "Create completion",
+                "parameters": [
+                    {
+                        "description": "Completion request body following OpenAI API format",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/text.OAITextGenerateRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The Correlation ID of the request. Format: 6 alphanumerical upper or lowercase letters.",
+                        "name": "x-correlation-id",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Completion response following OpenAI API format",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - Model not allowed for user tier",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate Limited",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/oa/v1/internal/token-count": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OpenAI"
+                ],
+                "summary": "Count tokens (API Extension)",
+                "parameters": [
+                    {
+                        "description": "Completion request body following OpenAI API format",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/text.OAITextGenerateRequest"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "The Correlation ID of the request. Format: 6 alphanumerical upper or lowercase letters.",
+                        "name": "x-correlation-id",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Token count response",
+                        "schema": {
+                            "$ref": "#/definitions/text.OAITokenCountResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden - Model not allowed for user tier",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "429": {
+                        "description": "Rate Limited",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/oa/v1/models": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns a list of models available via the OpenAI-compatible API.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OpenAI"
+                ],
+                "summary": "List available models",
+                "responses": {
+                    "200": {
+                        "description": "List of available models",
+                        "schema": {
+                            "$ref": "#/definitions/text.OpenAIModelsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/clientsettings": {
+            "get": {
+                "description": "Returns the user's client settings in an arbitrary format.",
+                "tags": [
+                    "user"
+                ],
+                "summary": "Get client settings",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Replaces the user's client settings with an arbitrary JSON value.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Update client settings",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/consent": {
+            "put": {
+                "description": "Records the authenticated user's Osano consent choices. A change to marketing consent triggers a customer.io suppress (opt-out) or unsuppress (opt-in).",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Update the user's consent settings",
+                "parameters": [
+                    {
+                        "description": "Consent settings",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/omegalaser_service_user.UpsertConsentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/create-persistent-token": {
+            "post": {
+                "description": "Creates a persistent access token (PAT) for the authenticated user, which can be used as a long-lived API key via `Authorization: Bearer pst-\u003ctoken\u003e`. Requires JWT authentication; a request authenticated via an existing PAT is rejected. If a token already exists and overwrite is not set, returns 409.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Create a persistent access token",
+                "parameters": [
+                    {
+                        "description": "Create persistent token request body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.CreatePersistentTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/user.CreatePersistentTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/data": {
+            "get": {
+                "description": "Aggregates priority, subscription, keystore, client settings, and account information.",
+                "tags": [
+                    "user"
+                ],
+                "summary": "Get all user data",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/user.UserDataResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/giftkeys": {
+            "get": {
+                "description": "Returns the gift keys generated/referred by the authenticated user.",
+                "tags": [
+                    "user"
+                ],
+                "summary": "List purchased gift keys",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/user.GiftKeysResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/information": {
+            "get": {
+                "description": "Returns email verification status, trial status, ban status, and other account metadata.",
+                "tags": [
+                    "user"
+                ],
+                "summary": "Get account information",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/user.AccountInformationResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/keystore": {
+            "get": {
+                "description": "Returns the user's encrypted keystore as a base64 string.",
+                "tags": [
+                    "user"
+                ],
+                "summary": "Get keystore",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/user.KeystoreResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Replaces the user's encrypted keystore.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Update keystore",
+                "parameters": [
+                    {
+                        "description": "Keystore update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.UpdateKeystoreRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/login": {
+            "post": {
+                "description": "Login with access key. This is used to exchange an access key for a JWT access token. The access key is a 64 character string that is generated by the client using the hash of the user's email address and password combined.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login with access key",
+                "parameters": [
+                    {
+                        "description": "Login request body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/user.LoginResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/objects/batch": {
+            "delete": {
+                "description": "Delete all user objects of the specified types. The objects must belong to the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Userdata"
+                ],
+                "summary": "Batch delete user objects",
+                "parameters": [
+                    {
+                        "description": "Types of objects to delete",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.BatchDeleteUserdataRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/user.BatchDeleteUserdataResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/objects/{type}": {
+            "get": {
+                "description": "List user objects of a specific type. The objects must belong to the authenticated user.",
+                "tags": [
+                    "Userdata"
+                ],
+                "summary": "List user objects",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Object type",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of items to skip before starting to collect the result set. Must be at least 0.",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of items to return. Must be between 1 and 2500. Defaults to 2500.",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Order to return items in. Can be either 'asc' or 'desc'. Defaults to 'desc'.",
+                        "name": "order",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/user.GetObjectsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Create a user object with a specific type.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Userdata"
+                ],
+                "summary": "Create a user object",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Object type",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User object data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.UserdataInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/types.Userdata"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/objects/{type}/{id}": {
+            "get": {
+                "description": "Get a user object by type and id. The object must belong to the authenticated user.",
+                "tags": [
+                    "Userdata"
+                ],
+                "summary": "Get a user user object",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Object type",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Object ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.Userdata"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete a user object by type and id. The object must belong to the authenticated user.",
+                "tags": [
+                    "Userdata"
+                ],
+                "summary": "Delete a user object",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Object type",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Object ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update a user object by type and id. The object must belong to the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Userdata"
+                ],
+                "summary": "Update a user object",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Object type",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Object ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User object data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.UserdataInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/types.Userdata"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/priority": {
+            "get": {
+                "description": "Returns the user's current priority action balance and next refill time.",
+                "tags": [
+                    "user"
+                ],
+                "summary": "Get task priority",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/user.PriorityResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/resend-email-verification": {
+            "post": {
+                "description": "Resends the email verification letter for the account owning the given email address. Unknown or already-verified addresses succeed silently. A short per-account cooldown limits how often a letter can be resent.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Resend the account email verification letter",
+                "parameters": [
+                    {
+                        "description": "Resend request body",
+                        "name": "json",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.ResendEmailVerificationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/subscription": {
+            "get": {
+                "description": "Returns the user's current subscription tier, expiry, and perks.",
+                "tags": [
+                    "user"
+                ],
+                "summary": "Get subscription",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/user.SubscriptionResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/subscription/bind": {
+            "post": {
+                "description": "Redeems a gift key, granting the user a subscription and/or module training steps. When the user already has a subscription, the response may set requiresConfirmation, in which case the request must be repeated with confirmedReplace or confirmedIgnore.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "user"
+                ],
+                "summary": "Bind a subscription",
+                "parameters": [
+                    {
+                        "description": "Bind request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/user.BindSubscriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/user.BindSubscriptionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/utils.JsonError"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "image.AugmentImageRequest": {
+            "type": "object",
+            "properties": {
+                "defry": {
+                    "type": "integer"
+                },
+                "height": {
+                    "type": "integer"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "prompt": {
+                    "type": "string"
+                },
+                "req_type": {
+                    "type": "string"
+                },
+                "width": {
+                    "type": "integer"
+                }
+            }
+        },
+        "image.Coordinates": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "number"
+                },
+                "y": {
+                    "type": "number"
+                }
+            }
+        },
+        "image.EncodeVibeRequest": {
+            "type": "object",
+            "properties": {
+                "crop_to_mask": {
+                    "description": "Whether to crop the image to the bounding box of the mask's visible area (if a mask is provided)",
+                    "type": "boolean"
+                },
+                "focus_seed": {
+                    "description": "seed used for random choice of which areas of the image to give a closer look to. leave unspecified to use a deterministic seed chosen based on the image content (recommended).",
+                    "type": "integer"
+                },
+                "image": {
+                    "description": "base64 encoded image",
+                    "type": "string"
+                },
+                "info_extract_seed": {
+                    "description": "seed used for random noising out of the image's information (to extent specified by information_extracted). leave unspecified to use a deterministic seed chosen based on the image content (recommended)",
+                    "type": "integer"
+                },
+                "information_extracted": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0
+                },
+                "mask": {
+                    "description": "Base64 encoded mask to be applied to the image",
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                }
+            }
+        },
+        "image.ImageFormat": {
+            "type": "string",
+            "enum": [
+                "png",
+                "webp"
+            ],
+            "x-enum-varnames": [
+                "ImageFormatPNG",
+                "ImageFormatWEBP"
+            ]
+        },
+        "image.ImageGenerationJsonResponse": {
+            "type": "object",
+            "properties": {
+                "images": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/image.ImageJson"
+                    }
+                }
+            }
+        },
+        "image.ImageGenerationRequest": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "input": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "parameters": {
+                    "$ref": "#/definitions/image.RequestParameters"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "image.ImageJson": {
+            "type": "object",
+            "properties": {
+                "image": {
+                    "description": "base64 encoded image",
+                    "type": "string"
+                },
+                "index": {
+                    "type": "integer"
+                },
+                "seed": {
+                    "type": "integer"
+                }
+            }
+        },
+        "image.Img2ImgParams": {
+            "type": "object",
+            "properties": {
+                "color_correct": {
+                    "type": "boolean"
+                },
+                "extra_noise_seed": {
+                    "type": "integer"
+                },
+                "noise": {
+                    "type": "number"
+                },
+                "strength": {
+                    "type": "number"
+                }
+            }
+        },
+        "image.RequestParameters": {
+            "type": "object",
+            "properties": {
+                "add_original_image": {
+                    "type": "boolean"
+                },
+                "cfg_rescale": {
+                    "type": "number"
+                },
+                "color_correct": {
+                    "type": "boolean"
+                },
+                "controlnet_condition": {
+                    "description": "used by ControlNet",
+                    "type": "string"
+                },
+                "controlnet_model": {
+                    "type": "string"
+                },
+                "controlnet_strength": {
+                    "type": "number"
+                },
+                "deliberate_euler_ancestral_bug": {
+                    "description": "(Summer Sampler update) add ancestral noise even on the final step of sampling, despite the fact we're not going to run the denoiser again, default true (maintaining bug-for-bug compatibility)",
+                    "type": "boolean"
+                },
+                "director_reference_descriptions": {
+                    "description": "For CR: set `caption` with a `base_caption` of `\"character\"` or `\"character\u0026style\"`",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/image.V4ConditionInput"
+                    }
+                },
+                "director_reference_images": {
+                    "description": "For CR: 1024x1536 or 1536x1024 or 1472x1472 with black padding to fit",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "director_reference_information_extracted": {
+                    "description": "For CR: 0-1",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "director_reference_secondary_strength_values": {
+                    "description": "For CR: Maps to Fidelity slider (0-1)",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "director_reference_strength_values": {
+                    "description": "API external name. 0-1",
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "dynamic_thresholding": {
+                    "type": "boolean"
+                },
+                "extra_noise_seed": {
+                    "type": "integer"
+                },
+                "height": {
+                    "type": "integer"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "image_format": {
+                    "$ref": "#/definitions/image.ImageFormat"
+                },
+                "img2img": {
+                    "description": "used by inpaint",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/image.Img2ImgParams"
+                        }
+                    ]
+                },
+                "legacy": {
+                    "type": "boolean"
+                },
+                "legacy_v3_extend": {
+                    "type": "boolean"
+                },
+                "mask": {
+                    "type": "string"
+                },
+                "n_samples": {
+                    "type": "integer"
+                },
+                "negative_prompt": {
+                    "type": "string"
+                },
+                "noise": {
+                    "type": "number"
+                },
+                "noise_schedule": {
+                    "type": "string"
+                },
+                "params_version": {
+                    "type": "integer"
+                },
+                "prefer_brownian": {
+                    "type": "boolean"
+                },
+                "prompt": {
+                    "type": "string"
+                },
+                "qualityToggle": {
+                    "type": "boolean"
+                },
+                "reference_image": {
+                    "type": "string"
+                },
+                "reference_image_multiple": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "reference_information_extracted": {
+                    "type": "number"
+                },
+                "reference_information_extracted_multiple": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "reference_strength": {
+                    "type": "number"
+                },
+                "reference_strength_multiple": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                },
+                "sampler": {
+                    "type": "string"
+                },
+                "scale": {
+                    "type": "number"
+                },
+                "seed": {
+                    "type": "integer"
+                },
+                "skip_cfg_above_sigma": {
+                    "description": "(Summer Sampler update) triggers Variety Boost",
+                    "type": "number"
+                },
+                "sm": {
+                    "type": "boolean"
+                },
+                "sm_dyn": {
+                    "type": "boolean"
+                },
+                "steps": {
+                    "type": "number"
+                },
+                "straight_alpha": {
+                    "type": "boolean"
+                },
+                "stream": {
+                    "$ref": "#/definitions/image.StreamingType"
+                },
+                "strength": {
+                    "type": "number"
+                },
+                "tag_hint_qt": {
+                    "type": "integer"
+                },
+                "tag_hint_transparent_background": {
+                    "description": "Pure pass-through hint for the model: the prompt is asking for a transparent\nbackground. Omegalaser does not interpret it.",
+                    "type": "boolean"
+                },
+                "tag_hint_uc_preset": {
+                    "type": "integer"
+                },
+                "ucPreset": {
+                    "type": "integer"
+                },
+                "upscale": {
+                    "$ref": "#/definitions/image.UpscaleParams"
+                },
+                "upscaled_enhance": {
+                    "type": "boolean"
+                },
+                "v4_negative_prompt": {
+                    "$ref": "#/definitions/image.V4ConditionInput"
+                },
+                "v4_prompt": {
+                    "$ref": "#/definitions/image.V4ConditionInput"
+                },
+                "width": {
+                    "type": "integer"
+                }
+            }
+        },
+        "image.StreamingType": {
+            "type": "string",
+            "enum": [
+                "msgpack",
+                "sse"
+            ],
+            "x-enum-varnames": [
+                "StreamingTypeMsgpack",
+                "StreamingTypeSSE"
+            ]
+        },
+        "image.TagSuggestion": {
+            "type": "object",
+            "properties": {
+                "confidence": {
+                    "type": "number"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "tag": {
+                    "type": "string"
+                }
+            }
+        },
+        "image.TagSuggestionResponse": {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "$ref": "#/definitions/image.TagSuggestion"
+                }
+            }
+        },
+        "image.UpscaleParams": {
+            "type": "object",
+            "properties": {
+                "declared_blur_sigma": {
+                    "description": "round it to one of these values: [0.0, 0.30, 0.35, 0.40, 0.45, 0.50]",
+                    "type": "number"
+                }
+            }
+        },
+        "image.UpscaleRequest": {
+            "type": "object",
+            "properties": {
+                "declared_blur_sigma": {
+                    "description": "same param as generation param",
+                    "type": "number"
+                },
+                "image": {
+                    "description": "can be given as base64 or as multipart pointer",
+                    "type": "string"
+                },
+                "model": {
+                    "description": "must be an existing image model API name",
+                    "type": "string"
+                }
+            }
+        },
+        "image.V4ConditionInput": {
+            "type": "object",
+            "properties": {
+                "caption": {
+                    "$ref": "#/definitions/image.V4ExternalCaption"
+                },
+                "legacy_uc": {
+                    "type": "boolean"
+                },
+                "use_coords": {
+                    "type": "boolean"
+                },
+                "use_order": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "image.V4ExternalCaption": {
+            "type": "object",
+            "properties": {
+                "base_caption": {
+                    "type": "string"
+                },
+                "char_captions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/image.V4ExternalCharacterCaption"
+                    }
+                }
+            }
+        },
+        "image.V4ExternalCharacterCaption": {
+            "type": "object",
+            "properties": {
+                "centers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/image.Coordinates"
+                    }
+                },
+                "char_caption": {
+                    "type": "string"
+                }
+            }
+        },
+        "omegalaser_service_user.UpsertConsentRequest": {
+            "type": "object",
+            "required": [
+                "analyticsConsent",
+                "essentialsConsent",
+                "globalOptOut",
+                "jurisdiction",
+                "marketingConsent",
+                "personalizationConsent"
+            ],
+            "properties": {
+                "analyticsConsent": {
+                    "type": "boolean"
+                },
+                "essentialsConsent": {
+                    "type": "boolean"
+                },
+                "globalOptOut": {
+                    "type": "boolean"
+                },
+                "jurisdiction": {
+                    "type": "string"
+                },
+                "marketingConsent": {
+                    "type": "boolean"
+                },
+                "personalizationConsent": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "text.CompletionNewParamsPromptUnion": {
+            "description": "A union type. This is inlined into the parent field, rather than dedicated properties. Do not attempt to e.g set {\"ofString\": \"\"}",
+            "type": "object",
+            "properties": {
+                "ofArrayOfStrings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ofArrayOfTokenArrays": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    }
+                },
+                "ofArrayOfTokens": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "ofString": {
+                    "type": "string"
+                }
+            }
+        },
+        "text.CompletionNewParamsStopUnion": {
+            "description": "A union type. This is inlined into the parent field, rather than dedicated properties. Do not attempt to e.g set {\"ofString\": \"\"}",
+            "type": "object",
+            "properties": {
+                "ofString": {
+                    "type": "string"
+                },
+                "ofStringArray": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "text.LMGenerateRequest": {
+            "type": "object",
+            "required": [
+                "input",
+                "model",
+                "parameters"
+            ],
+            "properties": {
+                "input": {
+                    "description": "Input can be either a representation of the tokenized or non-tokenized input (see the `use_string` parameter)\nWhen requesting tokenized input (via `use_string`), input's format must be a Base64 string representation of the tokens as follows:\n - Little endian sequence of bytes that represent an integer of a specific size, determined by the tokenizer used for the model.\n - For Nerdstash V2, that is 2 bytes (16 bits) per token, Llama3 is 4 bytes (32 bits) per token\n\nNOTE: Be aware that the token length of the input + wanted max length will be validated against the user's current subscription level (via GET /user/data's subscription field)'s context size.\nRequests that trigger the validation will get an API Error if the requested context length is too large.\nIt is recommended to run tokenization using https://github.com/NovelAI/nai-js-tokenizer to get an exact number that represents the request's context size and strip accordingly. We use nerdstash v2 for Kayra.\n\nContext length per subscription:\n - Tablet: 4096 tokens\n - Scroll: 8192 tokens\n - Opus: 8192 tokens\n\n`max_length` limit per subscription:\n - Tablet: 150 tokens\n - Scroll: 150 tokens\n - Opus: 250 tokens",
+                    "type": "string",
+                    "maxLength": 100000
+                },
+                "model": {
+                    "description": "Wanted model for generations, currently only `kayra-v1` and `llama-3-erato-v1` are available. Other models are not available at the current moment. Trial users may only use `kayra-v1`.",
+                    "type": "string"
+                },
+                "n_samples": {
+                    "type": "integer"
+                },
+                "parameters": {
+                    "$ref": "#/definitions/text.RequestParameters"
+                },
+                "prefix": {
+                    "type": "string"
+                }
+            }
+        },
+        "text.LMGenerationResponse": {
+            "type": "object",
+            "properties": {
+                "logprobs": {
+                    "description": "A map for each token containing the logprobs, which are an ordered array of before and after sampling, as well as the chosen probabilities of the top N tokens (N being configured by `num_logprobs`).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/text.LMLogprobs"
+                    }
+                },
+                "output": {
+                    "description": "Contains either the model output string (if `use_string` is set) or the packed representation of tokens",
+                    "type": "string"
+                }
+            }
+        },
+        "text.LMLogprobs": {
+            "type": "object",
+            "properties": {
+                "after": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "number",
+                                "format": "float64"
+                            }
+                        }
+                    }
+                },
+                "before": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "number",
+                                "format": "float64"
+                            }
+                        }
+                    }
+                },
+                "chosen": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "number",
+                                "format": "float64"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "text.LogitBiasParameters": {
+            "type": "object",
+            "required": [
+                "ensure_sequence_finish",
+                "generate_once"
+            ],
+            "properties": {
+                "bias": {
+                    "type": "number"
+                },
+                "ensure_sequence_finish": {
+                    "type": "boolean"
+                },
+                "generate_once": {
+                    "type": "boolean"
+                },
+                "sequence": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "text.OAIChatGenerateRequest": {
+            "type": "object",
+            "properties": {
+                "best_of": {
+                    "type": "integer"
+                },
+                "echo": {
+                    "type": "boolean"
+                },
+                "enable_thinking": {
+                    "type": "boolean"
+                },
+                "frequency_penalty": {
+                    "type": "number"
+                },
+                "generation_prefix": {
+                    "description": "Transformed to OutgoingOAINAIExtensions.StructuredOutputs",
+                    "type": "string"
+                },
+                "logit_bias": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number",
+                        "format": "float64"
+                    }
+                },
+                "logprobs": {
+                    "type": "integer"
+                },
+                "max_tokens": {
+                    "type": "integer"
+                },
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/text.OAIChatMessage"
+                    }
+                },
+                "min_p": {
+                    "type": "number"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "n": {
+                    "type": "integer"
+                },
+                "presence_penalty": {
+                    "type": "number"
+                },
+                "seed": {
+                    "type": "integer"
+                },
+                "stop": {
+                    "$ref": "#/definitions/text.CompletionNewParamsStopUnion"
+                },
+                "stream": {
+                    "type": "boolean"
+                },
+                "suffix": {
+                    "type": "string"
+                },
+                "temperature": {
+                    "type": "number"
+                },
+                "top_k": {
+                    "type": "integer"
+                },
+                "top_p": {
+                    "type": "number"
+                },
+                "unified_cubic": {
+                    "type": "number"
+                },
+                "unified_increase_linear_with_entropy": {
+                    "type": "number"
+                },
+                "unified_linear": {
+                    "type": "number"
+                },
+                "unified_quadratic": {
+                    "type": "number"
+                },
+                "user": {
+                    "type": "string"
+                }
+            }
+        },
+        "text.OAIChatMessage": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "non-tokenized input",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "Optional name of the message author",
+                    "type": "string"
+                },
+                "role": {
+                    "description": "\"system\", \"user\", \"assistant\"",
+                    "type": "string"
+                }
+            }
+        },
+        "text.OAITextGenerateRequest": {
+            "type": "object",
+            "properties": {
+                "best_of": {
+                    "type": "integer"
+                },
+                "echo": {
+                    "type": "boolean"
+                },
+                "frequency_penalty": {
+                    "type": "number"
+                },
+                "generation_prefix": {
+                    "description": "Transformed to OutgoingOAINAIExtensions.StructuredOutputs",
+                    "type": "string"
+                },
+                "logit_bias": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number",
+                        "format": "float64"
+                    }
+                },
+                "logprobs": {
+                    "type": "integer"
+                },
+                "max_tokens": {
+                    "type": "integer"
+                },
+                "min_p": {
+                    "type": "number"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "n": {
+                    "type": "integer"
+                },
+                "presence_penalty": {
+                    "type": "number"
+                },
+                "prompt": {
+                    "$ref": "#/definitions/text.CompletionNewParamsPromptUnion"
+                },
+                "seed": {
+                    "type": "integer"
+                },
+                "stop": {
+                    "$ref": "#/definitions/text.CompletionNewParamsStopUnion"
+                },
+                "stream": {
+                    "type": "boolean"
+                },
+                "suffix": {
+                    "type": "string"
+                },
+                "temperature": {
+                    "type": "number"
+                },
+                "top_k": {
+                    "type": "integer"
+                },
+                "top_p": {
+                    "type": "number"
+                },
+                "unified_cubic": {
+                    "type": "number"
+                },
+                "unified_increase_linear_with_entropy": {
+                    "type": "number"
+                },
+                "unified_linear": {
+                    "type": "number"
+                },
+                "unified_quadratic": {
+                    "type": "number"
+                },
+                "user": {
+                    "type": "string"
+                }
+            }
+        },
+        "text.OAITokenCountResponse": {
+            "type": "object",
+            "properties": {
+                "encoded": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "length": {
+                    "type": "integer"
+                }
+            }
+        },
+        "text.OpenAIModelObject": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "object": {
+                    "type": "string"
+                },
+                "owned_by": {
+                    "type": "string"
+                }
+            }
+        },
+        "text.OpenAIModelsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/text.OpenAIModelObject"
+                    }
+                },
+                "object": {
+                    "type": "string"
+                }
+            }
+        },
+        "text.PhraseRepPenChoice": {
+            "type": "string",
+            "enum": [
+                "off",
+                "very_light",
+                "light",
+                "medium",
+                "aggressive",
+                "very_aggressive"
+            ],
+            "x-enum-varnames": [
+                "Off",
+                "VeryLight",
+                "Light",
+                "Medium",
+                "Aggressive",
+                "VeryAggressive"
+            ]
+        },
+        "text.RequestParameters": {
+            "type": "object",
+            "required": [
+                "logit_bias_exp"
+            ],
+            "properties": {
+                "bad_words_ids": {
+                    "type": "array",
+                    "maxItems": 2048,
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "bracket_ban": {
+                    "type": "boolean"
+                },
+                "cfg_scale": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "cfg_uc": {
+                    "type": "string"
+                },
+                "cropped_token": {
+                    "type": "integer"
+                },
+                "eos_token_id": {
+                    "type": "integer"
+                },
+                "force_emotion": {
+                    "type": "boolean"
+                },
+                "generate_until_sentence": {
+                    "type": "boolean"
+                },
+                "line_start_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "logit_bias_exp": {
+                    "type": "array",
+                    "maxItems": 1024,
+                    "items": {
+                        "$ref": "#/definitions/text.LogitBiasParameters"
+                    }
+                },
+                "math1_quad": {
+                    "description": "Configures Unified Quad",
+                    "type": "number"
+                },
+                "math1_quad_entropy_scale": {
+                    "description": "Configures Unified Conf",
+                    "type": "number"
+                },
+                "math1_temp": {
+                    "description": "Configures Unified Linear",
+                    "type": "number"
+                },
+                "max_length": {
+                    "description": "Maximum generation length (in tokens)",
+                    "type": "integer",
+                    "maximum": 2048,
+                    "minimum": 1
+                },
+                "min_length": {
+                    "description": "Minimum generation length (in tokens)",
+                    "type": "integer",
+                    "maximum": 2048,
+                    "minimum": 1
+                },
+                "min_p": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0
+                },
+                "mirostat_lr": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0
+                },
+                "mirostat_tau": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "num_logprobs": {
+                    "description": "Amount of logprobs wanted under the logprobs response field",
+                    "type": "integer",
+                    "maximum": 30,
+                    "minimum": 0
+                },
+                "order": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "phrase_rep_pen": {
+                    "$ref": "#/definitions/text.PhraseRepPenChoice"
+                },
+                "prefix": {
+                    "type": "string"
+                },
+                "repetition_penalty": {
+                    "type": "number"
+                },
+                "repetition_penalty_frequency": {
+                    "type": "number",
+                    "maximum": 16,
+                    "minimum": -16
+                },
+                "repetition_penalty_presence": {
+                    "type": "number",
+                    "maximum": 16,
+                    "minimum": -16
+                },
+                "repetition_penalty_range": {
+                    "type": "integer",
+                    "maximum": 8192,
+                    "minimum": 0
+                },
+                "repetition_penalty_slope": {
+                    "type": "number",
+                    "maximum": 10,
+                    "minimum": 0
+                },
+                "repetition_penalty_whitelist": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "stop_sequences": {
+                    "type": "array",
+                    "maxItems": 1024,
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "tail_free_sampling": {
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0
+                },
+                "temperature": {
+                    "type": "number",
+                    "maximum": 100,
+                    "minimum": 0.1
+                },
+                "top_a": {
+                    "type": "number"
+                },
+                "top_g": {
+                    "type": "number",
+                    "maximum": 65536,
+                    "minimum": 0
+                },
+                "top_k": {
+                    "type": "integer"
+                },
+                "top_p": {
+                    "type": "number"
+                },
+                "typical_p": {
+                    "type": "number"
+                },
+                "use_string": {
+                    "description": "If the response's output should be a string containing the detokenized text, or if it should be the packed representation of the tokens (format specified on `input`'s documentation).",
+                    "type": "boolean",
+                    "default": true
+                },
+                "valid_first_tokens": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "types.GiftKeyRow": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isGracePeriod": {
+                    "type": "boolean"
+                },
+                "paymentProcessor": {
+                    "type": "integer"
+                },
+                "productId": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.Userdata": {
+            "type": "object",
+            "properties": {
+                "changeIndex": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "lastUpdatedAt": {
+                    "type": "integer"
+                },
+                "meta": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/types.UserdataFetchStatus"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "types.UserdataFetchStatus": {
+            "type": "string",
+            "enum": [
+                "ok",
+                "not_found",
+                "timeout"
+            ],
+            "x-enum-varnames": [
+                "UserdataFetchStatusOK",
+                "UserdataFetchStatusNotFound",
+                "UserdataFetchStatusTimeout"
+            ]
+        },
+        "usagelimit.Status": {
+            "type": "object",
+            "properties": {
+                "isNegative": {
+                    "description": "if true, its unavailable",
+                    "type": "boolean"
+                },
+                "percent": {
+                    "description": "[0-100+]",
+                    "type": "integer"
+                },
+                "purchasedPercent": {
+                    "description": "[0-300]",
+                    "type": "integer"
+                },
+                "timeUntilNextPercent": {
+                    "description": "in seconds, always +1% offset from now (e.g 1.4% to 2.4%); 0 while refill is paused above the cap",
+                    "type": "integer"
+                }
+            }
+        },
+        "user.AccountInformationResponse": {
+            "type": "object",
+            "properties": {
+                "accountCreatedAt": {
+                    "type": "integer"
+                },
+                "allowMarketingEmails": {
+                    "type": "boolean"
+                },
+                "banMessage": {
+                    "type": "string"
+                },
+                "banStatus": {
+                    "type": "string"
+                },
+                "emailVerificationLetterSent": {
+                    "type": "boolean"
+                },
+                "emailVerified": {
+                    "type": "boolean"
+                },
+                "hasPlaintextEmail": {
+                    "type": "boolean"
+                },
+                "loginMethod": {
+                    "type": "string"
+                },
+                "needsAddressChange": {
+                    "type": "boolean"
+                },
+                "plainTextEmail": {
+                    "type": "string"
+                },
+                "trialActionsLeft": {
+                    "type": "integer"
+                },
+                "trialActivated": {
+                    "type": "boolean"
+                },
+                "trialImagesLeft": {
+                    "type": "integer"
+                }
+            }
+        },
+        "user.BatchDeleteUserdataRequest": {
+            "type": "object",
+            "required": [
+                "types"
+            ],
+            "properties": {
+                "types": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "user.BatchDeleteUserdataResponse": {
+            "type": "object",
+            "properties": {
+                "deletedDataObjects": {
+                    "type": "integer"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "userDataEntriesDeletedCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "user.BindSubscriptionRequest": {
+            "type": "object",
+            "properties": {
+                "confirmedIgnore": {
+                    "type": "boolean"
+                },
+                "confirmedReplace": {
+                    "type": "boolean"
+                },
+                "paymentProcessor": {
+                    "type": "string"
+                },
+                "subscriptionId": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.BindSubscriptionResponse": {
+            "type": "object",
+            "properties": {
+                "duration": {
+                    "type": "integer"
+                },
+                "giftKeyType": {
+                    "type": "string"
+                },
+                "paymentProcessor": {
+                    "type": "string"
+                },
+                "requiresConfirmation": {
+                    "type": "boolean"
+                },
+                "steps": {
+                    "type": "integer"
+                },
+                "tier": {
+                    "type": "integer"
+                }
+            }
+        },
+        "user.CreatePersistentTokenRequest": {
+            "type": "object",
+            "properties": {
+                "overwrite": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "user.CreatePersistentTokenResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.GetObjectsResponse": {
+            "type": "object",
+            "properties": {
+                "objects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.Userdata"
+                    }
+                }
+            }
+        },
+        "user.GiftKeysResponse": {
+            "type": "object",
+            "properties": {
+                "giftKeys": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/types.GiftKeyRow"
+                    }
+                }
+            }
+        },
+        "user.KeystoreResponse": {
+            "type": "object",
+            "properties": {
+                "changeIndex": {
+                    "type": "integer"
+                },
+                "keystore": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.LoginRequest": {
+            "type": "object",
+            "required": [
+                "key"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "recaptcha": {
+                    "description": "ReCAPTCHA data is optional on login but is used for abuse detection",
+                    "type": "string"
+                }
+            }
+        },
+        "user.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.PriorityResponse": {
+            "type": "object",
+            "properties": {
+                "maxPriorityActions": {
+                    "type": "integer"
+                },
+                "nextRefillAt": {
+                    "type": "integer"
+                },
+                "taskPriority": {
+                    "type": "number"
+                }
+            }
+        },
+        "user.ResendEmailVerificationRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.SubscriptionPerks": {
+            "type": "object",
+            "properties": {
+                "contextTokens": {
+                    "type": "integer"
+                },
+                "maxPriorityActions": {
+                    "type": "integer"
+                },
+                "moduleTrainingSteps": {
+                    "type": "integer"
+                },
+                "startPriority": {
+                    "type": "integer"
+                },
+                "unlimitedMaxPriority": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "user.SubscriptionResponse": {
+            "type": "object",
+            "properties": {
+                "accountType": {
+                    "type": "integer"
+                },
+                "active": {
+                    "type": "boolean"
+                },
+                "expiresAt": {
+                    "type": "integer"
+                },
+                "isGracePeriod": {
+                    "type": "boolean"
+                },
+                "isNewCustomer": {
+                    "type": "boolean"
+                },
+                "isPaypal": {
+                    "type": "boolean"
+                },
+                "paymentProcessor": {
+                    "type": "string"
+                },
+                "paymentProcessorData": {},
+                "perks": {
+                    "$ref": "#/definitions/user.SubscriptionPerks"
+                },
+                "tier": {
+                    "type": "integer"
+                },
+                "trainingStepsLeft": {
+                    "$ref": "#/definitions/user.TrainingStepsLeft"
+                },
+                "usage": {
+                    "$ref": "#/definitions/usagelimit.Status"
+                }
+            }
+        },
+        "user.TrainingStepsLeft": {
+            "type": "object",
+            "properties": {
+                "fixedTrainingStepsLeft": {
+                    "type": "integer"
+                },
+                "purchasedTrainingSteps": {
+                    "type": "integer"
+                }
+            }
+        },
+        "user.UpdateKeystoreRequest": {
+            "type": "object",
+            "properties": {
+                "changeIndex": {
+                    "type": "integer"
+                },
+                "keystore": {
+                    "type": "string"
+                }
+            }
+        },
+        "user.UserDataResponse": {
+            "type": "object",
+            "properties": {
+                "information": {
+                    "$ref": "#/definitions/user.AccountInformationResponse"
+                },
+                "keystore": {
+                    "$ref": "#/definitions/user.KeystoreResponse"
+                },
+                "priority": {
+                    "$ref": "#/definitions/user.PriorityResponse"
+                },
+                "settings": {
+                    "type": "string"
+                },
+                "subscription": {
+                    "$ref": "#/definitions/user.SubscriptionResponse"
+                }
+            }
+        },
+        "user.UserdataInput": {
+            "type": "object",
+            "required": [
+                "data"
+            ],
+            "properties": {
+                "changeIndex": {
+                    "type": "integer"
+                },
+                "data": {
+                    "type": "string"
+                },
+                "meta": {
+                    "type": "string",
+                    "maxLength": 128
+                }
+            }
+        },
+        "utils.JsonError": {
+            "type": "object",
+            "properties": {
+                "details": {},
+                "message": {
+                    "type": "string"
+                },
+                "statusCode": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    },
+    "externalDocs": {
+        "description": "OpenAPI",
+        "url": "https://swagger.io/resources/open-api/"
+    }
+}

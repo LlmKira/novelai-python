@@ -41,7 +41,7 @@ def test_v5_request_matches_web_client():
     assert params["scale"] == 7.0 and params["steps"] == 23
     assert params["ucPresetId"] == "heavy"
     assert params["qualityPresetId"] == "standard"
-    assert params["image_format"] == "webp"
+    assert params["image_format"] == "png"
     assert params["straight_alpha"] is True
     assert params["tag_hint_qt"] == 1 and params["tag_hint_uc_preset"] == 2
     assert params["negative_prompt"] == WEB_CLIENT_V5_HEAVY_UC
@@ -76,7 +76,7 @@ def test_v45_request_uses_params_version_4_too():
     assert "ucPreset" not in params and "qualityToggle" not in params
     # live web-client capture 2026-10-16: V4.5 also sends image_format=webp,
     # but straight_alpha stays V5-only
-    assert params["image_format"] == "webp" and "straight_alpha" not in params
+    assert params["image_format"] == "png" and "straight_alpha" not in params
 
 
 def test_v5_family_models():
@@ -112,11 +112,11 @@ def test_multipart_body_shape():
 
 def test_browser_headers_use_latest_chrome():
     headers = browser_headers({"Authorization": "Bearer x"})
-    assert headers["User-Agent"] == DEFAULT_USER_AGENT
+    assert headers["user-agent"] == DEFAULT_USER_AGENT
     assert f"Chrome/{CHROME_MAJOR_VERSION}.0.0.0" in DEFAULT_USER_AGENT
     assert f'"Google Chrome";v="{CHROME_MAJOR_VERSION}"' in headers["sec-ch-ua"]
-    assert headers["Origin"] == "https://novelai.net"
-    assert headers["Authorization"] == "Bearer x"
+    assert headers["origin"] == "https://novelai.net"
+    assert headers["authorization"] == "Bearer x"
 
 
 def _zip_response(files, content_type="binary/octet-stream"):

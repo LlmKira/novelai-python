@@ -52,6 +52,6 @@ def test_v45_request_matches_live_web_client_shape():
             "qualityPresetId", "sampler", "scale", "seed", "steps", "tag_hint_qt", "tag_hint_uc_preset",
             "ucPresetId", "use_coords", "v4_negative_prompt", "v4_prompt", "width"}
     assert live <= set(p), live - set(p)
-    assert (p["steps"], p["scale"], p["image_format"], p["tag_hint_qt"], p["tag_hint_uc_preset"]) == (28, 5.0, "webp", 1, 2)
+    assert (p["steps"], p["scale"], p["image_format"], p["tag_hint_qt"], p["tag_hint_uc_preset"]) == (28, 5.0, "png", 1, 2)
     assert p["ucPresetId"] == "heavy" and p["qualityPresetId"] == "standard" and p["params_version"] == 4
     assert "ucPreset" not in p and "qualityToggle" not in p

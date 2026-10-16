@@ -20,33 +20,42 @@ DEFAULT_USER_AGENT = (
     f"Chrome/{CHROME_MAJOR_VERSION}.0.0.0 Safari/537.36"
 )
 DEFAULT_SEC_CH_UA = (
-    f'"Chromium";v="{CHROME_MAJOR_VERSION}", "Google Chrome";v="{CHROME_MAJOR_VERSION}", "Not A(Brand";v="99"'
+    # exact brand list and order Chrome 155 sends (HAR from the web client, 2026-10-16)
+    f'"Google Chrome";v="{CHROME_MAJOR_VERSION}", "Chromium";v="{CHROME_MAJOR_VERSION}", "Not(A:Brand";v="24"'
 )
+# Accept-Language the captured client sent; override via browser_headers(accept_language=...)
+DEFAULT_ACCEPT_LANGUAGE = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,tr;q=0.6,zh-CN;q=0.5,zh;q=0.4,ja;q=0.3,zh-TW;q=0.2"
 NOVELAI_WEB_ORIGIN = "https://novelai.net"
 
 
-def browser_headers(extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+def browser_headers(extra: Optional[Dict[str, str]] = None,
+                    accept_language: str = DEFAULT_ACCEPT_LANGUAGE) -> Dict[str, str]:
     """
-    Headers that the novelai.net web client sends on API calls.
+    Headers the novelai.net web client sends on API calls, in the order a real
+    Chrome 155 emits them (HAR capture 2026-10-16). ``accept-encoding`` and
+    ``content-length`` are added by curl itself.
     :param extra: headers merged on top (e.g. Authorization)
+    :param accept_language: Accept-Language of the simulated browser profile
     :return: dict
     """
     headers = {
-        "User-Agent": DEFAULT_USER_AGENT,
-        "Accept": "*/*",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Origin": NOVELAI_WEB_ORIGIN,
-        "Referer": f"{NOVELAI_WEB_ORIGIN}/",
+        "accept": "*/*",
+        "accept-language": accept_language,
+        "cache-control": "no-cache",
+        "origin": NOVELAI_WEB_ORIGIN,
+        "pragma": "no-cache",
+        "priority": "u=1, i",
+        "referer": f"{NOVELAI_WEB_ORIGIN}/",
         "sec-ch-ua": DEFAULT_SEC_CH_UA,
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"Windows"',
         "sec-fetch-dest": "empty",
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-site",
-        "priority": "u=1, i",
+        "user-agent": DEFAULT_USER_AGENT,
     }
     if extra:
-        headers.update(extra)
+        headers.update({k.lower(): v for k, v in extra.items()})
     return headers
 
 
@@ -73,7 +82,10 @@ class CredentialBase(BaseModel):
     (curl_cffi ``proxies`` for http and https). None = direct."""
 
     def session_kwargs(self, timeout: int, headers: dict) -> dict:
-        kw = {"timeout": timeout, "headers": headers, "impersonate": IMPERSONATE}
+        # trust_env=False: never pick up HTTP(S)_PROXY from the environment — a
+        # local system proxy (e.g. 127.0.0.1:2082 on a dev box) would silently
+        # route NovelAI traffic and change the client's apparent address.
+        kw = {"timeout": timeout, "headers": headers, "impersonate": IMPERSONATE, "trust_env": False}
         if self.proxy:
             kw["proxies"] = {"http": self.proxy, "https": self.proxy}
         return kw

@@ -513,7 +513,7 @@ def get_default_params(model: Model = None) -> Params:
             tag_hint_transparent_background=False,
             deliberate_euler_ancestral_bug=False,
             prefer_brownian=True,
-            image_format=ImageFormat.WEBP,
+            image_format=ImageFormat.PNG,
             params_version=4
         )
 
@@ -552,7 +552,7 @@ def get_default_params(model: Model = None) -> Params:
             inpaintImg2ImgStrength=1.0,
             tag_hint_qt=1,
             tag_hint_uc_preset=2,
-            image_format=ImageFormat.WEBP,
+            image_format=ImageFormat.PNG,
             params_version=4
         )
 
