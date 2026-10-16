@@ -35,3 +35,23 @@ def test_subscription_usage_is_optional_and_derived():
     assert r.usage.images_left_estimate == int(49 * 17.3)
     neg = SubscriptionUsage(percent=-3, isNegative=True, timeUntilNextPercent=6048)
     assert neg.images_left_estimate == 0 and abs(neg.refill_percent_per_day - 14.29) < 0.01
+
+
+def test_v45_request_matches_live_web_client_shape():
+    """Keys/defaults observed in a real nai-diffusion-4-5-full request captured
+    from the web client on 2026-10-16 (payload_samples)."""
+    import json
+    from novelai_python.sdk.ai.generate_image import GenerateImageInfer
+    g = GenerateImageInfer.build_generate(prompt="x", model=Model.NAI_DIFFUSION_4_5_FULL, width=1216, height=832)
+    d = g.model_dump(mode="json", exclude_none=True)
+    p = d["parameters"]
+    live = {"add_original_image", "autoSmea", "cfg_rescale", "characterPrompts", "controlnet_strength",
+            "deliberate_euler_ancestral_bug", "dynamic_thresholding", "height", "image_format",
+            "inpaintImg2ImgStrength", "legacy", "legacy_uc", "legacy_v3_extend", "n_samples", "negative_prompt",
+            "noise_schedule", "normalize_reference_strength_multiple", "params_version", "prefer_brownian",
+            "qualityPresetId", "sampler", "scale", "seed", "steps", "tag_hint_qt", "tag_hint_uc_preset",
+            "ucPresetId", "use_coords", "v4_negative_prompt", "v4_prompt", "width"}
+    assert live <= set(p), live - set(p)
+    assert (p["steps"], p["scale"], p["image_format"], p["tag_hint_qt"], p["tag_hint_uc_preset"]) == (28, 5.0, "webp", 1, 2)
+    assert p["ucPresetId"] == "heavy" and p["qualityPresetId"] == "standard" and p["params_version"] == 4
+    assert "ucPreset" not in p and "qualityToggle" not in p

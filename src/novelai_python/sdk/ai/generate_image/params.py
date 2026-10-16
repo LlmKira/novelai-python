@@ -529,7 +529,7 @@ def get_default_params(model: Model = None) -> Params:
             height=1216,
             scale=5.0,
             sampler=Sampler.K_EULER_ANCESTRAL,
-            steps=23,
+            steps=28,
             n_samples=1,
             strength=0.7,
             noise=0.0,
@@ -550,6 +550,9 @@ def get_default_params(model: Model = None) -> Params:
             legacy_uc=False,
             normalize_reference_strength_multiple=True,
             inpaintImg2ImgStrength=1.0,
+            tag_hint_qt=1,
+            tag_hint_uc_preset=2,
+            image_format=ImageFormat.WEBP,
             params_version=4
         )
 

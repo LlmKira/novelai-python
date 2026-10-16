@@ -817,6 +817,9 @@ class GenerateImageInfer(ApiBaseModel):
             limiter.check(self.parameters.n_samples)
 
         request_data = self.model_dump(mode="json", exclude_none=True)
+        if self.parameters.params_version >= 4:
+            # the web client sends this key explicitly as null (live sample 2026-10-16)
+            request_data["parameters"].setdefault("skip_cfg_above_sigma", None)
         request_data["parameters"]["stream"] = "msgpack"
         body, content_type = build_multipart_request(json.dumps(request_data).encode("utf-8"))
         finals = 0
@@ -907,6 +910,9 @@ class GenerateImageInfer(ApiBaseModel):
 
         # Prepare request data
         request_data = self.model_dump(mode="json", exclude_none=True)
+        if self.parameters.params_version >= 4:
+            # the web client sends this key explicitly as null (live sample 2026-10-16)
+            request_data["parameters"].setdefault("skip_cfg_above_sigma", None)
         request_json = json.dumps(request_data).encode("utf-8")
         if self.parameters.params_version >= 4:
             # the web client wraps every generate-image call in multipart/form-data
