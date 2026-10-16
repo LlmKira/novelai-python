@@ -21,7 +21,7 @@ class LLMStream(LLM):
     """
 
     @property
-    def base_url(self):
+    def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/generate-stream"
 
     @classmethod

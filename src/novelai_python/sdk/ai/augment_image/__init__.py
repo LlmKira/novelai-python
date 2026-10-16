@@ -41,7 +41,7 @@ class AugmentImageInfer(ApiBaseModel):
         return self._endpoint
 
     @endpoint.setter
-    def endpoint(self, value):
+    def endpoint(self, value) -> None:
         self._endpoint = value
 
     req_type: ReqType = Field(..., description="Type of augmentation")
@@ -69,7 +69,7 @@ class AugmentImageInfer(ApiBaseModel):
         return self
 
     @property
-    def base_url(self):
+    def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/augment-image"
 
     def calculate_cost(self, is_opus: bool = False) -> float:

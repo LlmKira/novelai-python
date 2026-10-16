@@ -78,7 +78,7 @@ def _generator(m: int, t: int, prim_poly: int) -> int:
 class BCH:
     """Subset of the ``bchlib.BCH`` API: ``encode``, ``decode``, ``correct``."""
 
-    def __init__(self, t: int, prim_poly: int):
+    def __init__(self, t: int, prim_poly: int) -> None:
         self.t = t
         self.prim_poly = prim_poly
         self.m = prim_poly.bit_length() - 1

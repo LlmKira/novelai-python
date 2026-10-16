@@ -78,7 +78,7 @@ class SubscriptionResp(RespBase):
         return self.perks.unlimitedImageGeneration and self.perks.imageGeneration
 
     @property
-    def get_tier_name(self):
+    def get_tier_name(self) -> str:
         if self.tier == 0:
             return "Paper"
         elif self.tier == 1:

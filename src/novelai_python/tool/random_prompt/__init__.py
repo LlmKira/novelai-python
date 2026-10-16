@@ -10,7 +10,7 @@ from novelai_python.tool.random_prompt.generate_tags import generate_tags, get_h
 
 
 class RandomPromptGenerator:
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         pass
 
     @staticmethod

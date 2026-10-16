@@ -50,7 +50,7 @@ def get_bad_words_ids(group: TextTokenizerGroup, use_banBrackets: bool):
     return []
 
 
-def get_eos_token_id(group: TextTokenizerGroup):
+def get_eos_token_id(group: TextTokenizerGroup) -> int:
     if group in [TextTokenizerGroup.PILE, TextTokenizerGroup.PILE_NAI]:
         return 31
     elif group == TextTokenizerGroup.GPT2:
@@ -202,7 +202,7 @@ def get_default_preset(model: TextLLMModel) -> Preset:
 
 
 class ModelPresetManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.presets: dict[TextLLMModel, list[Preset]] = {}
 
     def register_preset(self, model: TextLLMModel, preset: Preset) -> None:

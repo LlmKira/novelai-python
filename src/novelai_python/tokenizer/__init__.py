@@ -16,7 +16,7 @@ from ..credential._base import DEFAULT_USER_AGENT
 from .clip_simple_tokenizer import SimpleTokenizer
 
 
-def download_file(url, destination_path, session):
+def download_file(url, destination_path, session) -> None:
     """
     Download a file from the specified URL and save it to the destination path.
 
@@ -80,7 +80,7 @@ class NaiTokenizer:
         model: str,
         tokenizer_model_path: pathlib.Path | None = None,
         download_session: curl_requests.Session | None = None,
-    ):
+    ) -> None:
         if not model.endswith(".def"):
             model = f"{model}.def"
         self.model_full_name = model
@@ -100,7 +100,7 @@ class NaiTokenizer:
         self._create_tokenizer()
 
     @staticmethod
-    def get_model_download_url(model_full_name):
+    def get_model_download_url(model_full_name) -> str:
         return f"https://novelai.net/tokenizer/compressed/{model_full_name}?v=2&static=true"
 
     @staticmethod
@@ -131,7 +131,7 @@ class NaiTokenizer:
 
         raise RuntimeError("Failed to decompress the data using gzip, zlib, or raw deflate.")
 
-    def _load_tokenizer_settings(self):
+    def _load_tokenizer_settings(self) -> None:
         """
         Load tokenizer settings from the model file.
         :return: None
@@ -175,7 +175,7 @@ class NaiTokenizer:
                 "report this issue to https://github.com/LlmKira/novelai-python/issues",
             ) from e
 
-    def _create_tokenizer(self):
+    def _create_tokenizer(self) -> None:
         if is_clip_model(self.model_full_name):
             self._create_clip_tokenizer()
         elif is_t5_model(self.model_full_name):
@@ -183,13 +183,13 @@ class NaiTokenizer:
         else:
             self._create_bpe_tokenizer()
 
-    def _create_clip_tokenizer(self):
+    def _create_clip_tokenizer(self) -> None:
         setting = self.tokenizer_setting
         if not isinstance(setting, ClipTokenizerSetting):
             raise ValueError(f"Invalid tokenizer setting: {setting}")
         self.tokenizer = SimpleTokenizer(bpe_model_content=setting.text)
 
-    def _create_bpe_tokenizer(self):
+    def _create_bpe_tokenizer(self) -> None:
         setting = self.tokenizer_setting
         self.tokenizer = Tokenizer(
             BPE(vocab=setting.vocab, merges=setting.merges, ignore_merges=setting.config.ignoreMerges)

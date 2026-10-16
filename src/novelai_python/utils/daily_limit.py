@@ -32,7 +32,7 @@ class DailyImageLimiter:
         *,
         window_seconds: int = DEFAULT_WINDOW_SECONDS,
         state_file: str | pathlib.Path | None = None,
-    ):
+    ) -> None:
         """
         :param limit: images allowed per window; 0 or less disables the limiter
         :param window_seconds: window length, counted from the first image of the window
@@ -47,7 +47,7 @@ class DailyImageLimiter:
         self._load()
 
     # region persistence
-    def _load(self):
+    def _load(self) -> None:
         if not self.state_file or not self.state_file.exists():
             return
         try:
@@ -58,7 +58,7 @@ class DailyImageLimiter:
             logger.warning(f"Failed to read limiter state {self.state_file}: {e}, starting fresh")
             self._window_start, self._used = None, 0
 
-    def _save(self):
+    def _save(self) -> None:
         if not self.state_file:
             return
         try:
@@ -74,7 +74,7 @@ class DailyImageLimiter:
 
     # endregion
 
-    def _roll_window(self, now: float):
+    def _roll_window(self, now: float) -> None:
         """Start a new window if there is none or the current one expired. Caller holds the lock."""
         if self._window_start is None or now - self._window_start >= self.window_seconds:
             self._window_start = now

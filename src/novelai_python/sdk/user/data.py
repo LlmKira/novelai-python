@@ -16,7 +16,7 @@ class UserData(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://image.novelai.net")
 
     @property
-    def base_url(self):
+    def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/user/data"
 
     @property
@@ -24,7 +24,7 @@ class UserData(ApiBaseModel):
         return self._endpoint
 
     @endpoint.setter
-    def endpoint(self, value):
+    def endpoint(self, value) -> None:
         self._endpoint = value
 
     async def request(

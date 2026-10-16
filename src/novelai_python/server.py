@@ -339,7 +339,7 @@ async def augment_image(
 
 
 # 获取输入参数
-def usage():
+def usage() -> None:
     print("Usage: python -m novelai_python.server -h <host> -p <port>")
     sys.exit(0)
 

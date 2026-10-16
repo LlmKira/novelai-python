@@ -18,7 +18,7 @@ class Information(ApiBaseModel):
     _endpoint: str | None = PrivateAttr("https://api.novelai.net")
 
     @property
-    def base_url(self):
+    def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/user/information"
 
     @property
@@ -26,7 +26,7 @@ class Information(ApiBaseModel):
         return self._endpoint
 
     @endpoint.setter
-    def endpoint(self, value):
+    def endpoint(self, value) -> None:
         self._endpoint = value
 
     async def request(

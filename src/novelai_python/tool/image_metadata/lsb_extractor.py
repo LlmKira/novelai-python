@@ -7,7 +7,7 @@ from PIL import Image
 
 
 class LSBExtractor:
-    def __init__(self, data):
+    def __init__(self, data) -> None:
         self.data = data
         self.rows, self.cols, self.dim = data.shape
         self.bits = 0
@@ -15,7 +15,7 @@ class LSBExtractor:
         self.row = 0
         self.col = 0
 
-    def _extract_next_bit(self):
+    def _extract_next_bit(self) -> bool:
         """
         Extract the next bit from the pixel's least significant bit (LSB).
         Returns `True` if a bit was successfully extracted, `False`
@@ -84,7 +84,7 @@ class LSBExtractor:
 
 
 class ImageLsbDataExtractor:
-    def __init__(self):
+    def __init__(self) -> None:
         self.magic = "stealth_pngcomp"
 
     def extract_data(self, image: Image.Image, get_fec: bool = False) -> tuple:

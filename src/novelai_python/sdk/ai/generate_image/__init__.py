@@ -107,7 +107,7 @@ class GenerateImageInfer(ApiBaseModel):
         return self._endpoint
 
     @endpoint.setter
-    def endpoint(self, value):
+    def endpoint(self, value) -> None:
         self._endpoint = value
 
     _mutual_exclusion: bool = PrivateAttr(False)
@@ -472,11 +472,11 @@ class GenerateImageInfer(ApiBaseModel):
         return self
 
     @property
-    def base_url(self):
+    def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/generate-image"
 
     @property
-    def stream_url(self):
+    def stream_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/generate-image-stream"
 
     def calculate_cost(self, is_opus: bool = False):

@@ -17,7 +17,7 @@ class ApiBaseModel(BaseModel, ABC):
 
     @property
     @abstractmethod
-    def base_url(self):
+    def base_url(self) -> str:
         logger.error("ApiBaseModel.base_url must be overridden")
         return f"{self.endpoint.strip('/')}/need-to-override"
 
@@ -26,16 +26,16 @@ class ApiBaseModel(BaseModel, ABC):
         return self._endpoint
 
     @endpoint.setter
-    def endpoint(self, value):
+    def endpoint(self, value) -> None:
         self._endpoint = value
 
     @staticmethod
-    def ensure_session_has_post_method(session):
+    def ensure_session_has_post_method(session) -> None:
         if not hasattr(session, "post"):
             raise AttributeError("SESSION_MUST_HAVE_POST_METHOD")
 
     @staticmethod
-    def ensure_session_has_get_method(session):
+    def ensure_session_has_get_method(session) -> None:
         if not hasattr(session, "get"):
             raise AttributeError("SESSION_MUST_HAVE_GET_METHOD")
 

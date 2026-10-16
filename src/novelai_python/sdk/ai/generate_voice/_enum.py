@@ -14,7 +14,7 @@ class Speaker(BaseModel):
     category: str
 
     @property
-    def version(self):
+    def version(self) -> str:
         return "v2" if self.sid == -1 else "v1"
 
 

@@ -2546,11 +2546,11 @@ colorsL = [
 class Conditions:
     tags: list[str]
 
-    def add(self, v: str):
+    def add(self, v: str) -> None:
         if v not in self.tags:
             self.tags.append(v)
 
-    def __contains__(self, item):
+    def __contains__(self, item) -> bool:
         return item in self.tags
 
     def copy(self):

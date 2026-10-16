@@ -30,11 +30,11 @@ class SuggestTags(ApiBaseModel):
         return self._endpoint
 
     @endpoint.setter
-    def endpoint(self, value):
+    def endpoint(self, value) -> None:
         self._endpoint = value
 
     @property
-    def base_url(self):
+    def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/generate-image/suggest-tags"
 
     async def request(

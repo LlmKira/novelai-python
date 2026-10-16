@@ -11,7 +11,7 @@ def enum_to_list(enum_):
 
 
 class QueSelect:
-    def __init__(self, data: list[str]):
+    def __init__(self, data: list[str]) -> None:
         """
         A queue selector
         :param data:
