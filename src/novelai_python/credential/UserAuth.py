@@ -44,4 +44,4 @@ class LoginCredential(CredentialBase):
         if update_headers:
             headers.update(update_headers)
 
-        return AsyncSession(timeout=timeout, headers=headers, impersonate=IMPERSONATE)
+        return AsyncSession(**self.session_kwargs(timeout, headers))

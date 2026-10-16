@@ -590,8 +590,6 @@ def get_modifiers(model: Model) -> Modifier:
     """
     if model in [
         Model.CUSTOM,
-        Model.NAI_DIFFUSION_4_5_FULL,
-        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
         *V5_MODEL_LIST,
     ]:
         # V5: qualityPresetId "standard" in the web client
@@ -599,13 +597,24 @@ def get_modifiers(model: Model) -> Modifier:
             qualityTags="",
             suffix=", very aesthetic, masterpiece, no text"
         )
+    # Strings below follow docs.novelai.net "Quality Tags" (checked 2026-10):
+    # V4.5 Full keeps `location`, V4.5 Curated has no `very aesthetic`,
+    # V4 Curated uses `amazing quality`. V5 dropped location/rating/absurdres.
+    if model in [
+        Model.NAI_DIFFUSION_4_5_FULL,
+        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
+    ]:
+        return Modifier(
+            qualityTags="",
+            suffix=", location, very aesthetic, masterpiece, no text"
+        )
     if model in [
         Model.NAI_DIFFUSION_4_5_CURATED,
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING
     ]:
         return Modifier(
             qualityTags="",
-            suffix=", very aesthetic, location, masterpiece, no text, -0.8::feet::, rating:general"
+            suffix=", location, masterpiece, no text, -0.8::feet::, rating:general"
         )
     if model in [
         Model.NAI_DIFFUSION_4_FULL,
@@ -621,7 +630,7 @@ def get_modifiers(model: Model) -> Modifier:
     ]:
         return Modifier(
             qualityTags="",
-            suffix=", rating:general, best quality, very aesthetic, absurdres"
+            suffix=", rating:general, amazing quality, very aesthetic, absurdres"
         )
     if model in [Model.NAI_DIFFUSION_2]:
         return Modifier(

@@ -32,7 +32,7 @@ class JwtCredential(CredentialBase):
             assert isinstance(update_headers, dict), "update_headers must be a dict"
             headers.update(update_headers)
 
-        return AsyncSession(timeout=timeout, headers=headers, impersonate=IMPERSONATE)
+        return AsyncSession(**self.session_kwargs(timeout, headers))
 
     @field_validator('jwt_token')
     def check_jwt_token(cls, v: SecretStr):

@@ -32,7 +32,7 @@ class ApiCredential(CredentialBase):
             assert isinstance(update_headers, dict), "update_headers must be a dict"
             headers.update(update_headers)
 
-        return AsyncSession(timeout=timeout, headers=headers, impersonate=IMPERSONATE)
+        return AsyncSession(**self.session_kwargs(timeout, headers))
 
     @field_validator('api_token')
     def check_api_token(cls, v: SecretStr):

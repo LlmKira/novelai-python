@@ -32,6 +32,29 @@ class Perks(BaseModel):
     contextTokens: int
 
 
+class SubscriptionUsage(BaseModel):
+    """Opus usage limit for NovelAI Diffusion V5 (introduced with the V5 release,
+    2026-08). The bar refills continuously: ``timeUntilNextPercent`` is the
+    PERIOD in seconds per +1 % (the web client derives "%/day" as
+    86400 / timeUntilNextPercent), not a countdown. While ``isNegative`` is
+    false, V5 generations at normal resolution / <= 28 steps are free; once the
+    bar is below zero every V5 generation costs Anlas until it refills."""
+    percent: int = Field(0, description="Usage bar level, may exceed 100 after bonuses")
+    isNegative: bool = Field(False, description="Bar is below zero: V5 now costs Anlas")
+    timeUntilNextPercent: Optional[int] = Field(None, description="Seconds per +1 %")
+
+    @property
+    def refill_percent_per_day(self) -> Optional[float]:
+        if not self.timeUntilNextPercent:
+            return None
+        return 86400 / self.timeUntilNextPercent
+
+    @property
+    def images_left_estimate(self) -> int:
+        """Web client constant: ~17.3 default-settings images per 1 %."""
+        return 0 if self.isNegative else int(self.percent * 17.3)
+
+
 class SubscriptionResp(RespBase):
     tier: int = Field(..., description="Subscription tier")
     active: bool = Field(..., description="Subscription status")
@@ -40,6 +63,7 @@ class SubscriptionResp(RespBase):
     paymentProcessorData: Optional[Dict[Any, Any]]
     trainingStepsLeft: TrainingSteps = Field(..., description="Training steps left")
     accountType: int = Field(..., description="Account type")
+    usage: Optional[SubscriptionUsage] = Field(None, description="Opus V5 usage bar (absent on non-Opus)")
 
     @property
     def is_active(self):

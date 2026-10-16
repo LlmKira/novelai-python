@@ -68,6 +68,15 @@ IMPERSONATE = get_impersonate_target()
 class CredentialBase(BaseModel):
     _session: AsyncSession = None
     """会话"""
+    proxy: Optional[str] = None
+    """Outbound proxy for every request, e.g. ``http://user:pass@host:port``
+    (curl_cffi ``proxies`` for http and https). None = direct."""
+
+    def session_kwargs(self, timeout: int, headers: dict) -> dict:
+        kw = {"timeout": timeout, "headers": headers, "impersonate": IMPERSONATE}
+        if self.proxy:
+            kw["proxies"] = {"http": self.proxy, "https": self.proxy}
+        return kw
 
     async def get_session(self, timeout: int = 180, update_headers: dict = None):
         raise NotImplementedError

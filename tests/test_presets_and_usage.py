@@ -1,0 +1,37 @@
+"""Quality-tag strings per model (docs.novelai.net "Quality Tags", 2026-10)
+and the Opus V5 usage bar on /user/subscription."""
+from novelai_python.sdk.ai._enum import Model, get_modifiers, get_quality_presets
+from novelai_python._response.user.subscription import SubscriptionUsage, SubscriptionResp
+
+
+def test_quality_suffix_follows_docs_per_model():
+    assert get_modifiers(Model.NAI_DIFFUSION_5_FULL).suffix == ", very aesthetic, masterpiece, no text"
+    assert get_modifiers(Model.NAI_DIFFUSION_4_5_FULL).suffix == ", location, very aesthetic, masterpiece, no text"
+    assert get_modifiers(Model.NAI_DIFFUSION_4_5_CURATED).suffix == \
+        ", location, masterpiece, no text, -0.8::feet::, rating:general"
+    assert get_modifiers(Model.NAI_DIFFUSION_4_FULL).suffix == ", no text, best quality, very aesthetic, absurdres"
+    assert get_modifiers(Model.NAI_DIFFUSION_4_CURATED_PREVIEW).suffix == \
+        ", rating:general, amazing quality, very aesthetic, absurdres"
+    assert get_modifiers(Model.NAI_DIFFUSION_3).suffix == ", best quality, amazing quality, very aesthetic, absurdres"
+    assert get_modifiers(Model.NAI_DIFFUSION_FURRY_3).suffix == ", {best quality}, {amazing quality}"
+
+
+def test_v5_has_light_and_standard_presets():
+    ids = {p.id: p.suffix for p in get_quality_presets(Model.NAI_DIFFUSION_5_FULL)}
+    assert ids["standard"] == "very aesthetic, masterpiece, no text"
+    assert ids["light"] == "very aesthetic, amazing quality, no text"
+    assert ids["none"] == ""
+
+
+def test_subscription_usage_is_optional_and_derived():
+    base = {"tier": 3, "active": True, "expiresAt": 1, "paymentProcessorData": None, "accountType": 0,
+            "trainingStepsLeft": {"fixedTrainingStepsLeft": 10000, "purchasedTrainingSteps": 0},
+            "perks": {"maxPriorityActions": 1, "startPriority": 1, "moduleTrainingSteps": 0,
+                      "unlimitedMaxPriority": True, "voiceGeneration": True, "imageGeneration": True,
+                      "unlimitedImageGeneration": True, "unlimitedImageGenerationLimits": [], "contextTokens": 8192}}
+    assert SubscriptionResp.model_validate(base).usage is None
+    r = SubscriptionResp.model_validate({**base, "usage": {"percent": 49, "isNegative": False, "timeUntilNextPercent": 7888}})
+    assert r.usage.percent == 49 and abs(r.usage.refill_percent_per_day - 10.95) < 0.01
+    assert r.usage.images_left_estimate == int(49 * 17.3)
+    neg = SubscriptionUsage(percent=-3, isNegative=True, timeUntilNextPercent=6048)
+    assert neg.images_left_estimate == 0 and abs(neg.refill_percent_per_day - 14.29) < 0.01
