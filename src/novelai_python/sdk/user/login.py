@@ -12,7 +12,7 @@ from pydantic import Field, PrivateAttr
 from ..._exceptions import APIError, SessionHttpError
 from ..._response.user.login import LoginResp
 from ...credential import CredentialBase
-from ...credential._base import IMPERSONATE, browser_headers
+from ...credential._base import IMPERSONATE, _correlation_id, _initiated_at, browser_headers
 from ...utils import encode_access_key
 from ..schema import ApiBaseModel
 
@@ -22,6 +22,13 @@ logger = logging.getLogger(__name__)
 class Login(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://image.novelai.net")
     key: str = Field(..., description="User's key")
+    recaptcha: str | None = Field(default=None, description="reCAPTCHA token, as the web client sends it")
+    measure_id: str | None = Field(default=None, exclude=True)
+    """
+    FingerprintJS event_id the web client sends as ``x-measure-id``. The client leaves the header
+    out when the agent fails to load (e.g. blocked by an ad blocker), so it is optional. Pass one
+    only if it comes from a real browser session: a made-up id does not exist on the server side.
+    """
 
     @property
     def endpoint(self):
@@ -49,14 +56,16 @@ class Login(ApiBaseModel):
         )
 
     @classmethod
-    def build(cls, *, user_name: str, password: str):
+    def build(cls, *, user_name: str, password: str, recaptcha: str | None = None, measure_id: str | None = None):
         """
         From username and password to build a Login instance
-        :param user_name:
+        :param user_name: account email
         :param password:
+        :param recaptcha: optional reCAPTCHA token
+        :param measure_id: optional FingerprintJS event_id from a real browser (see ``measure_id``)
         :return:
         """
-        return cls(key=encode_access_key(user_name, password))
+        return cls(key=encode_access_key(user_name, password), recaptcha=recaptcha, measure_id=measure_id)
 
     async def request(
         self,
@@ -79,7 +88,13 @@ class Login(ApiBaseModel):
             logger.debug("Fetching login-credential")
             try:
                 self.ensure_session_has_post_method(sess)
-                response = await sess.post(self.base_url, data=json.dumps(request_data).encode("utf-8"))
+                # per-request headers in the web client's order (2026-10 bundle, login())
+                headers = {"x-correlation-id": _correlation_id(), "x-initiated-at": _initiated_at()}
+                if self.measure_id:
+                    headers["x-measure-id"] = self.measure_id
+                response = await sess.post(
+                    self.base_url, data=json.dumps(request_data).encode("utf-8"), headers=headers
+                )
                 if "application/json" not in response.headers.get("Content-Type") or response.status_code != 201:
                     error_message = await self.handle_error_response(response=response, request_data=request_data)
                     status_code = error_message.get("statusCode", response.status_code)

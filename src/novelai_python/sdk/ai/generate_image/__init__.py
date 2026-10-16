@@ -61,6 +61,8 @@ from ....credential import CredentialBase
 from ....utils import try_jsonfy
 from ....utils.daily_limit import DailyImageLimiter, get_default_limiter
 from ...schema import ApiBaseModel
+from .auto_text import apply_auto_text
+from .auto_text import strip_auto_text as strip_auto_text  # re-export
 from .params import Params, get_default_params
 from .schema import Character, CharacterReference, PositionMap, V4NegativePrompt, V4Prompt
 from .suggest_tags import SuggestTags as SuggestTags  # re-export
@@ -197,6 +199,8 @@ class GenerateImageInfer(ApiBaseModel):
     reCAPTCHA Enterprise token the web client attaches to free-trial generations.
     Not produced by this library; pass one through only if you already hold it.
     """
+    auto_text: bool = Field(default=True, exclude=True)
+    """V5: append ``teXt:`` with the quoted texts of the prompt, as novelai.net does (see auto_text.py)."""
     model_config = ConfigDict(extra="ignore")
 
     @override
@@ -293,6 +297,19 @@ class GenerateImageInfer(ApiBaseModel):
         if use_quality or transparent:
             logger.debug("Adding quality / transparent-background tags to the input prompt.")
             self.input = enhance_message(self.input)
+
+        # Last, after the quality suffix: the text block has to end the base prompt
+        if self.auto_text and is_v5_model(self.model):
+            chars = [
+                {
+                    "prompt": c.prompt,
+                    "enabled": c.enabled,
+                    "center": (c.center.value if isinstance(c.center, PositionMap) else c.center).model_dump(),
+                }
+                for c in self.parameters.characterPrompts
+            ]
+            use_coords = any(c.center != PositionMap.AUTO for c in self.parameters.characterPrompts)
+            self.input = apply_auto_text(self.input, chars, use_coords)
 
         if self._mutual_exclusion:
             logger.debug("Mutual exclusion is enabled, will modify negative prompt.")

@@ -19,6 +19,8 @@ class LoginCredential(CredentialBase):
     session_headers: dict = Field(default_factory=dict)
     update_at: int | None = None
     x_correlation_id: str = Field(default_factory=_correlation_id)
+    recaptcha: str | None = Field(default=None, description="Optional reCAPTCHA token for the login request")
+    measure_id: str | None = Field(default=None, description="Optional FingerprintJS event_id (see Login)")
 
     async def get_session(self, timeout: int = 180, update_headers: dict | None = None):
         headers = browser_headers(
@@ -40,9 +42,12 @@ class LoginCredential(CredentialBase):
             )
             if not self.username or self.password is None:
                 raise ValueError("LoginCredential needs username and password")
-            resp = await Login.build(user_name=self.username, password=self.password.get_secret_value()).request(
-                login_session
-            )
+            resp = await Login.build(
+                user_name=self.username,
+                password=self.password.get_secret_value(),
+                recaptcha=self.recaptcha,
+                measure_id=self.measure_id,
+            ).request(login_session)
             headers["Authorization"] = f"Bearer {resp.accessToken}"
             self.session_headers = headers
             self.update_at = int(time.time())

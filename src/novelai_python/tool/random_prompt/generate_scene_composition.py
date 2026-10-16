@@ -2590,21 +2590,14 @@ def select_weighted_option(
             return []
         return item[4]
 
-    filtered_options = []
-    for option in options:
-        fourth = get_fourth_array(option)
-        fifth = get_fifth_array(option)
-        # 必须排除的条件
-        if len(fifth) != 0:
-            for exclusion in fifth:
-                if exclusion in conditions:
-                    continue
-        # 必须包含的条件
-        if len(fourth) != 0:
-            for requirement in fourth:
-                if requirement not in conditions:
-                    continue
-        filtered_options.append(option)
+    # As the web client's selector (LR, 2026-10 bundle): drop a row if any of its exclusions
+    # ([4]) is already a condition, or if any of its requirements ([3]) is missing.
+    filtered_options = [
+        option
+        for option in options
+        if not any(exclusion in conditions for exclusion in get_fifth_array(option))
+        and all(requirement in conditions for requirement in get_fourth_array(option))
+    ]
 
     # 增加随机性
     random.shuffle(filtered_options)
@@ -2616,7 +2609,7 @@ def select_weighted_option(
     total_weight = sum(get_weight(option[1]) for option in filtered_options)
 
     # 随机选择
-    random_value = random_range(0, total_weight)
+    random_value = random_range(1, total_weight)  # 1..total, as the web client
     cumulative_weight = 0
     # 逐个判断
     for option in filtered_options:
