@@ -115,7 +115,7 @@ class DailyImageLimiter:
             now = time.time()
             self._roll_window(now)
             if self._used + n > self.limit:
-                reset_at = self._window_start + self.window_seconds
+                reset_at = (self._window_start or now) + self.window_seconds
                 raise DailyLimitExceeded(
                     f"Image limit reached: {self._used}/{self.limit} used in the current window, "
                     f"resets at {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime(reset_at))}",

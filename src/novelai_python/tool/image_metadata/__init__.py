@@ -130,7 +130,8 @@ class ImageMetadata(BaseModel):
         Get the model used to generate the image from the Model code
         :return:  Model or None
         """
-        return find_model_by_hashcode(self.Source)
+        model = find_model_by_hashcode(self.Source) if self.Source else None
+        return model if isinstance(model, Model) else None
 
     @staticmethod
     def reset_alpha(image: Image.Image) -> BytesIO:
@@ -310,7 +311,8 @@ class ImageVerifier:
         sig = None
         latents = None
         try:
-            for cid, data, after_idat in image.private_chunks:
+            # PngImageFile only: other formats carry no latent chunks
+            for cid, data, after_idat in getattr(image, "private_chunks", []):
                 if after_idat:
                     if cid == b"ltns":
                         sig = data
@@ -387,9 +389,11 @@ class ImageVerifier:
                 return True, have_latents
             except Exception as e:
                 logger.debug(f"Error verifying image [1]: {e}")
+        if fec_data is None:
+            return False, False
         try:
             rgb, _errs = fec_decode(bytearray(rgb), bytearray(fec_data), w, h)
-            verify_key.verify(rgb + parameter, signed_hash)
+            verify_key.verify(bytes(rgb) + parameter, signed_hash)
         except Exception as e:
             logger.debug(f"Error verifying image [2]: {e}")
             return False, False

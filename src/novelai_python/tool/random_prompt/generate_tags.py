@@ -1,11 +1,13 @@
 import base64
 import random
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel
 
-Options = list[list[str | int | list | None]]
+# read-only tables of mixed rows: [tag, weight, conditions, ...]
+Options = Sequence[Sequence[str | int | list | None]]
 
 cameraAngles = [
     ["dutch angle", 5],
@@ -2038,6 +2040,10 @@ def random_range(a, b):
 nsfwDecode = decode_nsfw_data(nsfwData)
 
 
+def _weight(value: str | int | list | None) -> int:
+    return value if isinstance(value, int) else 0
+
+
 def get_weighted_choice(options: Options, tags: list[str] | None = None) -> Any:
     filtered_options = []
 
@@ -2045,17 +2051,17 @@ def get_weighted_choice(options: Options, tags: list[str] | None = None) -> Any:
     for option in options:
         if len(option) > 2:
             requirement = option[2]
-            if isinstance(requirement, list) and any(tag in tags for tag in requirement):
+            if isinstance(requirement, list) and any(tag in (tags or []) for tag in requirement):
                 filtered_options.append(option)
         if len(option) <= 2:
             filtered_options.append(option)
 
-    total_weight = sum(option[1] for option in filtered_options)
+    total_weight = sum(_weight(option[1]) for option in filtered_options)
     random_weight = random_range(total_weight, 1)
     cumulative_weight = 0
 
     for option in filtered_options:
-        cumulative_weight += option[1]
+        cumulative_weight += _weight(option[1])
         if random_weight <= cumulative_weight:
             return option[0]
 

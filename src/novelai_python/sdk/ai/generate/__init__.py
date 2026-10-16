@@ -134,7 +134,7 @@ class LLM(ApiBaseModel):
             bad_words_ids = bad_words_ids + get_bad_words_ids(model_group, use_banBrackets=False)
             if self.model in [TextLLMModel.CLIO, TextLLMModel.KAYRA, TextLLMModel.ERATO, *COLORS_LLM]:
                 self.parameters.eos_token_id = get_eos_token_id(model_group)
-                if self.parameters.min_length < 5:
+                if (self.parameters.min_length or 0) < 5:
                     self.parameters.min_length = 5
                 """
                 endExcludeSequences = get_end_exclude_sequences(model_group)
@@ -165,17 +165,21 @@ class LLM(ApiBaseModel):
                     logit_bias_group_exp.append(
                         LogitBiasGroup(sequence=sequence, bias=bias, ensure_sequence_finish=False, generate_once=False)
                     )
-        if self.model in [
-            TextLLMModel.J_6B,
-            TextLLMModel.J_6B_V4,
-            TextLLMModel.J_6B_V3,
-            TextLLMModel.J_6B_V4,
-            TextLLMModel.EUTERPE_V0,
-            TextLLMModel.EUTERPE_V2,
-            TextLLMModel.GENJI_PYTHON_6B,
-            TextLLMModel.GENJI_JP_6B,
-            TextLLMModel.GENJI_JP_6B_V2,
-        ]:
+        if (
+            self.model
+            in [
+                TextLLMModel.J_6B,
+                TextLLMModel.J_6B_V4,
+                TextLLMModel.J_6B_V3,
+                TextLLMModel.J_6B_V4,
+                TextLLMModel.EUTERPE_V0,
+                TextLLMModel.EUTERPE_V2,
+                TextLLMModel.GENJI_PYTHON_6B,
+                TextLLMModel.GENJI_JP_6B,
+                TextLLMModel.GENJI_JP_6B_V2,
+            ]
+            and self.parameters.repetition_penalty is not None
+        ):
             self.parameters.repetition_penalty = (self.parameters.repetition_penalty - 1) * -0.5249999999999999 / -7 + 1
         if self.prefix == "" or self.model in [
             TextLLMModel.J_6B,
@@ -193,7 +197,8 @@ class LLM(ApiBaseModel):
         if pickup_reverse_bias_model(self.model) == TextLLMModel.GENJI_JP_6B_V2:
             # 反转 logit_bias_group_exp 的 bias
             for group in logit_bias_group_exp:
-                group.bias = -group.bias
+                if group.bias is not None:
+                    group.bias = -group.bias
         order_queue = []
         for order in self.parameters.order:
             if isinstance(order, KeyOrderEntry):
@@ -347,6 +352,8 @@ class LLM(ApiBaseModel):
         :return: LLMStreamResp
         """
         # Data Build
+        if self.parameters is None:
+            raise ValueError("parameters are not set")
         base_map = self.parameters.get_base_map()
         parameters = {
             **base_map,
@@ -370,6 +377,8 @@ class LLM(ApiBaseModel):
                 self.ensure_session_has_post_method(sess)
                 response = await sess.post(self.base_url, json=request_data, stream=False)
                 response_data = try_jsonfy(response.content, default_when_error={})
+                if not isinstance(response_data, dict):
+                    response_data = {}
                 message = (
                     response_data.get("error")
                     or response_data.get("message")
@@ -377,7 +386,7 @@ class LLM(ApiBaseModel):
                 )
                 status_code = response_data.get("statusCode", response.status_code)
                 if status_code == 200 or status_code == 201:
-                    output = response_data.get("output", None)
+                    output = response_data.get("output")
                     if not output:
                         raise APIError(
                             f"No Content Returned because {message}",

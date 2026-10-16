@@ -1,4 +1,6 @@
 import random
+from collections.abc import Sequence
+from typing import Any
 
 from pydantic import dataclasses
 
@@ -2567,7 +2569,7 @@ def random_range(a, b):
 
 
 def select_weighted_option(
-    options: WeightedOptions | WeightedSimpleOptions,
+    options: Sequence[Sequence[Any]],
     conditions: Conditions,
 ) -> str | int:
     """
@@ -2578,12 +2580,12 @@ def select_weighted_option(
     """
 
     # 如果 conditions 的元素存在于最后两个数组中，则不会被选中
-    def get_fourth_array(item: WeightedOption) -> list[str]:
+    def get_fourth_array(item: Sequence[Any]) -> list[str]:
         if len(item) < 4:
             return []
         return item[3]
 
-    def get_fifth_array(item: WeightedOption) -> list[str]:
+    def get_fifth_array(item: Sequence[Any]) -> list[str]:
         if len(item) < 5:
             return []
         return item[4]
@@ -2629,7 +2631,14 @@ def select_weighted_option(
     return ""
 
 
-def generate_appearance(tags: Conditions, gender: str, additional_tags: str, character_limit: int):
+def select_weighted_count(options: Sequence[Sequence[Any]], conditions: Conditions) -> int:
+    """select_weighted_option for tables whose values are counts."""
+    return int(select_weighted_option(options, conditions) or 0)
+
+
+def generate_appearance(
+    tags: Conditions, gender: str, additional_tags: str | None, character_limit: int
+) -> list[str | int]:
     """
     为人物生成外貌描述
     :param tags: 已有标签
@@ -2680,7 +2689,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
         selected_attributes.append(select_weighted_option(breastSizesL, uni_tags))
 
     if character_limit == 1:
-        body_feature_num = select_weighted_option(
+        body_feature_num = select_weighted_count(
             [
                 [0, 10],
                 [1, 30],
@@ -2690,7 +2699,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
             uni_tags,
         )
     elif character_limit == 2:
-        body_feature_num = select_weighted_option(
+        body_feature_num = select_weighted_count(
             [
                 [0, 20],
                 [1, 40],
@@ -2699,7 +2708,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
             uni_tags,
         )
     else:
-        body_feature_num = select_weighted_option(
+        body_feature_num = select_weighted_count(
             [
                 [0, 30],
                 [1, 30],
@@ -2776,7 +2785,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
 
     # 根据人物数量生产配饰
     if character_limit == 1:
-        accessory_iterations = select_weighted_option(
+        accessory_iterations = select_weighted_count(
             [
                 [0, 10],
                 [1, 30],
@@ -2786,7 +2795,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
             uni_tags,
         )
     elif character_limit == 2:
-        accessory_iterations = select_weighted_option(
+        accessory_iterations = select_weighted_count(
             [
                 [0, 20],
                 [1, 40],
@@ -2795,7 +2804,7 @@ def generate_appearance(tags: Conditions, gender: str, additional_tags: str, cha
             uni_tags,
         )
     else:
-        accessory_iterations = select_weighted_option(
+        accessory_iterations = select_weighted_count(
             [
                 [0, 30],
                 [1, 30],
@@ -2814,7 +2823,7 @@ def generate_scene_composition():
     condition_set = Conditions(tags=[])
     character_details = []
 
-    character_count = select_weighted_option(
+    character_count = select_weighted_count(
         [
             [1, 70],
             [2, 20],
@@ -2830,7 +2839,7 @@ def generate_scene_composition():
             scene_tags.append(select_weighted_option(artStylesL, condition_set))
         scene_tags.append(select_weighted_option(sceneTypesL, condition_set))
 
-        scene_element_count = select_weighted_option(
+        scene_element_count = select_weighted_count(
             [
                 [2, 15],
                 [3, 50],
@@ -2843,7 +2852,7 @@ def generate_scene_composition():
         for _ in range(scene_element_count):
             scene_tags.append(select_weighted_option(sceneElementsL, condition_set))
 
-        object_count = select_weighted_option(
+        object_count = select_weighted_count(
             [
                 [0, 15],
                 [1, 10],
@@ -2860,7 +2869,7 @@ def generate_scene_composition():
         for _ in range(object_count):
             scene_tags.append(select_weighted_option(objectsAndStuffedAnimalsL, condition_set))
 
-        return [", ".join(filter(None, scene_tags))]
+        return [", ".join(str(tag) for tag in scene_tags if tag)]
 
     if random.random() < 0.5:
         scene_tags.append(select_weighted_option(artStylesL, condition_set))
@@ -2906,7 +2915,7 @@ def generate_scene_composition():
         scene_tags.append(select_weighted_option(cameraAnglesL, condition_set))
 
     # 添加镜头构图
-    framing_type = select_weighted_option(framingTypesL, condition_set) if random.random() < 0.7 else None
+    framing_type = str(select_weighted_option(framingTypesL, condition_set)) if random.random() < 0.7 else None
     if framing_type:
         scene_tags.append(framing_type)
 
@@ -2949,7 +2958,7 @@ def generate_scene_composition():
 
     # 去重
     scene_tags = list({tag: True for tag in scene_tags}.keys())
-    return [", ".join(scene_tags), *[", ".join(details) for details in character_details]]
+    return [", ".join(map(str, scene_tags)), *[", ".join(map(str, details)) for details in character_details]]
 
 
 if __name__ == "__main__":

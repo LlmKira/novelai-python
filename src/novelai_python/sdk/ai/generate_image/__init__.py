@@ -189,7 +189,7 @@ class GenerateImageInfer(ApiBaseModel):
 
     input: str = "1girl"
     model: ModelTypeAlias = Model.NAI_DIFFUSION_5_FULL
-    action: str | Action = Field(Action.GENERATE, description="Mode for img generate")
+    action: str | Action = Field(default=Action.GENERATE, description="Mode for img generate")
     parameters: Params
     use_new_shared_trial: bool = False
     recaptcha_token: str | None = None
@@ -362,7 +362,7 @@ class GenerateImageInfer(ApiBaseModel):
                 )
             if self.parameters.v4_negative_prompt is None:
                 self.parameters.v4_negative_prompt = V4NegativePrompt.build_from_character_prompts(
-                    negative_prompt=self.parameters.negative_prompt,
+                    negative_prompt=self.parameters.negative_prompt or "",
                     character_prompts=self.parameters.characterPrompts,
                     legacy_uc=self.parameters.legacy_uc,
                 )
@@ -494,7 +494,8 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.deliberate_euler_ancestral_bug = False
             self.parameters.prefer_brownian = True
 
-        if self.parameters.skip_cfg_above_sigma is not None:
+        base_sigma = self.parameters.skip_cfg_above_sigma
+        if base_sigma is not None:
             scale_divisor, weight = (1, 3) if self.model == Model.DALLE_MINI else (8, 4)
             dimensions_scaled = [
                 math.floor(self.parameters.width) / scale_divisor,
@@ -504,8 +505,7 @@ class GenerateImageInfer(ApiBaseModel):
             reference_value = 4 * math.floor(104) * math.floor(152)
             # 计算动态系数 dynamic_factor 并用于调整 skip_cfg_above_sigma
             dynamic_factor = ((weight * dimensions_scaled[0] * dimensions_scaled[1]) / reference_value) ** 0.5
-            self.parameters.skip_cfg_above_sigma *= dynamic_factor
-            self.parameters.skip_cfg_above_sigma = math.ceil(self.parameters.skip_cfg_above_sigma)
+            self.parameters.skip_cfg_above_sigma = math.ceil(base_sigma * dynamic_factor)
 
         if not get_supported_params(self.model).cfgDelay:
             self.parameters.skip_cfg_above_sigma = None
@@ -608,7 +608,7 @@ class GenerateImageInfer(ApiBaseModel):
         sm: bool | None = None,
         steps: int | None = None,
         seed: int | None = None,
-        sampler: Sampler | str = None,
+        sampler: Sampler | str | None = None,
         width: int | None = None,
         height: int | None = None,
         add_original_image: bool | None = None,
@@ -668,7 +668,7 @@ class GenerateImageInfer(ApiBaseModel):
         if seed is not None:
             params.seed = seed
         if sampler is not None:
-            params.sampler = sampler
+            params.sampler = Sampler(sampler)
         if width is not None:
             params.width = width
         if height is not None:
@@ -713,7 +713,7 @@ class GenerateImageInfer(ApiBaseModel):
         negative_prompt: str | None = None,
         ucPreset: UCPresetTypeAlias = None,
         steps: int | None = None,
-        sampler: Sampler | str = None,
+        sampler: Sampler | str | None = None,
         width: int | None = None,
         height: int | None = None,
         add_original_image: bool | None = None,
@@ -775,7 +775,7 @@ class GenerateImageInfer(ApiBaseModel):
         if steps is not None:
             params.steps = steps
         if sampler is not None:
-            params.sampler = sampler
+            params.sampler = Sampler(sampler)
         if width is not None:
             params.width = width
         if height is not None:
@@ -813,7 +813,7 @@ class GenerateImageInfer(ApiBaseModel):
         ucPreset: UCPresetTypeAlias = None,
         steps: int | None = None,
         seed: int | None = None,
-        sampler: Sampler | str = None,
+        sampler: Sampler | str | None = None,
         width: int | None = None,
         height: int | None = None,
         add_original_image: bool | None = None,
@@ -870,7 +870,7 @@ class GenerateImageInfer(ApiBaseModel):
         if seed is not None:
             params.seed = seed
         if sampler is not None:
-            params.sampler = sampler
+            params.sampler = Sampler(sampler)
         if width is not None:
             params.width = width
         if height is not None:

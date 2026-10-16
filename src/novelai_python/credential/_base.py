@@ -89,16 +89,16 @@ IMPERSONATE = get_impersonate_target()
 
 
 class CredentialBase(BaseModel):
-    _session: AsyncSession = None
+    _session: AsyncSession | None = None
     """会话"""
     proxy: str | None = None
     """Outbound proxy for every request, e.g. ``http://user:pass@host:port``
     (curl_cffi ``proxies`` for http and https). None = direct."""
 
     def session_kwargs(self, timeout: int, headers: dict) -> dict:
-        # trust_env=False: never pick up HTTP(S)_PROXY from the environment — a
-        # local system proxy (e.g. 127.0.0.1:2082 on a dev box) would silently
-        # route NovelAI traffic and change the client's apparent address.
+        # trust_env=False: never pick up HTTP(S)_PROXY from the environment. A
+        # system-wide proxy on the machine would silently route NovelAI traffic
+        # and change the client's apparent address.
         kw = {"timeout": timeout, "headers": headers, "impersonate": IMPERSONATE, "trust_env": False}
         if self.proxy:
             kw["proxies"] = {"http": self.proxy, "https": self.proxy}

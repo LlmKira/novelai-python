@@ -94,15 +94,18 @@ class ImageLsbDataExtractor:
         :param get_fec: bool
         :return: json_data, fec_data
         """
-        image = np.array(image.copy().convert("RGBA"))
+        pixels = np.array(image.copy().convert("RGBA"))
         try:
-            if not (image.shape[-1] == 4 and len(image.shape) == 3):
+            if not (pixels.shape[-1] == 4 and len(pixels.shape) == 3):
                 raise AssertionError("image format error, maybe image already be modified")
-            reader = LSBExtractor(image)
+            reader = LSBExtractor(pixels)
             read_magic = reader.get_next_n_bytes(len(self.magic)).decode("utf-8")
             if not (self.magic == read_magic):
                 raise AssertionError("magic number mismatch")
-            read_len = reader.read_32bit_integer() // 8
+            read_len_bits = reader.read_32bit_integer()
+            if read_len_bits is None:
+                raise AssertionError("metadata length is missing")
+            read_len = read_len_bits // 8
             json_data = reader.get_next_n_bytes(read_len)
             json_data = json.loads(gzip.decompress(json_data).decode("utf-8"))
             if "Comment" in json_data:
@@ -113,7 +116,7 @@ class ImageLsbDataExtractor:
 
             fec_len = reader.read_32bit_integer()
             fec_data = None
-            if fec_len != 0xFFFFFFFF:
+            if fec_len is not None and fec_len != 0xFFFFFFFF:
                 fec_data = reader.get_next_n_bytes(fec_len // 8)
 
             return json_data, fec_data

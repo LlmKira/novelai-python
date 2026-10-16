@@ -30,7 +30,7 @@ class EncodeVibe(ApiBaseModel):
 
     image: str | bytes
     model: ModelTypeAlias = Model.NAI_DIFFUSION_4_5_FULL
-    information_extracted: float = Field(1.0, ge=0, le=1)
+    information_extracted: float = Field(default=1.0, ge=0, le=1)
     mask: str | bytes | None = None
     crop_to_mask: bool | None = None
     focus_seed: int | None = None

@@ -76,20 +76,20 @@ COLORS_LLM = [
 ]
 
 
-def get_llm_group(model: TextLLMModel) -> TextTokenizerGroup | None:
+def get_llm_group(model: TextLLMModel | str) -> str | None:
     if isinstance(model, str):
         model = TextLLMModel(model)
     return TOKENIZER_MODEL_MAP.get(model)
 
 
-def get_tokenizer_model(model: TextLLMModel) -> str:
+def get_tokenizer_model(model: TextLLMModel | str) -> str:
     if isinstance(model, str):
         model = TextLLMModel(model)
     group = TOKENIZER_MODEL_MAP.get(model, TextTokenizerGroup.GPT2)
     return group
 
 
-def get_tokenizer_model_url(model: TextLLMModel) -> str:
+def get_tokenizer_model_url(model: TextLLMModel | str) -> str:
     model_name = get_tokenizer_model(model)
     if not model_name.endswith(".def"):
         model_name = f"{model_name}.def"

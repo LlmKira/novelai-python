@@ -602,7 +602,7 @@ def find_model_by_hashcode(hashcode: str) -> ModelTypeAlias:
     return PROMOTION.get(hashcode)
 
 
-def get_modifiers(model: Model) -> Modifier:
+def get_modifiers(model: ModelTypeAlias) -> Modifier:
     """
     Get modifiers from model
     :param model:
@@ -643,7 +643,7 @@ def get_modifiers(model: Model) -> Modifier:
     return Modifier(qualityTags="masterpiece, best quality, ", suffix="")
 
 
-def get_supported_noise_schedule(sample_type: Sampler, model: Model) -> list[NoiseSchedule]:
+def get_supported_noise_schedule(sample_type: Sampler, model: ModelTypeAlias) -> list[NoiseSchedule]:
     """
     Get supported noise schedule for a given sample type and model
     :param sample_type: Sampler
@@ -655,7 +655,7 @@ def get_supported_noise_schedule(sample_type: Sampler, model: Model) -> list[Noi
     return schedules
 
 
-def filter_by_model_noise_schedule(model: Model, noise_schedule: list[NoiseSchedule]) -> list[NoiseSchedule]:
+def filter_by_model_noise_schedule(model: ModelTypeAlias, noise_schedule: list[NoiseSchedule]) -> list[NoiseSchedule]:
     """
     Filter noise schedule by model
     :param model:
@@ -732,6 +732,8 @@ def get_model_group(model: ModelTypeAlias) -> ModelGroups:
             model = Model(model)
         except ValueError:
             return ModelGroups.STABLE_DIFFUSION
+    if model is None:
+        return ModelGroups.STABLE_DIFFUSION
     mapping = {
         Model.STABLE_DIFFUSION: ModelGroups.STABLE_DIFFUSION,
         Model.NAI_DIFFUSION: ModelGroups.STABLE_DIFFUSION,

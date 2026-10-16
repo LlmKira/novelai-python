@@ -30,7 +30,7 @@ def get_themes() -> list[Theme]:
     return [Theme.model_validate(data) for data in theme_data]
 
 
-def get_bad_words_ids(group: TextTokenizerGroup, use_banBrackets: bool):
+def get_bad_words_ids(group: str | None, use_banBrackets: bool):
     ban_words = BanWords() if use_banBrackets else DefaultBanWords()
     if group == TextTokenizerGroup.GENJI:
         return ban_words.GENJI
@@ -50,7 +50,7 @@ def get_bad_words_ids(group: TextTokenizerGroup, use_banBrackets: bool):
     return []
 
 
-def get_eos_token_id(group: TextTokenizerGroup) -> int:
+def get_eos_token_id(group: str | None) -> int:
     if group in [TextTokenizerGroup.PILE, TextTokenizerGroup.PILE_NAI]:
         return 31
     elif group == TextTokenizerGroup.GPT2:
@@ -62,7 +62,7 @@ def get_eos_token_id(group: TextTokenizerGroup) -> int:
     raise NotImplementedError("Invalid tokenizer for adventure EOS token")
 
 
-def get_end_exclude_sequences(group: TextTokenizerGroup):
+def get_end_exclude_sequences(group: str | None):
     if group in [TextTokenizerGroup.PILE, TextTokenizerGroup.PILE_NAI]:
         return [[187, 31]]
     elif group == TextTokenizerGroup.GPT2:
@@ -74,7 +74,7 @@ def get_end_exclude_sequences(group: TextTokenizerGroup):
     raise NotImplementedError("Invalid tokenizer for adventure end sequences")
 
 
-def get_logit_bias_group(group: TextTokenizerGroup):
+def get_logit_bias_group(group: str | None):
     """
     Get logit bias group
     :param group:
@@ -182,7 +182,7 @@ def get_default_prefix(model: TextLLMModel) -> list[str]:
     return []
 
 
-def get_repetition_penalty_whitelist(group: TextTokenizerGroup) -> list[str]:
+def get_repetition_penalty_whitelist(group: str | None) -> list[str]:
     whitelist = RepetitionPenaltyWhitelist()
     if group == TextTokenizerGroup.NERDSTASH:
         return whitelist.NERDSTASH
@@ -197,7 +197,9 @@ def get_model_preset(model: TextLLMModel) -> "ModelPresetManager":
     return PresetMapping.get(model, Default)
 
 
-def get_default_preset(model: TextLLMModel) -> Preset:
+def get_default_preset(model: TextLLMModel | str) -> Preset:
+    if isinstance(model, str):
+        model = TextLLMModel(model)
     return get_model_preset(model).get_all_presets()[0]
 
 

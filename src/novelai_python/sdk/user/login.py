@@ -60,7 +60,7 @@ class Login(ApiBaseModel):
 
     async def request(
         self,
-        session: AsyncSession | CredentialBase = None,
+        session: AsyncSession | CredentialBase | None = None,
         *,
         override_headers: dict | None = None,
     ) -> LoginResp:

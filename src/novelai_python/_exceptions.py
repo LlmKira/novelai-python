@@ -15,8 +15,9 @@ class NovelAiError(Exception):
     def __init__(self, message: str) -> None:
         self.message = message
 
+    # error.__dict__ is the public way to serialize an error (server.py, users); kept as is
     @property
-    def __dict__(self):
+    def __dict__(self) -> dict[str, Any]:  # pyright: ignore[reportIncompatibleVariableOverride]
         return {
             "message": self.message,
         }
@@ -56,7 +57,7 @@ class APIError(NovelAiError):
         self.code = code
 
     @property
-    def __dict__(self):
+    def __dict__(self) -> dict[str, Any]:
         parent_dict = super().__dict__
         parent_dict.update({"request": self.request, "response": self.response, "code": self.code})
         return parent_dict
@@ -103,7 +104,7 @@ class DailyLimitExceeded(NovelAiError):
         self.reset_at = reset_at
 
     @property
-    def __dict__(self):
+    def __dict__(self) -> dict[str, Any]:
         parent_dict = super().__dict__
         parent_dict.update(
             {

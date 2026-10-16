@@ -1,7 +1,9 @@
 import random
+from collections.abc import Sequence
 from typing import Any
 
-Options = list[list[str | int | list | None]]
+# read-only tables of mixed rows: [tag, weight, conditions, ...]
+Options = Sequence[Sequence[str | int | list | None]]
 
 viewF = [
     ["front view", 6],
@@ -1744,6 +1746,14 @@ def random_range(a, b):
     return random.randint(a, b)
 
 
+def _weight(value: str | int | list | None) -> int:
+    return value if isinstance(value, int) else 0
+
+
+def _conditions(value: str | int | list | None) -> list:
+    return value if isinstance(value, list) else []
+
+
 def get_weighted_random_choice(options: Options, tags: list[Any]) -> Any:
     """
     从加权选项中随机选择一项。
@@ -1752,10 +1762,12 @@ def get_weighted_random_choice(options: Options, tags: list[Any]) -> Any:
     :return: 随机选择的选项。
     """
     # 过滤掉有条件选项 (第三个字段) 且条件不满足的项
-    filtered_options = [option for option in options if len(option) < 3 or any(tag in tags for tag in option[2])]
+    filtered_options = [
+        option for option in options if len(option) < 3 or any(tag in tags for tag in _conditions(option[2]))
+    ]
 
     # 总权重
-    total_weight = sum(option[1] for option in filtered_options)
+    total_weight = sum(_weight(option[1]) for option in filtered_options)
 
     # 生成一个 1 到 total_weight 之间的随机数
     random_weight = random_range(1, total_weight)
@@ -1763,7 +1775,7 @@ def get_weighted_random_choice(options: Options, tags: list[Any]) -> Any:
     # 根据权重，找到对应选项
     cumulative_weight = 0
     for option in filtered_options:
-        cumulative_weight += option[1]
+        cumulative_weight += _weight(option[1])
         if random_weight <= cumulative_weight:
             return option[0]
 
@@ -1771,7 +1783,7 @@ def get_weighted_random_choice(options: Options, tags: list[Any]) -> Any:
     raise RuntimeError("get_weighted_choice: should not reach here")
 
 
-def generate_character_traits(gender: str, portrait_type: str, level: int) -> tuple:
+def generate_character_traits(gender: str, portrait_type: str | None, level: int) -> tuple:
     """
     生成角色特性。
     :param gender: 性别 (例如 'f' 表示女性)。

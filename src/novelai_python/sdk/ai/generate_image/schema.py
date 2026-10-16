@@ -7,12 +7,12 @@ from pydantic import BaseModel, Field
 
 
 class CharacterPosition(BaseModel):
-    x: float | int = Field(0, le=0.9, ge=0, description="X")
+    x: float | int = Field(default=0, le=0.9, ge=0, description="X")
     """
     0 Auto 
     0.1 0.3 0.5 0.7 0.9
     """
-    y: float | int = Field(0, le=0.9, ge=0, description="Y")
+    y: float | int = Field(default=0, le=0.9, ge=0, description="Y")
     """
     0 Auto
     0.1 0.3 0.5 0.7 0.9
@@ -49,11 +49,11 @@ class PositionMap(Enum):
 
 
 class Character(BaseModel):
-    prompt: str = Field(None, description="Prompt")
-    uc: str = Field("", description="Negative Prompt")
-    center: PositionMap | CharacterPosition = Field(PositionMap.AUTO, description="Center")
+    prompt: str = Field(default="", description="Prompt")
+    uc: str = Field(default="", description="Negative Prompt")
+    center: PositionMap | CharacterPosition = Field(default=PositionMap.AUTO, description="Center")
     """Center"""
-    enabled: bool = Field(True, description="Enabled")
+    enabled: bool = Field(default=True, description="Enabled")
 
     @classmethod
     def build(
@@ -70,13 +70,13 @@ class Character(BaseModel):
 
 
 class CharCaption(BaseModel):
-    char_caption: str = Field("", description="Character Caption")
-    centers: list[PositionMap | CharacterPosition] = Field([PositionMap.AUTO], description="Center")
+    char_caption: str = Field(default="", description="Character Caption")
+    centers: list[PositionMap | CharacterPosition] = Field(default=[PositionMap.AUTO], description="Center")
     """Center"""
 
 
 class Caption(BaseModel):
-    base_caption: str = Field("", description="Main Prompt")
+    base_caption: str = Field(default="", description="Main Prompt")
     """Main Prompt"""
     char_captions: list[CharCaption] = Field(default_factory=list, description="Character Captions")
     """Character Captions"""
@@ -84,8 +84,8 @@ class Caption(BaseModel):
 
 class V4Prompt(BaseModel):
     caption: Caption = Field(default_factory=Caption, description="Caption")
-    use_coords: bool = Field(False, description="Use Coordinates")
-    use_order: bool = Field(True, description="Use Order")
+    use_coords: bool = Field(default=False, description="Use Coordinates")
+    use_order: bool = Field(default=True, description="Use Order")
 
     @classmethod
     def build_from_character_prompts(
@@ -140,11 +140,11 @@ class CharacterReference(BaseModel):
 
     image: str | bytes = Field(..., description="Reference image, raw bytes or base64")
     description: str = Field(
-        "character&style", description='"character", "style", "costume", "character&style" or "delta"'
+        default="character&style", description='"character", "style", "costume", "character&style" or "delta"'
     )
-    strength: float = Field(1.0, ge=0, le=1)
-    fidelity: float = Field(1.0, ge=0, le=1)
-    information_extracted: float = Field(1.0, ge=0, le=1)
+    strength: float = Field(default=1.0, ge=0, le=1)
+    fidelity: float = Field(default=1.0, ge=0, le=1)
+    information_extracted: float = Field(default=1.0, ge=0, le=1)
 
     def padded_image_b64(self) -> str:
         """The image fitted onto opaque black at the director size closest to its aspect ratio, PNG base64."""

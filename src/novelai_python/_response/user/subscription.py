@@ -40,11 +40,11 @@ class SubscriptionUsage(BaseModel):
     false, V5 generations at normal resolution / <= 28 steps are free; once the
     bar is below zero every V5 generation costs Anlas until it refills."""
 
-    percent: int = Field(0, description="Usage bar level, may exceed 100 after bonuses")
-    purchasedPercent: int = Field(0, description="Bought extra usage on top of the bar, 0-300 %")
-    isNegative: bool = Field(False, description="Bar is below zero: V5 now costs Anlas")
+    percent: int = Field(default=0, description="Usage bar level, may exceed 100 after bonuses")
+    purchasedPercent: int = Field(default=0, description="Bought extra usage on top of the bar, 0-300 %")
+    isNegative: bool = Field(default=False, description="Bar is below zero: V5 now costs Anlas")
     timeUntilNextPercent: int | None = Field(
-        None, description="Seconds per +1 %; 0 while the refill is paused above the cap"
+        default=None, description="Seconds per +1 %; 0 while the refill is paused above the cap"
     )
 
     @property
@@ -67,8 +67,8 @@ class SubscriptionResp(RespBase):
     paymentProcessorData: dict[Any, Any] | None
     trainingStepsLeft: TrainingSteps = Field(..., description="Training steps left")
     accountType: int = Field(..., description="Account type")
-    usage: SubscriptionUsage | None = Field(None, description="Opus V5 usage bar (absent on non-Opus)")
-    paymentProcessor: str | None = Field(None, description='e.g. "chargebee"')
+    usage: SubscriptionUsage | None = Field(default=None, description="Opus V5 usage bar (absent on non-Opus)")
+    paymentProcessor: str | None = Field(default=None, description='e.g. "chargebee"')
     isGracePeriod: bool | None = None
     isPaypal: bool | None = None
     isNewCustomer: bool | None = None

@@ -11,7 +11,7 @@ from ..schema import RespBase
 class UpscaleResp(RespBase):
     class RequestParams(BaseModel):
         endpoint: str
-        raw_request: dict = None
+        raw_request: dict | None = None
 
     meta: RequestParams
-    files: tuple[str, bytes] = None
+    files: tuple[str, bytes] | None = None

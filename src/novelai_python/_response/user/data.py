@@ -19,11 +19,11 @@ class UserDataResp(RespBase):
 
     model_config = ConfigDict(extra="allow")
 
-    subscription: SubscriptionResp | None = Field(None, description="Same shape as /user/subscription")
-    information: InformationResp | None = Field(None, description="Same shape as /user/information")
-    priority: dict[str, Any] | None = Field(None, description="Queue priority block")
-    keystore: dict[str, Any] | None = Field(None, description="Encrypted keystore block")
-    settings: Any | None = Field(None, description="Client settings blob")
+    subscription: SubscriptionResp | None = Field(default=None, description="Same shape as /user/subscription")
+    information: InformationResp | None = Field(default=None, description="Same shape as /user/information")
+    priority: dict[str, Any] | None = Field(default=None, description="Queue priority block")
+    keystore: dict[str, Any] | None = Field(default=None, description="Encrypted keystore block")
+    settings: Any | None = Field(default=None, description="Client settings blob")
 
     @property
     def anlas_left(self) -> int | None:

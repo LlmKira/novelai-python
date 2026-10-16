@@ -69,7 +69,7 @@ class CostCalculator:
         *,
         is_account_active: bool,
         account_tier: int,
-        model_group: ModelGroups = None,
+        model_group: ModelGroups | None = None,
         is_tool_active: bool = False,
     ) -> int:
         def calculate_steps_cost(width: int, height: int, steps: int) -> float:
@@ -82,15 +82,15 @@ class CostCalculator:
 
         def calculate_dimension_cost(
             width: int, height: int, steps: int, is_sm_enabled: bool, is_sm_dynamic: bool
-        ) -> int:
+        ) -> float:
             multiplier = width * height
             factor = 1.4 if is_sm_dynamic else 1.2 if is_sm_enabled else 1
             return math.ceil(2951823174884865e-21 * multiplier + 5.753298233447344e-7 * multiplier * steps) * factor
 
         def calculate_sampling_cost(
             width: int, height: int, steps: int, sampler_type: Sampler | None, is_sm_enabled: bool, is_sm_dynamic: bool
-        ) -> int:
-            sampling_factor: list[int]
+        ) -> float:
+            sampling_factor: list[float]
             if sampler_type == Sampler.K_EULER_ANCESTRAL:
                 sampling_factor = step
             elif sampler_type == Sampler.NAI_SMEA:

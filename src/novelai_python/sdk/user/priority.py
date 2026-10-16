@@ -10,9 +10,9 @@ from ..schema import ApiBaseModel
 class PriorityResp(BaseModel):
     """GET /user/priority: the account's task priority balance."""
 
-    maxPriorityActions: int | None = Field(None, description="Priority actions the balance refills to")
-    nextRefillAt: int | None = Field(None, description="Next priority refill (UNIX timestamp)")
-    taskPriority: float | None = Field(None, description="Current task priority")
+    maxPriorityActions: int | None = Field(default=None, description="Priority actions the balance refills to")
+    nextRefillAt: int | None = Field(default=None, description="Next priority refill (UNIX timestamp)")
+    taskPriority: float | None = Field(default=None, description="Current task priority")
 
 
 class Priority(ApiBaseModel):

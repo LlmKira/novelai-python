@@ -72,7 +72,7 @@ class KeyOrderEntry(BaseModel):
 
 class LogitBiasGroup(BaseModel):
     sequence: list[int]
-    bias: float = Field(default=None, gt=-1, lt=1)
+    bias: float | None = Field(default=None, gt=-1, lt=1)
     ensure_sequence_finish: bool
     generate_once: bool
 
@@ -115,7 +115,7 @@ class LLMGenerationParams(BaseModel):
     repetition_penalty_range: int | None = Field(default=None, ge=0)
     repetition_penalty_slope: float | int | None = Field(default=None, ge=0, allow_inf_nan=False)
 
-    eos_token_id: int = None
+    eos_token_id: int | None = None
     bad_words_ids: list[list[int]] | None = None
     logit_bias_groups: list[LogitBiasGroup] | None = Field(default_factory=list)
 

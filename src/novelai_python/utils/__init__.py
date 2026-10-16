@@ -10,7 +10,7 @@ from .encode import encode_access_key
 logger = logging.getLogger(__name__)
 
 
-def try_jsonfy(obj: str | dict | list | tuple, default_when_error=None):
+def try_jsonfy(obj: str | bytes | bytearray, default_when_error=None):
     """
     try to jsonfy object
     :param obj:

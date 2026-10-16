@@ -14,8 +14,8 @@ class LoginCredential(CredentialBase):
     JwtCredential is the base class for all credential.
     """
 
-    username: str = Field(None, description="username")
-    password: SecretStr = Field(None, description="password")
+    username: str | None = Field(default=None, description="username")
+    password: SecretStr | None = Field(default=None, description="password")
     session_headers: dict = Field(default_factory=dict)
     update_at: int | None = None
     x_correlation_id: str = Field(default_factory=_correlation_id)
@@ -31,13 +31,15 @@ class LoginCredential(CredentialBase):
         )
 
         # 30 天有效期
-        if not self.session_headers or int(time.time()) - self.update_at > 29 * 24 * 60 * 60:
+        if not self.session_headers or self.update_at is None or int(time.time()) - self.update_at > 29 * 24 * 60 * 60:
             from ..sdk import Login
 
             # log in through the same proxy / fingerprint as every later request
             login_session = AsyncSession(
                 **self.session_kwargs(timeout, browser_headers({"Content-Type": "application/json"}))
             )
+            if not self.username or self.password is None:
+                raise ValueError("LoginCredential needs username and password")
             resp = await Login.build(user_name=self.username, password=self.password.get_secret_value()).request(
                 login_session
             )

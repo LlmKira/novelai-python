@@ -56,7 +56,8 @@ class LLMStream(LLM):
         )
         return created
 
-    async def request(
+    # streams instead of returning one LLMResp
+    async def request(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[invalid-method-override]
         self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None
     ) -> AsyncIterable[LLMStreamResp]:
         """
@@ -66,6 +67,8 @@ class LLMStream(LLM):
         :return: LLMStreamResp
         """
         # Data Build
+        if self.parameters is None:
+            raise ValueError("parameters are not set")
         base_map = self.parameters.get_base_map()
         parameters = {
             **base_map,
@@ -93,6 +96,8 @@ class LLMStream(LLM):
                     stream=True,  # 使用 stream=True 参数
                 )
                 response_data = try_jsonfy(response.content, default_when_error={})
+                if not isinstance(response_data, dict):
+                    response_data = {}
                 message = (
                     response_data.get("error")
                     or response_data.get("message")

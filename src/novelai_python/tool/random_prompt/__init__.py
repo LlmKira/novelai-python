@@ -32,14 +32,14 @@ class RandomPromptGenerator:
     @staticmethod
     def generate_character(
         tags: list[str], gender: Literal["m", "f", "o"], additional_tags: str | None = None, character_limit: int = 1
-    ) -> str:
+    ) -> list[str | int]:
         """
         Generate a character based on the given tags
         :param tags: given tags
         :param gender: the gender of the character
         :param additional_tags: nothing
         :param character_limit: num of characters
-        :return: random character prompt
+        :return: random character tags
         """
         return generate_appearance(
             tags=Conditions(tags=tags), gender=gender, additional_tags=additional_tags, character_limit=character_limit

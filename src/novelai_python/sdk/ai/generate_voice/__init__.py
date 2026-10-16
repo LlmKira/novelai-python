@@ -29,7 +29,7 @@ class VoiceGenerate(ApiBaseModel):
     """Limit 1000 characters"""
     voice: int = Field(default=-1, description="Seed", ge=-1)
     """Voice engine sid"""
-    seed: str | None = Field(None, description="seed_seed", max_length=50)
+    seed: str | None = Field(default=None, description="seed_seed", max_length=50)
     """
     Starting with a common first name will have a relevant influence on pitch and intonation. 
     The voice for any given seed is liable to change in the future as we continue to develop the TTS.

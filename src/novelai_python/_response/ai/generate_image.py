@@ -12,7 +12,7 @@ from ..schema import RespBase
 
 class RequestParams(BaseModel):
     endpoint: str
-    raw_request: dict = None
+    raw_request: dict | None = None
 
 
 class ImageStreamEvent(BaseModel):
@@ -39,12 +39,13 @@ class ImageStreamEvent(BaseModel):
 
 class ImageGenerateResp(RespBase):
     meta: RequestParams
-    files: list[tuple[str, bytes]] = None
+    files: list[tuple[str, bytes]] | None = None
 
     def query_params(self, key: str, default=None):
-        if not isinstance(self.meta.raw_request.get("parameters"), dict):
+        parameters = (self.meta.raw_request or {}).get("parameters")
+        if not isinstance(parameters, dict):
             raise Exception("Resp parameters is not dict")
-        return self.meta.raw_request.get("parameters").get(key, default)
+        return parameters.get(key, default)
 
     def save(
         self,
@@ -77,4 +78,4 @@ class SuggestTagsResp(RespBase):
         count: int
         confidence: float
 
-    tags: list[Tag] = None
+    tags: list[Tag] | None = None

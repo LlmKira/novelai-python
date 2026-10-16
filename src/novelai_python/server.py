@@ -174,6 +174,8 @@ async def upscale(req: Upscale, current_token: str = Depends(get_current_token))
         zip_file_bytes = io.BytesIO()
         with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
             file = result.files  # ONLY TUPLE
+            if file is None:
+                raise ValueError("The upscale response holds no image")
             zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
         # return the zip file
         zip_file_bytes.seek(0)
@@ -217,7 +219,7 @@ async def generate_image(req: GenerateImageInfer, current_token: str = Depends(g
         result = await req.request(session=get_session(current_token))
         zip_file_bytes = io.BytesIO()
         with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
-            for file in result.files:
+            for file in result.files or []:
                 zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
         # return the zip file
         zip_file_bytes.seek(0)
@@ -242,11 +244,11 @@ async def generate_stream(req: LLMStream, current_token: str = Depends(get_curre
 
     async def generator():
         agent = req
-        session = await get_session(current_token)  # Assume 'get_session()' is a function to get session by token
+        session = get_session(current_token)
         generator = agent.request(session=session)
         async for data in generator:
             data: LLMStreamResp
-            yield data.text  # Yield data for streaming response
+            yield data.text or ""
 
     return StreamingResponse(generator())
 
@@ -329,7 +331,7 @@ async def augment_image(
         result = await req.request(session=get_session(current_token))
         zip_file_bytes = io.BytesIO()
         with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
-            for file in result.files:
+            for file in result.files or []:
                 zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
         # return the zip file
         zip_file_bytes.seek(0)

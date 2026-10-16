@@ -32,19 +32,19 @@ def is_multiple_of_01(num, precision=1e-10):
 class Params(BaseModel):
     params_version: int = 4
     """Params Version For Request (the web client sends 4 for every model)"""
-    width: int = Field(832, ge=64, le=49152)
+    width: int = Field(default=832, ge=64, le=49152)
     """Width For Image"""
-    height: int = Field(1216, ge=64, le=49152)
+    height: int = Field(default=1216, ge=64, le=49152)
     """Height For Image"""
-    scale: float = Field(6.0, ge=0, le=10, multiple_of=0.1)
+    scale: float = Field(default=6.0, ge=0, le=10, multiple_of=0.1)
     """Prompt Guidance"""
     sampler: Sampler = Sampler.K_EULER_ANCESTRAL
     """Sampler For Generate Image"""
-    steps: int = Field(23, ge=1, le=50)
+    steps: int = Field(default=23, ge=1, le=50)
     """Steps"""
-    n_samples: int = Field(1, ge=1, le=8)
+    n_samples: int = Field(default=1, ge=1, le=8)
     """Number of samples"""
-    ucPreset: UCPresetTypeAlias = Field(None, ge=0)
+    ucPreset: UCPresetTypeAlias = Field(default=None, ge=0)
     """The Negative Prompt Preset, Bigger or equal to 0"""
     qualityToggle: bool = True
     """Whether to add the quality prompt"""
@@ -55,16 +55,16 @@ class Params(BaseModel):
     autoSmea: bool | None = False
     dynamic_thresholding: bool = False
     """Decrisp:Reduce artifacts caused by high prompt guidance values"""
-    controlnet_strength: float = Field(1.0, ge=0.1, le=2, multiple_of=0.1)
+    controlnet_strength: float = Field(default=1.0, ge=0.1, le=2, multiple_of=0.1)
     """ControlNet Strength"""
     legacy: bool = False
     """Legacy Mode"""
-    add_original_image: bool | None = Field(False, description="Overlay Original Image")
+    add_original_image: bool | None = Field(default=False, description="Overlay Original Image")
     """
     Overlay Original Image.Prevents the existing image from changing,
     but can introduce seams along the edge of the mask.
     """
-    cfg_rescale: float | None = Field(0, ge=0, le=1, multiple_of=0.02)
+    cfg_rescale: float | None = Field(default=0, ge=0, le=1, multiple_of=0.02)
     """Prompt Guidance Rescale"""
     noise_schedule: NoiseSchedule | None = None
     """Noise Schedule"""
@@ -72,11 +72,11 @@ class Params(BaseModel):
     """Legacy V3 Extend"""
     skip_cfg_above_sigma: int | None = None
     """Variety Boost, a new feature to improve the diversity of samples."""
-    use_coords: bool = Field(False, description="Use Coordinates")
+    use_coords: bool = Field(default=False, description="Use Coordinates")
     """Use Coordinates"""
     legacy_uc: bool = False
     normalize_reference_strength_multiple: bool = True
-    inpaintImg2ImgStrength: float | None = Field(None, ge=0, le=1, multiple_of=0.01)
+    inpaintImg2ImgStrength: float | None = Field(default=None, ge=0, le=1, multiple_of=0.01)
     """For SameFeel"""
     seed: int = Field(
         default_factory=lambda: random.randint(0, 4294967295 - 7),
@@ -94,23 +94,23 @@ class Params(BaseModel):
     """params_version>=4: uc-preset hint sent by the web client (2)"""
     tag_hint_transparent_background: bool | None = None
     """V5: ask for a transparent background (web client default False)"""
-    v4_prompt: V4Prompt | None = Field(None, description="V4 Prompt")
+    v4_prompt: V4Prompt | None = Field(default=None, description="V4 Prompt")
     """V4 Prompt"""
-    v4_negative_prompt: V4NegativePrompt | None = Field(None, description="V4 Negative Prompt")
+    v4_negative_prompt: V4NegativePrompt | None = Field(default=None, description="V4 Negative Prompt")
     """V4 Negative Prompt"""
     negative_prompt: str | None = ""
     """Negative Prompt"""
-    deliberate_euler_ancestral_bug: bool | None = Field(False, description="Deliberate Euler Ancestral Bug")
+    deliberate_euler_ancestral_bug: bool | None = Field(default=False, description="Deliberate Euler Ancestral Bug")
     """Deliberate Euler Ancestral Bug"""
-    prefer_brownian: bool = Field(True, description="Prefer Brownian")
+    prefer_brownian: bool = Field(default=True, description="Prefer Brownian")
     """Prefer Brownian"""
     image_format: ImageFormat | str | None = None
     """params_version>=4: output encoding, the web client asks for webp"""
 
     # Other fields
-    strength: float | None = Field(0.7, ge=0.01, le=0.99, multiple_of=0.01)
+    strength: float | None = Field(default=0.7, ge=0.01, le=0.99, multiple_of=0.01)
     """Strength for img2img"""
-    noise: float | None = Field(0, ge=0, le=0.99, multiple_of=0.01)
+    noise: float | None = Field(default=0, ge=0, le=0.99, multiple_of=0.01)
     """Noise for img2img"""
     sm: bool | None = False
     # TODO: find out the usage
@@ -138,7 +138,7 @@ class Params(BaseModel):
     """Character reference strength: 0-1"""
     director_reference_secondary_strength_values: list[float] | None = None
     """Character reference: 1 - fidelity"""
-    extra_noise_seed: int | None = Field(None, gt=0, le=4294967295 - 7)
+    extra_noise_seed: int | None = Field(default=None, gt=0, le=4294967295 - 7)
     """Extra Noise Seed"""
     color_correct: bool | None = None
     """For Inpaint"""
@@ -146,7 +146,7 @@ class Params(BaseModel):
     """ControlNet Condition"""
     controlnet_model: ControlNetModel | None = None
     """ControlNet Model"""
-    uncond_scale: float | None = Field(None, ge=0, le=1.5, multiple_of=0.05)
+    uncond_scale: float | None = Field(default=None, ge=0, le=1.5, multiple_of=0.05)
     """Undesired Content Strength"""
 
     # region Custom serializer
@@ -274,25 +274,17 @@ class Params(BaseModel):
                     raise ValueError("Invalid `reference_image` format, must be base64 encoded directly.")
             self.reference_image_multiple = new_images
         # 如果都不是 None 时，比较他们的长度
-        if all(
-            [
-                self.reference_strength_multiple,
-                self.reference_image_multiple,
-                self.reference_information_extracted_multiple,
-            ]
-        ):
-            if (
-                len(self.reference_strength_multiple)
-                != len(self.reference_image_multiple)
-                != len(self.reference_information_extracted_multiple)
-            ):
+        strengths = self.reference_strength_multiple
+        images = self.reference_image_multiple
+        informations = self.reference_information_extracted_multiple
+        if strengths and images and informations:
+            # a != b != c only means a != b and b != c: compare all three lengths
+            if len({len(strengths), len(images), len(informations)}) > 1:
                 raise ValueError(
                     f"All three reference_* must be of equal length, "
-                    f"strength:{len(self.reference_strength_multiple)}, "
-                    f"image:{len(self.reference_image_multiple)}, "
-                    f"information:{len(self.reference_information_extracted_multiple)}"
+                    f"strength:{len(strengths)}, image:{len(images)}, information:{len(informations)}"
                 )
-            if len(self.reference_image_multiple) > 16:
+            if len(images) > 16:
                 raise ValueError("The maximum number of reference images is 16")
         # 如果有一个存在，其他都必须存在
         ref_items = [
@@ -377,7 +369,7 @@ class Params(BaseModel):
         return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 
-def get_default_params(model: Model = None) -> Params:
+def get_default_params(model: Model | str | None = None) -> Params:
     """
     Get default parameters for a given model
 

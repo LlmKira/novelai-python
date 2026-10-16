@@ -52,7 +52,7 @@ class AugmentImageInfer(ApiBaseModel):
     image: str | bytes = Field(..., description="Base64 encoded image")
     prompt: str | None = None
     """For mood based generation, prompt should be in the format of `mood;;prompt`"""
-    defry: int | None = Field(0, ge=0, le=5, multiple_of=1)
+    defry: int | None = Field(default=0, ge=0, le=5, multiple_of=1)
     """The larger the value, the weaker the defry effect"""
     model_config = ConfigDict(extra="ignore")
 
@@ -136,7 +136,10 @@ class AugmentImageInfer(ApiBaseModel):
             with open(image, "rb") as f:
                 return io.BytesIO(f.read())
         elif hasattr(image, "read") and callable(image.read):
-            return io.BytesIO(image.read())
+            data = image.read()
+            if not isinstance(data, (bytes, bytearray)):
+                raise ValueError("A readable image object must return bytes.")
+            return io.BytesIO(data)
         else:
             raise ValueError("Invalid image input type. Expected bytes, IO, pathlib.Path, or any readable object.")
 

@@ -119,15 +119,14 @@ def unshuffle_fn(data_bytes, w, h, dim, rest_size, rest_dim):
     return bit_unshuffle(data_bytes, w, h, dim, rest_size, rest_dim, use_bytes=use_bytes)
 
 
-def split_byte_ranges(data_bytes, n, w, h, shuffle=False):
-    if shuffle:
-        data_bytes, dim, rest_size, rest_dim = shuffle_fn(data_bytes.copy(), w, h)
-    chunks = []
-    for i in range(0, len(data_bytes), n):
-        chunks.append(data_bytes[i : i + n])
-    if shuffle:
-        return chunks, dim, rest_size, rest_dim
-    return chunks
+def split_byte_ranges(data_bytes, n):
+    return [data_bytes[i : i + n] for i in range(0, len(data_bytes), n)]
+
+
+def split_shuffled_byte_ranges(data_bytes, n, w, h):
+    """Shuffle, then split; also returns what unshuffle_fn needs."""
+    data_bytes, dim, rest_size, rest_dim = shuffle_fn(data_bytes.copy(), w, h)
+    return split_byte_ranges(data_bytes, n), dim, rest_size, rest_dim
 
 
 def pad(data_bytes):
@@ -139,15 +138,15 @@ def fec_encode(data_bytes, w, h):
     encoder = BCH(16, prim_poly=17475)
     # import galois
     # encoder = galois.BCH(16383, 16383-224, d=17, c=224)
-    chunks = [bytearray(encoder.encode(pad(x))) for x in split_byte_ranges(data_bytes, 2019, w, h, shuffle=True)[0]]
+    chunks = [bytearray(encoder.encode(bytes(pad(x)))) for x in split_shuffled_byte_ranges(data_bytes, 2019, w, h)[0]]
     return b"".join(chunks)
 
 
 # Returns the error corrected data and number of corrected errors or None, None if errors are not correctable
 def fec_decode(data_bytes, codes, w, h):
     encoder = BCH(16, prim_poly=17475)
-    chunks, dim, rest_size, rest_dim = split_byte_ranges(data_bytes, 2019, w, h, shuffle=True)
-    codes = split_byte_ranges(codes, 28, w, h)
+    chunks, dim, rest_size, rest_dim = split_shuffled_byte_ranges(data_bytes, 2019, w, h)
+    codes = split_byte_ranges(codes, 28)
     corrected = []
     total_errors = 0
     for i, chunk in enumerate(chunks):

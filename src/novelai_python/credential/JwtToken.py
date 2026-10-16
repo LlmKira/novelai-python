@@ -18,13 +18,18 @@ class JwtCredential(CredentialBase):
     JwtCredential is the base class for all credential.
     """
 
-    jwt_token: SecretStr = Field(None, description="jwt token")
+    jwt_token: SecretStr | None = Field(default=None, description="jwt token")
     x_correlation_id: str = Field(default_factory=_correlation_id)
+
+    def _token(self) -> str:
+        if self.jwt_token is None:
+            raise ValueError("jwt_token is not set")
+        return self.jwt_token.get_secret_value()
 
     async def get_session(self, timeout: int = 180, update_headers: dict | None = None):
         headers = browser_headers(
             {
-                "Authorization": f"Bearer {self.jwt_token.get_secret_value()}",
+                "Authorization": f"Bearer {self._token()}",
                 "Content-Type": "application/json",
                 "x-correlation-id": self.x_correlation_id,
                 "x-initiated-at": _initiated_at(),
