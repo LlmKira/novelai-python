@@ -7,6 +7,8 @@ import numpy as np
 from nacl.encoding import Base64Encoder
 from nacl.signing import VerifyKey
 from PIL import Image
+from PIL.ExifTags import IFD as ExifIFD
+from PIL.ExifTags import Base as ExifBase
 from PIL.PngImagePlugin import PngInfo
 from pydantic import BaseModel, ConfigDict
 
@@ -183,14 +185,54 @@ class ImageMetadata(BaseModel):
             logger.debug(f"Error extracting data in LSB: {e}")
             return None
 
+    @staticmethod
+    def _file_metadata(image: Image.Image) -> dict:
+        """File-level metadata: PNG tEXt chunks, or the EXIF block NovelAI writes into WebP.
+
+        EXIF mapping as in NovelAI's nai_sig.py: DocumentName -> Title, ImageDescription ->
+        Description, Software -> Source, Artist, Copyright, UserComment (ASCII-prefixed) -> Comment.
+        """
+        if image.format != "WEBP":
+            return dict(image.info)
+        exif = image.getexif()
+        out = {}
+        for tag, key in (
+            (ExifBase.DocumentName, "Title"),
+            (ExifBase.ImageDescription, "Description"),
+            (ExifBase.Software, "Source"),
+            (ExifBase.Artist, "Artist"),
+            (ExifBase.Copyright, "Copyright"),
+        ):
+            if tag in exif:
+                out[key] = exif[tag]
+        comment = exif.get_ifd(ExifIFD.Exif).get(ExifBase.UserComment)
+        if isinstance(comment, bytes):
+            # 8-byte charset prefix; NovelAI writes ASCII and anything else is not trusted
+            comment = comment[8:].rstrip(b"\x00").decode("ascii") if comment[:8] == b"ASCII\x00\x00\x00" else None
+        if comment:
+            # V5 WebP: UserComment is the whole metadata object
+            # {"Comment": "<json>", "Generation_time": ..., "Source": ..., ...}
+            try:
+                payload = json.loads(comment)
+            except ValueError:
+                payload = None
+            if isinstance(payload, dict) and "Comment" in payload:
+                out.update(payload)
+            else:
+                out["Comment"] = comment
+        return out
+
     @classmethod
     def _extract_metadata_from_comments(cls, image: Image.Image):
         """
-        Extract metadata from image comments and other info.
+        Extract metadata from image comments and other info (PNG text or WebP EXIF).
         :param image: Union[str, bytes, Path, BytesIO]
+        :return: ImageMetadata, or None when the file carries no Comment
         """
-        generate_map = image.info
-        comment = generate_map.get("Comment", "{}")
+        generate_map = cls._file_metadata(image)
+        if "Comment" not in generate_map:
+            return None
+        comment = generate_map["Comment"]
         try:
             comment_dict = json.loads(comment)
         except Exception as e:
@@ -332,16 +374,23 @@ class ImageVerifier:
             return False, False
         rgb = image_array[:, :, :3].tobytes()
         parameter = json.dumps(parameter).encode("utf-8")
-        image_and_comment = rgb + parameter
-        try:
-            verify_key.verify(image_and_comment, signed_hash)
-        except Exception as e:
-            logger.debug(f"Error verifying image [1]: {e}")
+        # Older images sign the RGB bytes; V5 (2026) signs RGBA with the alpha LSB cleared,
+        # because that bit carries the stealth metadata (official nai_sig.py, 2026-08-20).
+        candidates = [rgb]
+        if image_array.ndim == 3 and image_array.shape[-1] == 4:
+            masked = image_array.copy()
+            masked[..., -1] &= 0xFE
+            candidates.append(masked.tobytes())
+        for image_bytes in candidates:
             try:
-                rgb, _errs = fec_decode(bytearray(rgb), bytearray(fec_data), w, h)
-                image_and_comment = rgb + parameter
-                verify_key.verify(image_and_comment, signed_hash)
+                verify_key.verify(image_bytes + parameter, signed_hash)
+                return True, have_latents
             except Exception as e:
-                logger.debug(f"Error verifying image [2]: {e}")
-                return False, False
+                logger.debug(f"Error verifying image [1]: {e}")
+        try:
+            rgb, _errs = fec_decode(bytearray(rgb), bytearray(fec_data), w, h)
+            verify_key.verify(rgb + parameter, signed_hash)
+        except Exception as e:
+            logger.debug(f"Error verifying image [2]: {e}")
+            return False, False
         return True, have_latents
