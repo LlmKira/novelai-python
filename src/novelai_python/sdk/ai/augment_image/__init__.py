@@ -14,7 +14,6 @@ from urllib.parse import urlparse
 from zipfile import ZipFile, BadZipFile
 
 import curl_cffi
-import httpx
 from PIL import Image
 from curl_cffi.requests import AsyncSession
 from loguru import logger
@@ -283,9 +282,6 @@ class AugmentImageInfer(ApiBaseModel):
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.")
-            except httpx.HTTPError as exc:
-                logger.exception(exc)
-                raise SessionHttpError("An HTTP error occurred. Try again later.")
             except APIError as e:
                 raise e
             except Exception as e:

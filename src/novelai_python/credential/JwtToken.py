@@ -4,13 +4,11 @@
 # @File    : JwtToken.py
 
 
-import arrow
-import shortuuid
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import SecretStr, Field, field_validator
 
-from ._base import CredentialBase, browser_headers, IMPERSONATE
+from ._base import _initiated_at, _correlation_id, CredentialBase, browser_headers, IMPERSONATE
 
 
 class JwtCredential(CredentialBase):
@@ -18,14 +16,14 @@ class JwtCredential(CredentialBase):
     JwtCredential is the base class for all credential.
     """
     jwt_token: SecretStr = Field(None, description="jwt token")
-    x_correlation_id: str = shortuuid.uuid()[0:6]
+    x_correlation_id: str = Field(default_factory=_correlation_id)
 
     async def get_session(self, timeout: int = 180, update_headers: dict = None):
         headers = browser_headers({
             "Authorization": f"Bearer {self.jwt_token.get_secret_value()}",
             "Content-Type": "application/json",
             "x-correlation-id": self.x_correlation_id,
-            "x-initiated-at": f"{arrow.utcnow().isoformat()}Z",
+            "x-initiated-at": _initiated_at(),
         })
 
         if update_headers:

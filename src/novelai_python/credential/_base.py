@@ -6,10 +6,12 @@
 from typing import Dict, Optional
 
 from curl_cffi.requests import AsyncSession
-from fake_useragent import UserAgent
+import secrets
+import string
+from datetime import datetime, timezone
+
 from pydantic import BaseModel
 
-FAKE_UA = UserAgent()
 
 # Browser identity sent with every request.
 # Captured from the novelai.net web client (Chrome 155 / Windows; stable с 06.10.2026, цикл теперь 2 недели). Bump both
@@ -25,6 +27,19 @@ DEFAULT_SEC_CH_UA = (
 )
 # Accept-Language the captured client sent; override via browser_headers(accept_language=...)
 DEFAULT_ACCEPT_LANGUAGE = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,tr;q=0.6,zh-CN;q=0.5,zh;q=0.4,ja;q=0.3,zh-TW;q=0.2"
+_CORR_ALPHABET = string.ascii_letters + string.digits
+
+
+def _correlation_id() -> str:
+    """6-char x-correlation-id as the web client sends it (e.g. ``ps1i9W``)."""
+    return "".join(secrets.choice(_CORR_ALPHABET) for _ in range(6))
+
+
+def _initiated_at() -> str:
+    """x-initiated-at in the web client format: 2026-10-16T15:54:25.576Z"""
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
 NOVELAI_WEB_ORIGIN = "https://novelai.net"
 
 

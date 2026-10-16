@@ -41,6 +41,8 @@ class TextTokenizerGroup(object):
     GPT2 = "gpt2_tokenizer.def"
     CLIP = "clip_tokenizer.def"
     T5 = "t5_tokenizer.def"
+    # NovelAI Diffusion V5 prompt tokenizer (the /image page loads it; prompt budget ~1471 tokens)
+    QWEN35 = "qwen35_tokenizer.def"
 
 
 TextLLMModelTypeAlias = Union[TextLLMModel, str]

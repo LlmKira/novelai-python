@@ -6,7 +6,6 @@ from typing import Optional, Union
 from urllib.parse import urlparse
 
 import curl_cffi
-import httpx
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import ConfigDict, PrivateAttr, model_validator, Field
@@ -402,11 +401,6 @@ class LLM(ApiBaseModel):
                 logger.exception(exc)
                 raise SessionHttpError(
                     "An AsyncSession RequestsError occurred, perhaps it's an SSL error. Please try again later!"
-                )
-            except httpx.HTTPError as exc:
-                logger.exception(exc)
-                raise SessionHttpError(
-                    "An HTTPError occurred, perhaps it's an SSL error. Please try again later!"
                 )
             except APIError as e:
                 raise e

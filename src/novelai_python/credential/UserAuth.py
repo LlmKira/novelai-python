@@ -5,12 +5,10 @@
 import time
 from typing import Optional
 
-import arrow
-import shortuuid
 from curl_cffi.requests import AsyncSession
 from pydantic import SecretStr, Field
 
-from ._base import CredentialBase, browser_headers, IMPERSONATE
+from ._base import _initiated_at, _correlation_id, CredentialBase, browser_headers, IMPERSONATE
 
 
 class LoginCredential(CredentialBase):
@@ -21,14 +19,14 @@ class LoginCredential(CredentialBase):
     password: SecretStr = Field(None, description="password")
     session_headers: dict = Field(default_factory=dict)
     update_at: Optional[int] = None
-    x_correlation_id: str = shortuuid.uuid()[0:6]
+    x_correlation_id: str = Field(default_factory=_correlation_id)
 
     async def get_session(self, timeout: int = 180, update_headers: dict = None):
         headers = browser_headers({
             "Authorization": "Bearer ",
             "Content-Type": "application/json",
             "x-correlation-id": self.x_correlation_id,
-            "x-initiated-at": f"{arrow.utcnow().isoformat()}Z",
+            "x-initiated-at": _initiated_at(),
         })
 
         # 30 天有效期

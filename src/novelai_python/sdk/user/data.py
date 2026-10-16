@@ -4,7 +4,6 @@
 from typing import Optional, Union
 
 import curl_cffi
-import httpx
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import PrivateAttr
@@ -62,9 +61,6 @@ class UserData(ApiBaseModel):
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("An AsyncSession RequestsError occurred, maybe SSL error. Try again later!")
-            except httpx.HTTPError as exc:
-                logger.exception(exc)
-                raise SessionHttpError("An HTTPError occurred, maybe SSL error. Try again later!")
             except APIError as e:
                 raise e
             except Exception as e:

@@ -5,7 +5,8 @@ import pathlib
 import zlib
 from typing import Dict, List, Optional
 
-import httpx
+import os
+from curl_cffi import requests as curl_requests
 from json_repair import repair_json
 from loguru import logger
 from pydantic import BaseModel, model_validator
@@ -22,7 +23,7 @@ def download_file(url, destination_path, session):
 
     :param url: The URL to download the file from.
     :param destination_path: The path to save the downloaded file.
-    :param session: An httpx.Client instance to use for the download.
+    :param session: a curl_cffi Session used for the download.
     :return: None
     :raises ValueError: If the downloaded file size doesn't match the Content-Length header.
     """
@@ -78,7 +79,7 @@ class NaiTokenizer:
     def __init__(self,
                  model: str,
                  tokenizer_model_path: Optional[pathlib.Path] = None,
-                 download_session: Optional[httpx.Client] = None,
+                 download_session: Optional[curl_requests.Session] = None,
                  ):
         if not model.endswith(".def"):
             model = f"{model}.def"
@@ -86,7 +87,11 @@ class NaiTokenizer:
         self.tokenizer_setting = None
         self.tokenizer = None
         if download_session is None:
-            download_session = httpx.Client()
+            # Only an explicit proxy (NOVELAI_PROXY), never the environment's system proxy.
+            _px = os.environ.get("NOVELAI_PROXY")
+            download_session = curl_requests.Session(
+                impersonate="chrome", trust_env=False,
+                proxies={"http": _px, "https": _px} if _px else None)
         self._download_session = download_session
         if tokenizer_model_path is None:
             tokenizer_model_path = pathlib.Path(__file__).parent

@@ -55,3 +55,16 @@ def test_v45_request_matches_live_web_client_shape():
     assert (p["steps"], p["scale"], p["image_format"], p["tag_hint_qt"], p["tag_hint_uc_preset"]) == (28, 5.0, "png", 1, 2)
     assert p["ucPresetId"] == "heavy" and p["qualityPresetId"] == "standard" and p["params_version"] == 4
     assert "ucPreset" not in p and "qualityToggle" not in p
+
+
+def test_v5_uses_qwen35_prompt_tokenizer(monkeypatch):
+    from novelai_python._enum import TextTokenizerGroup
+    from novelai_python.sdk.ai.generate_image import tokenizer as tk
+    seen = []
+    monkeypatch.setattr(tk, "NaiTokenizer", lambda name: seen.append(name) or name)
+    tk.get_prompt_tokenizer(Model.NAI_DIFFUSION_5_FULL)
+    tk.get_prompt_tokenizer(Model.NAI_DIFFUSION_5_FULL_MEDIUM)
+    tk.get_prompt_tokenizer(Model.NAI_DIFFUSION_4_5_FULL)
+    tk.get_prompt_tokenizer(Model.NAI_DIFFUSION_3)
+    assert seen == [TextTokenizerGroup.QWEN35, TextTokenizerGroup.QWEN35, TextTokenizerGroup.T5, TextTokenizerGroup.CLIP]
+    assert tk.V5_PROMPT_TOKEN_LIMIT == 1471

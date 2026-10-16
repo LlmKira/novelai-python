@@ -4,7 +4,6 @@ import json
 from typing import Optional, Union, AsyncIterable
 
 import curl_cffi
-import httpx
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from tenacity import wait_random, retry, stop_after_attempt, retry_if_exception
@@ -153,9 +152,6 @@ class LLMStream(LLM):
                 logger.exception(exc)
                 raise SessionHttpError(
                     "An AsyncSession RequestsError occurred, perhaps it's an SSL error. Please try again later!")
-            except httpx.HTTPError as exc:
-                logger.exception(exc)
-                raise SessionHttpError("An HTTPError occurred, perhaps it's an SSL error. Please try again later!")
             except APIError as e:
                 raise e
             except Exception as e:

@@ -6,38 +6,30 @@ authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
 ]
 dependencies = [
-    "elara>=0.5.5",
+    # every dependency ships Python 3.12-3.14 wheels (checked on PyPI 2026-10-16)
+    "pydantic>=2.14",
+    "pydantic-settings>=2.16",
     "loguru>=0.7.3",
-    "pydantic-settings>=2.10.0",
-    "pydantic>=2.11.0",
-    "httpx>=0.28.0",
-    "shortuuid>=1.0.13",
-    "Pillow>=11.0.0",
-    "curl-cffi>=0.13.0",
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.34.0",
-    "numpy>=2.0.0",
-    "argon2-cffi>=23.1.0",
-    "opencv-python>=4.11.0",
-    "fake-useragent>=2.0.0",
-    "tenacity>=9.0.0",
-    "sentencepiece>=0.2.0",
-    "pynacl>=1.5.0",
-    "ftfy>=6.3.0",
-    "regex>=2024.11.6",
-    "tokenizers>=0.21.0",
-    "json-repair>=0.40.0",
-    "robust-downloader>=0.0.2",
-    "arrow>=1.3.0",
-    "msgpack>=1.1.0",
+    "curl-cffi>=0.16.3",          # HTTP + Chrome TLS/HTTP2 impersonation (replaces httpx)
+    "msgpack>=1.2",               # /ai/generate-image-stream frames
+    "Pillow>=12.3",
+    "numpy>=2.5",
+    "opencv-python-headless>=5.0",  # headless: no GUI/Qt, same cv2 API
+    "argon2-cffi>=25.1",          # access-key derivation for /user/login
+    "pynacl>=1.6",                # image metadata signature check
+    "tenacity>=9.2",
+    "tokenizers>=0.23",
+    "ftfy>=6.3",
+    "regex>=2026.9",
+    "json-repair>=0.64",
+    "fastapi>=0.143",
+    "uvicorn[standard]>=0.54",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 readme = "README.md"
 license = { text = "Apache License 2.0" }
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
@@ -48,13 +40,9 @@ Repository = "https://github.com/LlmKira/novelai-python/"
 Issues = "https://github.com/LlmKira/novelai-python/issues"
 
 [project.optional-dependencies]
-metadata = [
-    # LSB / BCH image-metadata tools (novelai_python.tool.image_metadata); needs a C compiler
-    "bchlib>=2.1.3",
-]
 testing = [
-    "pytest>=8.3.0",
-    "pytest-asyncio>=0.25.0",
+    "pytest>=9.1",
+    "pytest-asyncio>=1.4",
 ]
 [build-system]
 requires = ["pdm-backend"]

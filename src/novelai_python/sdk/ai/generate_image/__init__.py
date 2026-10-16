@@ -14,7 +14,6 @@ from typing import Optional, Union, List, Tuple, AsyncIterator
 from zipfile import ZipFile, BadZipFile
 
 import curl_cffi
-import httpx
 import msgpack
 from curl_cffi.requests import AsyncSession
 from loguru import logger
@@ -863,9 +862,6 @@ class GenerateImageInfer(ApiBaseModel):
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.")
-            except httpx.HTTPError as exc:
-                logger.exception(exc)
-                raise SessionHttpError("An HTTP error occurred. Try again later.")
         if limiter is not None and finals:
             limiter.consume(finals)
 
@@ -1023,9 +1019,6 @@ class GenerateImageInfer(ApiBaseModel):
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.")
-            except httpx.HTTPError as exc:
-                logger.exception(exc)
-                raise SessionHttpError("An HTTP error occurred. Try again later.")
             except APIError as e:
                 raise e
             except Exception as e:

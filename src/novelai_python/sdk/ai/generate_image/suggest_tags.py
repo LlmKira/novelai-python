@@ -6,7 +6,6 @@
 from typing import Optional, Union, Literal
 
 import curl_cffi
-import httpx
 from curl_cffi.requests import AsyncSession
 from loguru import logger
 from pydantic import PrivateAttr, Field
@@ -92,9 +91,6 @@ class SuggestTags(ApiBaseModel):
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.")
-            except httpx.HTTPError as exc:
-                logger.exception(exc)
-                raise SessionHttpError("An HTTP error occurred. Try again later.")
             except APIError as e:
                 raise e
             except Exception as e:
