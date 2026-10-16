@@ -1,9 +1,13 @@
 # @Author  : sudoskys
 # @File    : __init__.py
 
+import base64
+import hashlib
+import hmac
 import json
 import logging
 import math
+import os
 import random
 import re
 import string
@@ -83,14 +87,26 @@ def _sniff_image_extension(data: bytes) -> str | None:
     return None
 
 
-def build_multipart_request(request_json: bytes) -> tuple[bytes, str]:
+def build_multipart_request(request_json: bytes, files: list[tuple[str, bytes]] | None = None) -> tuple[bytes, str]:
     """
     Wrap the request JSON the way the web client does for params_version >= 4:
-    a single multipart/form-data part named ``request`` with filename ``blob``.
+    image parts first (``image/png``, filename ``blob``), then the JSON part ``request``.
+    :param files: (part name, raw bytes) for every image the JSON references by part name.
     :return: (body, Content-Type header value)
     """
     boundary = "----WebKitFormBoundary" + "".join(random.choices(string.ascii_letters + string.digits, k=16))
-    body = (
+    body = b""
+    for name, data in files or []:
+        body += (
+            (
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="{name}"; filename="blob"\r\n'
+                f"Content-Type: image/png\r\n\r\n"
+            ).encode()
+            + data
+            + b"\r\n"
+        )
+    body += (
         (
             f"--{boundary}\r\n"
             f'Content-Disposition: form-data; name="request"; filename="blob"\r\n'
@@ -100,6 +116,48 @@ def build_multipart_request(request_json: bytes) -> tuple[bytes, str]:
         + f"\r\n--{boundary}--\r\n".encode()
     )
     return body, f"multipart/form-data; boundary={boundary}"
+
+
+# Per-process secret for image cache keys; the web client keys its cache the same way
+# (HMAC-SHA256 of the base64 string with a random per-session key).
+_IMAGE_CACHE_SECRET = os.urandom(32)
+
+
+def _image_cache_key(b64: str) -> str:
+    return hmac.new(_IMAGE_CACHE_SECRET, b64.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def split_image_parts(request_data: dict) -> list[tuple[str, bytes]]:
+    """
+    Move base64 images out of a multipart request into their own form parts, in place.
+
+    The server reads every image field of a multipart request as the NAME of a form part
+    ("image field references unknown form part" otherwise). Mirrors the web client
+    (applyCacheTransformation + form building, 2026-10 bundle): ``image`` / ``mask`` /
+    ``reference_image`` keep their key with the part name and get ``*_cache_secret_key``;
+    ``reference_image_multiple`` / ``director_reference_images`` become ``*_cached`` lists of
+    ``{cache_secret_key, data: <part name>}``. The image data is always sent, so the
+    server-side cache is never relied on.
+    :return: (part name, raw bytes) in the order the web client appends them.
+    """
+    params = request_data.get("parameters") or {}
+    names: dict[str, str] = {}  # base64 -> part name; the same image is sent once
+
+    def part(b64: str, name: str) -> str:
+        return names.setdefault(b64, name)
+
+    for key in ("image", "mask", "reference_image"):
+        value = params.get(key)
+        if isinstance(value, str) and value:
+            params[key] = part(value, key)
+            params[f"{key}_cache_secret_key"] = _image_cache_key(value)
+    for key, prefix in (("reference_image_multiple", "ref_multiple_"), ("director_reference_images", "director_ref_")):
+        values = params.pop(key, None)
+        if values:
+            params[f"{key}_cached"] = [
+                {"cache_secret_key": _image_cache_key(v), "data": part(v, f"{prefix}{i}")} for i, v in enumerate(values)
+            ]
+    return [(name, base64.b64decode(b64)) for b64, name in names.items()]
 
 
 class GenerateImageInfer(ApiBaseModel):
@@ -278,6 +336,9 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.qualityPresetId = (
                 QualityPreset.STANDARD if self.parameters.qualityToggle else QualityPreset.NONE
             )
+        if self.parameters.tag_hint_transparent_background is not True:
+            # the web client deletes the key unless Transparent BG is on (t8 constructor, 2026-10 bundle)
+            self.parameters.tag_hint_transparent_background = None
         if is_v5_model(self.model) and self.parameters.image_format is None:
             self.parameters.image_format = ImageFormat.WEBP
         return self
@@ -875,7 +936,8 @@ class GenerateImageInfer(ApiBaseModel):
             # the web client sends this key explicitly as null (live sample 2026-10-16)
             request_data["parameters"].setdefault("skip_cfg_above_sigma", None)
         request_data["parameters"]["stream"] = "msgpack"
-        body, content_type = build_multipart_request(json.dumps(request_data).encode("utf-8"))
+        files = split_image_parts(request_data)
+        body, content_type = build_multipart_request(json.dumps(request_data).encode("utf-8"), files)
         finals = 0
         async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
             if override_headers:
@@ -970,10 +1032,11 @@ class GenerateImageInfer(ApiBaseModel):
         if self.parameters.params_version >= 4:
             # the web client sends this key explicitly as null (live sample 2026-10-16)
             request_data["parameters"].setdefault("skip_cfg_above_sigma", None)
+        files = split_image_parts(request_data) if self.parameters.params_version >= 4 else []
         request_json = json.dumps(request_data).encode("utf-8")
         if self.parameters.params_version >= 4:
             # the web client wraps every generate-image call in multipart/form-data
-            body, content_type = build_multipart_request(request_json)
+            body, content_type = build_multipart_request(request_json, files)
         else:
             body, content_type = request_json, "application/json"
         async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:

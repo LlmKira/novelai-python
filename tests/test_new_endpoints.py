@@ -302,3 +302,27 @@ def test_user_endpoints_use_image_host():
         assert req.base_url.startswith("https://image.novelai.net/user/")
     assert Login(key="x").base_url == "https://image.novelai.net/user/login"
     assert Upscale(image=_png(64, 64)).base_url == "https://image.novelai.net/ai/upscale"
+
+
+def test_images_travel_as_form_parts():
+    # the server reads image fields of a multipart request as form part names
+    from novelai_python.sdk.ai.generate_image import split_image_parts
+
+    img = base64.b64encode(_png(8, 8)).decode()
+    vibe = base64.b64encode(b"vibe-bytes").decode()
+    data = {
+        "parameters": {
+            "image": img,
+            "reference_image_multiple": [vibe, vibe],
+            "director_reference_images": [img],
+        }
+    }
+    parts = split_image_parts(data)
+    p = data["parameters"]
+    assert p["image"] == "image" and len(p["image_cache_secret_key"]) == 64
+    assert "reference_image_multiple" not in p and "director_reference_images" not in p
+    assert [x["data"] for x in p["reference_image_multiple_cached"]] == ["ref_multiple_0", "ref_multiple_0"]
+    # the same image is sent once: the director reference reuses the "image" part
+    assert p["director_reference_images_cached"][0]["data"] == "image"
+    assert [name for name, _ in parts] == ["image", "ref_multiple_0"]
+    assert parts[1][1] == b"vibe-bytes"

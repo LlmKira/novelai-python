@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/2/13 下午12:03
 # @Author  : sudoskys
 # @File    : test_upscale.py
@@ -8,13 +7,23 @@
 # @Author  : sudoskys
 # @File    : test_upscale.py
 
+import base64
+import io
+import json
 from unittest import mock
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 from curl_cffi.requests import AsyncSession
+from PIL import Image
 
 from novelai_python import APIError, AuthError, Upscale
+
+
+def _png_b64() -> str:
+    buf = io.BytesIO()
+    Image.new("RGB", (100, 100)).save(buf, "PNG")
+    return base64.b64encode(buf.getvalue()).decode()
 
 
 @pytest.mark.asyncio
@@ -27,13 +36,14 @@ async def test_validation_error_during_upscale():
         "message": "A validation error occurred."
     })
     session = mock.MagicMock(spec=AsyncSession)
+    validation_error_response.content = json.dumps(validation_error_response.json()).encode()
     session.post = mock.AsyncMock(return_value=validation_error_response)
     session.headers = {}
 
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=None)
 
-    upscale = Upscale(image="base64_encoded_image", height=100, width=100)
+    upscale = Upscale(image=_png_b64(), height=100, width=100)
     with pytest.raises(AuthError) as e:
         await upscale.request(session=session)
     assert e.type is AuthError
@@ -52,12 +62,13 @@ async def test_unauthorized_error_during_upscale():
     }
     )
     session = mock.MagicMock(spec=AsyncSession)
+    unauthorized_error_response.content = json.dumps(unauthorized_error_response.json()).encode()
     session.post = mock.AsyncMock(return_value=unauthorized_error_response)
     session.headers = {}
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=None)
 
-    upscale = Upscale(image="base64_encoded_image", height=100, width=100)
+    upscale = Upscale(image=_png_b64(), height=100, width=100)
     with pytest.raises(APIError) as e:
         await upscale.request(session=session)
     assert e.type is AuthError
@@ -76,12 +87,13 @@ async def test_unknown_error_during_upscale():
     }
     )
     session = mock.MagicMock(spec=AsyncSession)
+    unknown_error_response.content = json.dumps(unknown_error_response.json()).encode()
     session.post = mock.AsyncMock(return_value=unknown_error_response)
     session.headers = {}
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=None)
 
-    upscale = Upscale(image="base64_encoded_image", height=100, width=100)
+    upscale = Upscale(image=_png_b64(), height=100, width=100)
     with pytest.raises(APIError) as e:
         await upscale.request(session=session)
     expected_message = 'Unknown error occurred.'

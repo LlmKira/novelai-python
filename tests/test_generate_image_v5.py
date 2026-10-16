@@ -20,7 +20,7 @@ WEB_CLIENT_V5_KEYS = {
     "ucPresetId", "qualityPresetId", "autoSmea", "dynamic_thresholding", "controlnet_strength",
     "legacy", "add_original_image", "cfg_rescale", "legacy_v3_extend", "use_coords", "legacy_uc",
     "normalize_reference_strength_multiple", "inpaintImg2ImgStrength", "seed", "characterPrompts",
-    "straight_alpha", "tag_hint_qt", "tag_hint_uc_preset", "tag_hint_transparent_background", "v4_prompt", "v4_negative_prompt",
+    "straight_alpha", "tag_hint_qt", "tag_hint_uc_preset", "v4_prompt", "v4_negative_prompt",
     "negative_prompt", "deliberate_euler_ancestral_bug", "prefer_brownian", "noise_schedule", "image_format",
 }
 WEB_CLIENT_V5_HEAVY_UC = (
