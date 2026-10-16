@@ -34,7 +34,7 @@ the [NovelAI API service](https://api.novelai.net/docs).
   intermediate previews and the final image per sample (msgpack frames, like the web client).
 - Dependencies refreshed (pydantic 2.11+, httpx 0.28, numpy 2, opencv 4.11+, curl_cffi 0.13+, msgpack);
   `bchlib` moved to the optional `[metadata]` extra.
-- Browser identity refreshed to Chrome 154 (User-Agent + `sec-ch-ua`) on every session, newest `curl_cffi`
+- Browser identity refreshed to Chrome 155 (User-Agent + `sec-ch-ua`) on every session, newest `curl_cffi`
   TLS fingerprint picked automatically.
 - Built-in image budget: **2500 images per 24h window** by default (counted from the first image after start-up,
   persisted to `~/.novelai_python/image_limit.json`). Tune with `NOVELAI_DAILY_IMAGE_LIMIT` (0 disables) or pass

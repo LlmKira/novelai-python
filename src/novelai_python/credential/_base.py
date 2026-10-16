@@ -12,9 +12,9 @@ from pydantic import BaseModel
 FAKE_UA = UserAgent()
 
 # Browser identity sent with every request.
-# Captured from the novelai.net web client (Chrome 154 / Windows). Bump both
+# Captured from the novelai.net web client (Chrome 155 / Windows; stable с 06.10.2026, цикл теперь 2 недели). Bump both
 # values together when refreshing.
-CHROME_MAJOR_VERSION = "154"
+CHROME_MAJOR_VERSION = "155"
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
     f"Chrome/{CHROME_MAJOR_VERSION}.0.0.0 Safari/537.36"
