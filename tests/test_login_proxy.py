@@ -72,3 +72,22 @@ async def test_bearer_credentials_share_the_session_setup():
         assert session.headers["authorization"].startswith("Bearer ")
         assert session.proxies == {"http": PROXY, "https": PROXY}
         await session.close()
+
+
+@pytest.mark.asyncio
+async def test_login_credential_sends_one_authorization_header(monkeypatch):
+    from novelai_python import LoginCredential, LoginResp
+
+    async def fake_login(self, session=None, **kwargs):
+        return LoginResp(accessToken="TK123")
+
+    monkeypatch.setattr(Login, "request", fake_login)
+    credential = LoginCredential(username="a@b.c", password="pw", proxy=PROXY)
+    for _ in range(2):  # the login, then the cached token
+        session = await credential.get_session(update_headers={"Authorization": "Bearer override"})
+        assert session.headers.get_list("authorization") == ["Bearer override"]
+        await session.close()
+    session = await credential.get_session()
+    assert session.headers.get_list("authorization") == ["Bearer TK123"]
+    assert session.proxies == {"http": PROXY, "https": PROXY}
+    await session.close()

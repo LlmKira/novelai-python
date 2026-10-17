@@ -23,15 +23,6 @@ class LoginCredential(CredentialBase):
     measure_id: str | None = Field(default=None, description="Optional FingerprintJS event_id (see Login)")
 
     async def get_session(self, timeout: int = 180, update_headers: dict | None = None):
-        headers = browser_headers(
-            {
-                "Authorization": "Bearer ",
-                "Content-Type": "application/json",
-                "x-correlation-id": self.x_correlation_id,
-                "x-initiated-at": _initiated_at(),
-            }
-        )
-
         # 30 天有效期
         if not self.session_headers or self.update_at is None or int(time.time()) - self.update_at > 29 * 24 * 60 * 60:
             from ..sdk import Login
@@ -44,13 +35,17 @@ class LoginCredential(CredentialBase):
                 recaptcha=self.recaptcha,
                 measure_id=self.measure_id,
             ).request(self)  # logs in through this credential's proxy
-            headers["Authorization"] = f"Bearer {resp.accessToken}"
-            self.session_headers = headers
+            # only the token is cached; the per-request headers are built fresh below
+            self.session_headers = {"authorization": f"Bearer {resp.accessToken}"}
             self.update_at = int(time.time())
-        else:
-            headers.update(self.session_headers)
 
-        if update_headers:
-            headers.update(update_headers)
-
+        headers = browser_headers(
+            {
+                **self.session_headers,
+                "content-type": "application/json",
+                "x-correlation-id": self.x_correlation_id,
+                "x-initiated-at": _initiated_at(),
+                **(update_headers or {}),
+            }
+        )
         return AsyncSession(**self.session_kwargs(timeout, headers))
