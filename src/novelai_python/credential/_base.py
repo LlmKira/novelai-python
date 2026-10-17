@@ -10,8 +10,26 @@ from datetime import UTC, datetime
 from curl_cffi.requests import AsyncSession
 from pydantic import BaseModel, Field
 
-DEFAULT_ACCEPT_LANGUAGE = "en-US,en;q=0.9"
-"""Accept-Language of the simulated browser; override via browser_headers(accept_language=...)."""
+ACCEPT_LANGUAGES = {
+    "en": "en-US,en;q=0.9",
+    "en-sg": "en-SG,en;q=0.9",
+    "en-gb": "en-GB,en;q=0.9",
+    "ja": "ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7",
+    "zh": "zh-CN,zh;q=0.9,en;q=0.8",
+    "ko": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+    "ru": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+}
+"""Accept-Language values Chrome sends for common browser languages. English is the default."""
+DEFAULT_ACCEPT_LANGUAGE = ACCEPT_LANGUAGES["en"]
+
+
+def resolve_accept_language(value: str | None) -> str:
+    """A key of ACCEPT_LANGUAGES ("en-sg") or a full Accept-Language header value."""
+    if not value:
+        return DEFAULT_ACCEPT_LANGUAGE
+    return ACCEPT_LANGUAGES.get(value.lower(), value)
+
+
 _CORR_ALPHABET = string.ascii_letters + string.digits
 
 
@@ -33,9 +51,7 @@ def browser_headers(
 ) -> dict[str, str]:
     """
     Headers the novelai.net web client sends on API calls, in the order Chrome emits
-    them. The browser version and OS follow the curl_cffi impersonate target, so the
-    headers and the TLS fingerprint describe the same browser. ``accept-encoding`` and
-    ``content-length`` are added by curl itself.
+    them. ``accept-encoding`` and ``content-length`` are added by curl itself.
     :param extra: headers merged on top (e.g. Authorization)
     :param accept_language: Accept-Language of the simulated browser profile
     :return: dict
@@ -77,19 +93,6 @@ def get_impersonate_target() -> str:
 IMPERSONATE = get_impersonate_target()
 
 
-def _target_os(target: str) -> str:
-    """OS of the curl_cffi profile; the headers have to claim the same one as the TLS fingerprint."""
-    try:
-        from curl_cffi.fingerprints import NATIVE_IMPERSONATE_TARGETS
-
-        for fp in NATIVE_IMPERSONATE_TARGETS:
-            if fp.get("target_name") == target:
-                return str(fp.get("os") or "Windows")
-    except Exception:
-        pass
-    return "Windows"
-
-
 def chrome_brands(major: int) -> str:
     """sec-ch-ua as Chrome builds it for a major version (GREASE brand, version and order are seeded by it)."""
     chars = [" ", "(", ":", "-", ".", "/", ")", ";", "=", "?", "_"]
@@ -105,15 +108,16 @@ def chrome_brands(major: int) -> str:
     return ", ".join(brands)
 
 
-CHROME_MAJOR_VERSION = "".join(c for c in IMPERSONATE if c.isdigit()) or "136"
-_OS = _target_os(IMPERSONATE)
-_UA_PLATFORM = "Macintosh; Intel Mac OS X 10_15_7" if _OS == "macOS" else "Windows NT 10.0; Win64; x64"
+# The browser the headers describe: the Chrome on Windows that novelai.net users run now.
+# curl_cffi's newest TLS profile can lag a few versions behind; its ClientHello still matches
+# this Chrome except for extensions added since (Chrome's ClientHello does not depend on the OS).
+CHROME_MAJOR_VERSION = "155"
 DEFAULT_USER_AGENT = (
-    f"Mozilla/5.0 ({_UA_PLATFORM}) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
     f"Chrome/{CHROME_MAJOR_VERSION}.0.0.0 Safari/537.36"
 )
 DEFAULT_SEC_CH_UA = chrome_brands(int(CHROME_MAJOR_VERSION))
-SEC_CH_UA_PLATFORM = '"macOS"' if _OS == "macOS" else '"Windows"'
+SEC_CH_UA_PLATFORM = '"Windows"'
 
 
 class CredentialBase(BaseModel):
@@ -122,11 +126,15 @@ class CredentialBase(BaseModel):
     proxy: str | None = None
     """Outbound proxy for every request, e.g. ``http://user:pass@host:port``
     (curl_cffi ``proxies`` for http and https). None = direct."""
+    accept_language: str | None = None
+    """Browser language: a key of ``ACCEPT_LANGUAGES`` (``"en-sg"``, ``"ja"``, ...) or a full
+    Accept-Language value. None = English (``en-US,en;q=0.9``). Match it to the proxy's country."""
 
     def session_kwargs(self, timeout: int, headers: dict) -> dict:
         # trust_env=False: never pick up HTTP(S)_PROXY from the environment. A
         # system-wide proxy on the machine would silently route NovelAI traffic
         # and change the client's apparent address.
+        headers = {**headers, "accept-language": resolve_accept_language(self.accept_language)}
         kw = {"timeout": timeout, "headers": headers, "impersonate": IMPERSONATE, "trust_env": False}
         if self.proxy:
             kw["proxies"] = {"http": self.proxy, "https": self.proxy}

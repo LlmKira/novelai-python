@@ -53,8 +53,9 @@ Some changes do not raise an error, so check these when you upgrade:
   novelai.net does. Pass `auto_text=False` to send the prompt untouched.
 - **Image and user endpoints moved to `image.novelai.net`**; `api.novelai.net` rejects third-party clients
   there.
-- **The browser identity follows curl_cffi**: User-Agent, `sec-ch-ua` and platform are those of the
-  impersonated Chrome, and Accept-Language is `en-US,en;q=0.9`.
+- **Browser identity**: requests carry the headers of Chrome 155 on Windows, as the web client sends them.
+  Accept-Language is English (`en-US,en;q=0.9`) unless the credential says otherwise:
+  `ApiCredential(..., accept_language="en-sg")` (see `ACCEPT_LANGUAGES`) or a full header value.
 - **The image budget is off by default.** Pass `limiter=True` to `request()` / `request_stream()` for the
   process-wide budget (`NOVELAI_DAILY_IMAGE_LIMIT`, default 2500 per 24h, saved to
   `~/.novelai_python/image_limit.json`), or a `DailyImageLimiter` of your own. The budget is per process and
