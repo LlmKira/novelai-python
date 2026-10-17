@@ -15,7 +15,7 @@ from collections.abc import AsyncIterator
 from copy import deepcopy
 from enum import Enum
 from io import BytesIO
-from typing import Union, override
+from typing import TYPE_CHECKING, Union, override
 from zipfile import BadZipFile, ZipFile
 
 import curl_cffi
@@ -64,8 +64,11 @@ from ...schema import ApiBaseModel
 from .auto_text import apply_auto_text
 from .auto_text import strip_auto_text as strip_auto_text  # re-export
 from .params import Params, get_default_params
-from .schema import Character, CharacterReference, PositionMap, V4NegativePrompt, V4Prompt
+from .schema import Character, CharacterPosition, CharacterReference, PositionMap, V4NegativePrompt, V4Prompt
 from .suggest_tags import SuggestTags as SuggestTags  # re-export
+
+if TYPE_CHECKING:
+    from novelai_python.tool.image_metadata import ImageMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -614,6 +617,117 @@ class GenerateImageInfer(ApiBaseModel):
             )
         except Exception as e:
             raise ValueError("Failed to calculate cost") from e
+
+    @classmethod
+    def from_metadata(
+        cls,
+        metadata: "ImageMetadata",
+        *,
+        model: ModelTypeAlias | None = None,
+        image: bytes | str | None = None,
+    ) -> "GenerateImageInfer":
+        """
+        Rebuild the request that produced an image from its NovelAI metadata.
+
+        The prompt and negative prompt in the metadata are final (quality tags and the
+        negative preset are already in them), so quality toggle, uc preset and auto text
+        are switched off, and characters come back with their own negative prompt and
+        position.
+
+        :param metadata: ``ImageMetadata.load_image(...)`` of the image.
+        :param model: Override when the metadata hash does not map to a model.
+        :param image: Source image of an img2img generation. It is not stored in the
+            metadata; without it an Img2ImgRequest is rebuilt as a plain generation.
+        :return: GenerateImageInfer
+        :raises ValueError: The metadata has no comment or the model is unknown.
+        """
+        meta = metadata.Comment
+        if meta is None:
+            raise ValueError("Image metadata has no Comment, nothing to rebuild")
+        model = model or metadata.used_model
+        if model is None:
+            raise ValueError(f"Unknown model {metadata.Source!r}, pass model=")
+
+        v4p = meta.v4_prompt or {}
+        v4n = meta.v4_negative_prompt or {}
+        base = (v4p.get("caption") or {}).get("base_caption")
+        prompt = base if base is not None else meta.prompt or ""
+        negative = (v4n.get("caption") or {}).get("base_caption")
+        negative = negative if negative is not None else meta.uc or ""
+        neg_chars = (v4n.get("caption") or {}).get("char_captions") or []
+        characters = []
+        for i, cc in enumerate((v4p.get("caption") or {}).get("char_captions") or []):
+            centers = cc.get("centers") or []
+            characters.append(
+                Character(
+                    prompt=cc.get("char_caption") or "",
+                    uc=(neg_chars[i].get("char_caption") or "") if i < len(neg_chars) else "",
+                    center=CharacterPosition(**centers[0]) if centers else PositionMap.AUTO,
+                )
+            )
+
+        params = get_default_params(model)
+        params.qualityToggle = False
+        params.ucPreset = None
+        params.negative_prompt = negative
+        params.characterPrompts = characters
+        params.legacy_uc = bool(v4n.get("legacy_uc", False))
+        for field in (
+            "width",
+            "height",
+            "steps",
+            "scale",
+            "cfg_rescale",
+            "seed",
+            "n_samples",
+            "sm",
+            "sm_dyn",
+            "dynamic_thresholding",
+            "controlnet_strength",
+            "legacy",
+            "legacy_v3_extend",
+            "deliberate_euler_ancestral_bug",
+            "prefer_brownian",
+            "straight_alpha",
+            "tag_hint_qt",
+            "tag_hint_uc_preset",
+        ):
+            value = getattr(meta, field, None)
+            if value is not None:
+                setattr(params, field, value)
+        if meta.sampler:
+            params.sampler = Sampler(meta.sampler)
+        if meta.noise_schedule:
+            params.noise_schedule = NoiseSchedule(meta.noise_schedule)
+        if meta.uncond_scale not in (None, 0, 1):
+            params.uncond_scale = meta.uncond_scale
+        if meta.reference_strength_multiple:
+            logger.warning("The metadata keeps vibe strengths but not the vibe images, vibe transfer is dropped")
+
+        action = Action.GENERATE
+        if meta.request_type == "Img2ImgRequest":
+            if image is None:
+                logger.warning("Img2ImgRequest without the source image, rebuilding as a plain generation")
+            else:
+                action = Action.IMG2IMG
+                params.image = image
+                for field in ("strength", "noise", "extra_noise_seed"):
+                    value = getattr(meta, field, None)
+                    if value is not None:
+                        setattr(params, field, value)
+
+        infer = cls(input=prompt, model=model, action=action, parameters=params, auto_text=False)
+        color_correct = getattr(meta, "color_correct", None)
+        if action == Action.IMG2IMG and color_correct is not None:
+            infer.parameters.color_correct = color_correct  # the validators force True for img2img
+        # The metadata keeps the value the server got, already scaled to the image size;
+        # setting it before the validators would scale it twice.
+        if get_supported_params(model).cfgDelay:
+            sigma = meta.skip_cfg_above_sigma
+            infer.parameters.skip_cfg_above_sigma = None if sigma is None else math.ceil(sigma)
+        if infer.parameters.v4_prompt is not None and "use_coords" in v4p:
+            infer.parameters.use_coords = infer.parameters.v4_prompt.use_coords = bool(v4p["use_coords"])
+        return infer
 
     @staticmethod
     def build_generate(
