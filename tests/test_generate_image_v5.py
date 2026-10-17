@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import io
 import json
 import zipfile
@@ -16,12 +15,38 @@ from novelai_python.utils.daily_limit import DailyImageLimiter
 
 # Shape captured from the novelai.net web client for nai-diffusion-5-full
 WEB_CLIENT_V5_KEYS = {
-    "params_version", "width", "height", "scale", "sampler", "steps", "n_samples",
-    "ucPresetId", "qualityPresetId", "autoSmea", "dynamic_thresholding", "controlnet_strength",
-    "legacy", "add_original_image", "cfg_rescale", "legacy_v3_extend", "use_coords", "legacy_uc",
-    "normalize_reference_strength_multiple", "inpaintImg2ImgStrength", "seed", "characterPrompts",
-    "straight_alpha", "tag_hint_qt", "tag_hint_uc_preset", "v4_prompt", "v4_negative_prompt",
-    "negative_prompt", "deliberate_euler_ancestral_bug", "prefer_brownian", "noise_schedule", "image_format",
+    "params_version",
+    "width",
+    "height",
+    "scale",
+    "sampler",
+    "steps",
+    "n_samples",
+    "ucPresetId",
+    "qualityPresetId",
+    "autoSmea",
+    "dynamic_thresholding",
+    "controlnet_strength",
+    "legacy",
+    "add_original_image",
+    "cfg_rescale",
+    "legacy_v3_extend",
+    "use_coords",
+    "legacy_uc",
+    "normalize_reference_strength_multiple",
+    "inpaintImg2ImgStrength",
+    "seed",
+    "characterPrompts",
+    "straight_alpha",
+    "tag_hint_qt",
+    "tag_hint_uc_preset",
+    "v4_prompt",
+    "v4_negative_prompt",
+    "negative_prompt",
+    "deliberate_euler_ancestral_bug",
+    "prefer_brownian",
+    "noise_schedule",
+    "image_format",
 }
 WEB_CLIENT_V5_HEAVY_UC = (
     "nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, "
@@ -81,6 +106,7 @@ def test_v45_request_uses_params_version_4_too():
 
 def test_v5_family_models():
     from novelai_python.sdk.ai._enum import INPAINTING_MODEL_LIST, V5_MODEL_LIST, get_supported_params
+
     assert Model.NAI_DIFFUSION_5_CURATED in V5_MODEL_LIST
     assert Model.NAI_DIFFUSION_5_FULL_INPAINTING in INPAINTING_MODEL_LIST
     assert get_supported_params(Model.NAI_DIFFUSION_5_CURATED).img2imgInpainting is True
@@ -90,6 +116,7 @@ def test_v5_family_models():
 
 def test_quality_presets():
     from novelai_python.sdk.ai._enum import QualityPreset, get_quality_presets
+
     ids = [q.id for q in get_quality_presets(Model.NAI_DIFFUSION_5_FULL)]
     assert ids == ["standard", "light", "none"]
     light = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL)
@@ -161,7 +188,9 @@ async def test_v5_request_sends_multipart_and_counts_images(tmp_path):
 @pytest.mark.asyncio
 async def test_legacy_params_version_3_sends_json():
     session = _session(_zip_response([("image_0.png", b"\x89PNG")]))
-    gen = GenerateImageInfer(input="1girl", model=Model.NAI_DIFFUSION_3, parameters=Params(params_version=3, ucPreset=0))
+    gen = GenerateImageInfer(
+        input="1girl", model=Model.NAI_DIFFUSION_3, parameters=Params(params_version=3, ucPreset=0)
+    )
     await gen.request(session, limiter=False)
     call = session.post.await_args
     assert call.kwargs["headers"]["Content-Type"] == "application/json"
@@ -170,14 +199,16 @@ async def test_legacy_params_version_3_sends_json():
 
 def _frame(payload: dict) -> bytes:
     import msgpack
+
     packed = msgpack.packb(payload)
     return len(packed).to_bytes(4, "big") + packed
 
 
 @pytest.mark.asyncio
 async def test_stream_yields_msgpack_frames(tmp_path):
-    frames = _frame({"event_type": "intermediate", "samp_ix": 0, "step_ix": 3, "image": b"prev"}) \
-        + _frame({"event_type": "final", "samp_ix": 0, "image": b"RIFF....WEBP"})
+    frames = _frame({"event_type": "intermediate", "samp_ix": 0, "step_ix": 3, "image": b"prev"}) + _frame(
+        {"event_type": "final", "samp_ix": 0, "image": b"RIFF....WEBP"}
+    )
     # split across chunks on purpose, including inside a frame
     chunks = [frames[:7], frames[7:30], frames[30:]]
 
@@ -206,6 +237,42 @@ async def test_stream_yields_msgpack_frames(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_stream_counts_a_final_image_even_if_the_caller_stops(tmp_path, monkeypatch):
+    frames = _frame({"event_type": "final", "samp_ix": 0, "image": b"a"}) + _frame(
+        {"event_type": "final", "samp_ix": 1, "image": b"b"}
+    )
+
+    async def aiter_content():
+        yield frames
+
+    response = mock.Mock()
+    response.status_code = 200
+    response.headers = {"Content-Type": "application/octet-stream"}
+    response.aiter_content = aiter_content
+    limiter = DailyImageLimiter(5, state_file=tmp_path / "s.json")
+    gen = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL)
+    async for event in gen.request_stream(_session(response), limiter=limiter):
+        assert event.is_final
+        break
+    assert limiter.used == 1
+
+
+@pytest.mark.asyncio
+async def test_no_limiter_unless_asked(tmp_path, monkeypatch):
+    from novelai_python.utils import daily_limit
+
+    monkeypatch.setenv(daily_limit.ENV_STATE_FILE, str(tmp_path / "default.json"))
+    monkeypatch.setattr(daily_limit, "_default_limiter", daily_limit._UNSET)
+    response = mock.Mock()
+    response.headers = {"Content-Type": "image/webp"}
+    response.status_code = 200
+    response.content = b"RIFF\x00\x00\x00\x00WEBPVP8 "
+    await GenerateImageInfer.build_generate("1girl").request(_session(response))
+    assert daily_limit._default_limiter is daily_limit._UNSET
+    assert not (tmp_path / "default.json").exists()
+
+
+@pytest.mark.asyncio
 async def test_bare_webp_response_is_accepted():
     webp = b"RIFF\x00\x00\x00\x00WEBPVP8 "
     response = mock.Mock()
@@ -230,6 +297,7 @@ async def test_limit_blocks_before_sending(tmp_path):
 
 def test_save_writes_files(tmp_path):
     from novelai_python._response.ai.generate_image import ImageGenerateResp, RequestParams
+
     resp = ImageGenerateResp(
         meta=RequestParams(endpoint="x", raw_request={"parameters": {"seed": 42}}),
         files=[("image_0.webp", b"a"), ("image_1.webp", b"b")],

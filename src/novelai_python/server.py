@@ -55,12 +55,13 @@ async def health():
 
 
 @app.get("/limit")
-async def image_limit():
+async def image_limit(current_token: str = Depends(get_current_token)):
     """
-    Local image budget (NOVELAI_DAILY_IMAGE_LIMIT, default 2500 per 24h window)
+    State of the process-wide image budget (requests opt in with ``limiter=True``)
     :return:
     """
-    return get_default_limiter().status()
+    limiter = get_default_limiter()
+    return limiter.status() if limiter else {"enabled": False}
 
 
 @app.get("/user/anlas")

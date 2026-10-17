@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import json
 import time
 
@@ -55,10 +54,19 @@ def test_disabled_limiter_never_blocks():
 
 def test_default_limiter_reads_env(monkeypatch, tmp_path):
     from novelai_python.utils import daily_limit
+
     monkeypatch.setenv(daily_limit.ENV_LIMIT, "7")
     monkeypatch.setenv(daily_limit.ENV_STATE_FILE, str(tmp_path / "env_state.json"))
-    daily_limit.set_default_limiter(None)
+    monkeypatch.setattr(daily_limit, "_default_limiter", daily_limit._UNSET)
     limiter = daily_limit.get_default_limiter()
+    assert limiter is not None
     assert limiter.limit == 7
     assert limiter.state_file == tmp_path / "env_state.json"
+
+
+def test_set_default_limiter_none_disables_it(monkeypatch):
+    from novelai_python.utils import daily_limit
+
+    monkeypatch.setattr(daily_limit, "_default_limiter", daily_limit._UNSET)
     daily_limit.set_default_limiter(None)
+    assert daily_limit.get_default_limiter() is None

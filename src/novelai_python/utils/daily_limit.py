@@ -6,7 +6,9 @@ The window is anchored at the first image generated after start-up (or after
 the previous window expired), not at midnight. State is persisted to a JSON
 file so the budget survives process restarts.
 
-Disable with ``NOVELAI_DAILY_IMAGE_LIMIT=0`` or pass ``limiter=None``.
+Off unless asked for: pass ``limiter=True`` (the process-wide limiter below) or a
+``DailyImageLimiter`` to ``request()`` / ``request_stream()``. The budget is per process,
+shared by every token that process uses.
 """
 
 import json
@@ -151,7 +153,8 @@ class DailyImageLimiter:
         }
 
 
-_default_limiter: DailyImageLimiter | None = None
+_UNSET = object()
+_default_limiter: "DailyImageLimiter | object | None" = _UNSET
 _default_lock = threading.Lock()
 
 
@@ -162,25 +165,27 @@ def default_state_file() -> pathlib.Path:
     return pathlib.Path.home() / ".novelai_python" / "image_limit.json"
 
 
-def get_default_limiter() -> DailyImageLimiter:
+def get_default_limiter() -> DailyImageLimiter | None:
     """
-    Process-wide limiter, configured from the environment:
+    Process-wide limiter used by ``limiter=True``. Built on first use from the environment:
     ``NOVELAI_DAILY_IMAGE_LIMIT`` (default 2500, 0 disables) and
     ``NOVELAI_LIMIT_STATE_FILE`` (default ~/.novelai_python/image_limit.json).
+    None after ``set_default_limiter(None)``.
     """
     global _default_limiter
     with _default_lock:
-        if _default_limiter is None:
+        if _default_limiter is _UNSET:
             try:
                 limit = int(os.environ.get(ENV_LIMIT, DEFAULT_IMAGE_LIMIT))
             except ValueError:
                 logger.warning(f"Invalid {ENV_LIMIT}, using {DEFAULT_IMAGE_LIMIT}")
                 limit = DEFAULT_IMAGE_LIMIT
             _default_limiter = DailyImageLimiter(limit, state_file=default_state_file())
-        return _default_limiter
+        return _default_limiter if isinstance(_default_limiter, DailyImageLimiter) else None
 
 
 def set_default_limiter(limiter: DailyImageLimiter | None) -> None:
+    """Replace the process-wide limiter; None turns ``limiter=True`` into no limit."""
     global _default_limiter
     with _default_lock:
         _default_limiter = limiter

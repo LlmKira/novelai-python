@@ -1067,7 +1067,7 @@ class GenerateImageInfer(ApiBaseModel):
         session: Union[AsyncSession, "CredentialBase"],
         *,
         override_headers: dict | None = None,
-        limiter: DailyImageLimiter | bool | None = True,
+        limiter: DailyImageLimiter | bool | None = None,
     ) -> AsyncIterator[ImageStreamEvent]:
         """
         **Stream a generation**: intermediate previews and the final image per sample,
@@ -1095,7 +1095,6 @@ class GenerateImageInfer(ApiBaseModel):
         request_data["parameters"]["stream"] = "msgpack"
         files = split_image_parts(request_data)
         body, content_type = build_multipart_request(json.dumps(request_data).encode("utf-8"), files)
-        finals = 0
         async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
             if override_headers:
                 sess.headers.clear()
@@ -1141,14 +1140,13 @@ class GenerateImageInfer(ApiBaseModel):
                                 code=code,
                                 response=frame,
                             )
-                        if event.is_final:
-                            finals += 1
+                        if event.is_final and limiter is not None:
+                            # before the yield: a caller may stop iterating at the first final image
+                            limiter.consume(1)
                         yield event
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
-        if limiter is not None and finals:
-            limiter.consume(finals)
 
     @retry_on_server_error()
     async def request(
@@ -1156,7 +1154,7 @@ class GenerateImageInfer(ApiBaseModel):
         session: Union[AsyncSession, "CredentialBase"],
         *,
         override_headers: dict | None = None,
-        limiter: DailyImageLimiter | bool | None = True,
+        limiter: DailyImageLimiter | bool | None = None,
     ) -> ImageGenerateResp:
         """
         **Generate images using NovelAI's diffusion models.**
@@ -1166,9 +1164,9 @@ class GenerateImageInfer(ApiBaseModel):
 
         :param override_headers: Headers to override the default headers.
         :param session: Async session object or credential-based session.
-        :param limiter: Local image budget. ``True`` uses the process-wide limiter
-                        (``NOVELAI_DAILY_IMAGE_LIMIT``, default 2500 per 24h window),
-                        a ``DailyImageLimiter`` instance uses that one, ``False``/``None`` skips the check.
+        :param limiter: Optional local image budget, off by default. ``True`` uses the process-wide
+                        limiter (``NOVELAI_DAILY_IMAGE_LIMIT``, default 2500 per 24h window), a
+                        ``DailyImageLimiter`` instance uses that one.
         :return: ImageGenerateResp containing the response data and metadata.
         :raises DailyLimitExceeded: If the local image budget is used up (no request is sent).
         :raises AuthError: If the request is unauthorized.
