@@ -22,6 +22,7 @@ def test_access_key_matches_argon2_cffi(username, password, expected):
     assert encode_access_key(username, password) == expected
 
 
+@pytest.mark.network  # the CLIP tokenizer file is downloaded on first use
 @pytest.mark.parametrize(("prompt", "expected"), GOLDEN["clip"])
 def test_clip_ids_match_simple_tokenizer(prompt, expected):
     from novelai_python.tokenizer import NaiTokenizer

@@ -1,11 +1,13 @@
 import unittest
 
+import pytest
+
 from novelai_python._enum import TextTokenizerGroup
 from novelai_python.tokenizer import NaiTokenizer
 
 
+@pytest.mark.network  # tokenizer files are downloaded on first use
 class TestNaiTokenizer(unittest.TestCase):
-
     def setUp(self):
         self.text = "the quick brown fox jumps over the lazy dog"
         self.tokenizer_groups = [
@@ -28,5 +30,5 @@ class TestNaiTokenizer(unittest.TestCase):
                 self.assertEqual(decoded_text.strip(), self.text)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
