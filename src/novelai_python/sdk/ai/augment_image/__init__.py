@@ -74,52 +74,15 @@ class AugmentImageInfer(ApiBaseModel):
     def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/augment-image"
 
-    def calculate_cost(self, is_opus: bool = False) -> float:
+    def calculate_cost(self, is_opus: bool = False) -> int:
         """
-        Calculate the cost of the request
-        :param is_opus: Whether the user is a VIP3 user
+        Anlas the web client shows for this tool (see ``CostCalculator.calculate_tool``).
+        :param is_opus: Whether the account has an active Opus subscription
         :return: The cost of the request
-        :raises NotImplementedError: When the request type is BG_REMOVAL
         """
-        # NOTE: its unclear how the cost is calculated
-        try:
-            if self.req_type == ReqType.BG_REMOVAL:
-                return (
-                    CostCalculator.calculate(
-                        width=self.width,
-                        height=self.height,
-                        steps=28,
-                        model=Model.NAI_DIFFUSION_3,
-                        image=bool(self.image),
-                        n_samples=1,
-                        account_tier=1,
-                        strength=1,
-                        sampler=None,
-                        is_sm_enabled=False,
-                        is_sm_dynamic=False,
-                        is_account_active=True,
-                        tool=self.req_type.value,
-                    )
-                    * 3
-                    + 5
-                )
-            return CostCalculator.calculate(
-                width=self.width,
-                height=self.height,
-                steps=28,
-                model=Model.NAI_DIFFUSION_3,
-                image=bool(self.image),
-                n_samples=1,
-                account_tier=3 if is_opus else 1,
-                strength=1,
-                sampler=None,
-                is_sm_enabled=False,
-                is_sm_dynamic=False,
-                is_account_active=True,
-                tool=self.req_type.value,
-            )
-        except Exception as e:
-            raise ValueError("Error when calculating cost") from e
+        return CostCalculator.calculate_tool(
+            self.req_type.value, self.width, self.height, account_tier=3 if is_opus else 1
+        )
 
     @staticmethod
     def _to_bytes_io(image: bytes | IO | pathlib.Path | Any) -> io.BytesIO:

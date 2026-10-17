@@ -619,10 +619,11 @@ class GenerateImageInfer(ApiBaseModel):
     def stream_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/generate-image-stream"
 
-    def calculate_cost(self, is_opus: bool = False):
+    def calculate_cost(self, is_opus: bool = False, usage_negative: bool = False):
         """
-        Calculate the Anlas cost of current parameters.
+        Calculate the Anlas cost of current parameters, as the web client shows it.
         :param is_opus: Whether the account is Opus.
+        :param usage_negative: The Opus usage bar is below zero (``SubscriptionUsage.isNegative``).
         :return: The cost of the current parameters.
         :raises ValueError: If failed to calculate cost.
         """
@@ -640,6 +641,11 @@ class GenerateImageInfer(ApiBaseModel):
                 is_sm_enabled=bool(self.parameters.sm),
                 is_sm_dynamic=bool(self.parameters.sm_dyn),
                 is_account_active=True,
+                mask=bool(self.parameters.mask),
+                inpaint_strength=self.parameters.inpaintImg2ImgStrength,
+                character_references=len(self.parameters.director_reference_images or []),
+                vibe_references=len(self.parameters.reference_image_multiple or []),
+                usage_negative=usage_negative,
             )
         except Exception as e:
             raise ValueError("Failed to calculate cost") from e
@@ -952,7 +958,7 @@ class GenerateImageInfer(ApiBaseModel):
         if decrisp_mode is not None:
             params.dynamic_thresholding = decrisp_mode
         if variety_boost is not None:
-            params.skip_cfg_above_sigma = 19 if variety_boost else None
+            params.skip_cfg_above_sigma = get_supported_params(model).cfgDelaySigma if variety_boost else None
 
         return GenerateImageInfer(
             input=prompt, model=model, action=Action.IMG2IMG, parameters=params, use_new_shared_trial=use_trial
