@@ -10,17 +10,40 @@ from novelai_python.credential._base import (
 )
 
 
-def test_brand_list_matches_a_captured_chrome():
-    # sec-ch-ua of a real Chrome 155 on novelai.net
-    assert chrome_brands(155) == '"Google Chrome";v="155", "Chromium";v="155", "Not(A:Brand";v="24"'
+@pytest.mark.parametrize(
+    ("major", "captured"),
+    [
+        # a real Chrome 155 on novelai.net (HAR)
+        (155, '"Google Chrome";v="155", "Chromium";v="155", "Not(A:Brand";v="24"'),
+        # what curl_cffi's chrome150 profile sends
+        (150, '"Not;A=Brand";v="8", "Chromium";v="150", "Google Chrome";v="150"'),
+    ],
+)
+def test_brand_list_matches_captured_chrome(major, captured):
+    assert chrome_brands(major) == captured
 
 
-def test_headers_describe_one_browser():
+def test_headers_match_the_captured_web_client():
+    # request headers of /ai/generate-image from Chrome 155 on Windows (HAR), language aside
+    captured = {
+        "accept": "*/*",
+        "origin": "https://novelai.net",
+        "referer": "https://novelai.net/",
+        "sec-ch-ua": '"Google Chrome";v="155", "Chromium";v="155", "Not(A:Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-site",
+        "user-agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/155.0.0.0 Safari/537.36"
+        ),
+    }
     headers = browser_headers()
-    assert f"Chrome/{CHROME_MAJOR_VERSION}.0.0.0" in headers["user-agent"]
-    assert headers["sec-ch-ua"] == chrome_brands(int(CHROME_MAJOR_VERSION))
-    assert "Windows NT" in headers["user-agent"] and headers["sec-ch-ua-platform"] == '"Windows"'
+    assert {k: headers[k] for k in captured} == captured
     assert headers["accept-language"] == "en-US,en;q=0.9"
+    assert CHROME_MAJOR_VERSION == "155"
 
 
 def test_accept_language_presets():
