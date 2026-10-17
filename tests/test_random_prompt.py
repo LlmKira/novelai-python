@@ -68,3 +68,17 @@ def test_selector_matches_web_client():
     conditions: set[str] = set()
     select_weighted_option([["full body", 12, ["feet", "legs"], [], []]], conditions)
     assert conditions == set()  # [2] is not read by the web client
+
+
+def test_v2_generators_run_in_every_mode():
+    import random
+
+    from novelai_python.tool.random_prompt import RandomPromptGeneratorV2
+
+    for model in ("anime_v3", "anime_v4", "furry"):
+        for seed in range(100):
+            random.seed(seed)
+            for holiday in (False, True):
+                for nsfw in (False, True):
+                    prompt = RandomPromptGeneratorV2.generate(model=model, holiday=holiday, nsfw=nsfw)
+                    assert isinstance(prompt, str) and prompt
