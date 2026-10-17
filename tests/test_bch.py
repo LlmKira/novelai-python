@@ -1,6 +1,7 @@
 """Pure-NumPy BCH must match bchlib 2.1.3 bit for bit: vectors were produced by
 the real bchlib (BCH(16, prim_poly=17475), the code NovelAI uses for its
 image-metadata FEC) with 0..20 random bit flips per codeword."""
+
 import base64
 import json
 from pathlib import Path

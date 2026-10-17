@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/1/27 上午10:41
 # @Author  : sudoskys
 # @File    : test_random_prompt.py
@@ -23,13 +22,13 @@ def test_generate_scene_composition():
 def test_generate_common_tags_non_nsfw():
     generator = RandomPromptGenerator()
     result = generator.generate_common_tags(nsfw=False)
-    assert 'nsfw' not in result
+    assert "nsfw" not in result
 
 
 def test_generate_common_tags_nsfw():
     generator = RandomPromptGenerator()
     result = generator.generate_common_tags(nsfw=True)
-    assert 'nsfw' in result
+    assert "nsfw" in result
 
 
 def test_generate_character():
@@ -45,11 +44,7 @@ def test_generate_character():
 
 def test_generate_character_traits():
     generator = RandomPromptGenerator()
-    result = generator.generate_character_traits(
-        gender="f",
-        portrait_type="half-length portrait",
-        level=3
-    )
+    result = generator.generate_character_traits(gender="f", portrait_type="half-length portrait", level=3)
     assert len(result) > 0
 
 
