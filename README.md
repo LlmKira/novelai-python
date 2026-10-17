@@ -48,7 +48,7 @@ Some changes do not raise an error, so check these when you upgrade:
   traffic by accident. Pass `proxy="http://user:pass@host:port"` to the credential (`ApiCredential`,
   `LoginCredential`, ...) or to `Login`; tokenizer downloads and tag suggestions read `NOVELAI_PROXY`.
 - **The default model is V5** (`nai-diffusion-5-full`) in `GenerateImageInfer` and `build_generate`.
-- **V5 returns webp** by default (`image_format`); set `parameters.image_format = ImageFormat.PNG` for PNG.
+- **Images come back as PNG** by default (`image_format`), with the metadata in text chunks; set `parameters.image_format = ImageFormat.WEBP` for smaller files.
 - **`auto_text`** (V5 only, on by default): quoted text in the prompt is appended as a `, teXt: ...` block, as
   novelai.net does. Pass `auto_text=False` to send the prompt untouched.
 - **Image and user endpoints moved to `image.novelai.net`**; `api.novelai.net` rejects third-party clients

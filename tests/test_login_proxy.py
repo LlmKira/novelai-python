@@ -91,3 +91,9 @@ async def test_login_credential_sends_one_authorization_header(monkeypatch):
     assert session.headers.get_list("authorization") == ["Bearer TK123"]
     assert session.proxies == {"http": PROXY, "https": PROXY}
     await session.close()
+
+
+def test_a_request_body_cannot_set_the_login_proxy():
+    login = Login.model_validate({"key": "x", "proxy": "http://attacker:1"})
+    assert login.session.proxies in (None, {})
+    assert "proxy" not in login.model_dump()

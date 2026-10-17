@@ -105,8 +105,9 @@ class Params(BaseModel):
     """Deliberate Euler Ancestral Bug"""
     prefer_brownian: bool = Field(default=True, description="Prefer Brownian")
     """Prefer Brownian"""
-    image_format: ImageFormat | str | None = None
-    """params_version>=4: output encoding, the web client asks for webp"""
+    image_format: ImageFormat | str | None = ImageFormat.PNG
+    """Output encoding (params_version >= 4). PNG keeps the metadata in text chunks and is lossless;
+    the web client asks for WEBP, which is smaller. This is the only place the default is set."""
 
     # Other fields
     strength: float | None = Field(default=0.7, ge=0.01, le=0.99, multiple_of=0.01)
@@ -507,7 +508,6 @@ def get_default_params(model: Model | str | None = None) -> Params:
             tag_hint_transparent_background=False,
             deliberate_euler_ancestral_bug=False,
             prefer_brownian=True,
-            image_format=ImageFormat.PNG,
             params_version=4,
         )
 
@@ -546,7 +546,6 @@ def get_default_params(model: Model | str | None = None) -> Params:
             inpaintImg2ImgStrength=1.0,
             tag_hint_qt=1,
             tag_hint_uc_preset=2,
-            image_format=ImageFormat.PNG,
             params_version=4,
         )
 

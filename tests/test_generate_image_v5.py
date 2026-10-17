@@ -322,3 +322,14 @@ async def test_stream_error_keeps_the_server_message():
             pass
     assert e.value.message == "Insufficient Anlas"
     assert e.value.code == 402
+
+
+def test_image_format_has_one_default():
+    from novelai_python.sdk.ai._enum import ImageFormat
+    from novelai_python.sdk.ai.generate_image.params import get_default_params
+
+    assert Params().image_format == ImageFormat.PNG
+    assert get_default_params(Model.NAI_DIFFUSION_5_FULL).image_format == ImageFormat.PNG
+    direct = GenerateImageInfer(input="1girl", model=Model.NAI_DIFFUSION_5_FULL, parameters=Params())
+    built = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL)
+    assert direct.parameters.image_format == built.parameters.image_format == ImageFormat.PNG

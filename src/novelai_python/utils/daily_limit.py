@@ -55,7 +55,9 @@ class DailyImageLimiter:
             return
         try:
             data = json.loads(self.state_file.read_text(encoding="utf-8"))
-            self._window_start = data.get("window_start")
+            start = data.get("window_start")
+            # any valid JSON can be in the file; a window start is a number or nothing
+            self._window_start = float(start) if start is not None else None
             self._used = int(data.get("used", 0))
         except Exception as e:
             logger.warning(f"Failed to read limiter state {self.state_file}: {e}, starting fresh")

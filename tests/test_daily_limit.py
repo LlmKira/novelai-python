@@ -70,3 +70,13 @@ def test_set_default_limiter_none_disables_it(monkeypatch):
     monkeypatch.setattr(daily_limit, "_default_limiter", daily_limit._UNSET)
     daily_limit.set_default_limiter(None)
     assert daily_limit.get_default_limiter() is None
+
+
+def test_state_file_with_a_string_window_start(tmp_path):
+    state = tmp_path / "state.json"
+    state.write_text('{"window_start": "nonsense", "used": 3}', encoding="utf-8")
+    limiter = DailyImageLimiter(5, state_file=state)
+    limiter.check(1)
+    assert limiter.status()["used"] == 0  # unreadable state starts fresh
+    state.write_text('{"window_start": "1792000000.5", "used": "2"}', encoding="utf-8")
+    assert DailyImageLimiter(5, state_file=state)._window_start == 1792000000.5

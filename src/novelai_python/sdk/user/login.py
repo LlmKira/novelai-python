@@ -23,8 +23,9 @@ class Login(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://image.novelai.net")
     key: str = Field(..., description="User's key")
     recaptcha: str | None = Field(default=None, description="reCAPTCHA token, as the web client sends it")
-    proxy: str | None = Field(default=None, exclude=True)
-    """Outbound proxy for the login request, like ``CredentialBase.proxy``. None = direct."""
+    _proxy: str | None = PrivateAttr(default=None)
+    """Outbound proxy for the login request, set only by ``Login.build(proxy=...)``: a request body
+    (the server's /user/login) must not choose where the server connects."""
     measure_id: str | None = Field(default=None, exclude=True)
     """
     FingerprintJS event_id the web client sends as ``x-measure-id``. The client leaves the header
@@ -47,8 +48,8 @@ class Login(ApiBaseModel):
     @property
     def session(self):
         kw: dict = {}
-        if self.proxy:
-            kw["proxies"] = {"http": self.proxy, "https": self.proxy}
+        if self._proxy:
+            kw["proxies"] = {"http": self._proxy, "https": self._proxy}
         return AsyncSession(
             timeout=180,
             headers=browser_headers({"Content-Type": "application/json"}),
@@ -76,7 +77,9 @@ class Login(ApiBaseModel):
         :param proxy: outbound proxy for the login request
         :return:
         """
-        return cls(key=encode_access_key(user_name, password), recaptcha=recaptcha, measure_id=measure_id, proxy=proxy)
+        login = cls(key=encode_access_key(user_name, password), recaptcha=recaptcha, measure_id=measure_id)
+        login._proxy = proxy
+        return login
 
     async def request(
         self,

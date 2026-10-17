@@ -399,8 +399,6 @@ class GenerateImageInfer(ApiBaseModel):
         if self.parameters.tag_hint_transparent_background is not True:
             # the web client deletes the key unless Transparent BG is on
             self.parameters.tag_hint_transparent_background = None
-        if is_v5_model(self.model) and self.parameters.image_format is None:
-            self.parameters.image_format = ImageFormat.WEBP
         return self
 
     @model_validator(mode="after")
