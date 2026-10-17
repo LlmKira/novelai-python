@@ -8,7 +8,7 @@ import string
 from datetime import UTC, datetime
 
 from curl_cffi.requests import AsyncSession
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 DEFAULT_ACCEPT_LANGUAGE = "en-US,en;q=0.9"
 """Accept-Language of the simulated browser; override via browser_headers(accept_language=...)."""
@@ -134,3 +134,25 @@ class CredentialBase(BaseModel):
 
     async def get_session(self, timeout: int = 180, update_headers: dict | None = None):
         raise NotImplementedError
+
+
+class BearerCredential(CredentialBase):
+    """A credential that sends ``Authorization: Bearer <token>``; subclasses say where the token is."""
+
+    x_correlation_id: str = Field(default_factory=_correlation_id)
+
+    def _token(self) -> str:
+        raise NotImplementedError
+
+    async def get_session(self, timeout: int = 180, update_headers: dict | None = None):
+        headers = browser_headers(
+            {
+                "Authorization": f"Bearer {self._token()}",
+                "Content-Type": "application/json",
+                "x-correlation-id": self.x_correlation_id,
+                "x-initiated-at": _initiated_at(),
+            }
+        )
+        if update_headers:
+            headers.update(update_headers)
+        return AsyncSession(**self.session_kwargs(timeout, headers))

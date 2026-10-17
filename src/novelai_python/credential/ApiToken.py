@@ -5,45 +5,27 @@
 
 import logging
 
-from curl_cffi.requests import AsyncSession
 from pydantic import Field, SecretStr, field_validator
 
-from ._base import CredentialBase, _correlation_id, _initiated_at, browser_headers
+from ._base import BearerCredential
 
 logger = logging.getLogger(__name__)
 
 
-class ApiCredential(CredentialBase):
+class ApiCredential(BearerCredential):
     """
-    ApiCredential is the base class for all credential.
+    ApiCredential sends a persistent API token (pst-...) as the bearer token.
     """
 
     api_token: SecretStr | None = Field(default=None, description="api token")
-    x_correlation_id: str = Field(default_factory=_correlation_id)
 
     def _token(self) -> str:
         if self.api_token is None:
             raise ValueError("api_token is not set")
         return self.api_token.get_secret_value()
 
-    async def get_session(self, timeout: int = 180, update_headers: dict | None = None):
-        headers = browser_headers(
-            {
-                "Authorization": f"Bearer {self._token()}",
-                "Content-Type": "application/json",
-                "x-correlation-id": self.x_correlation_id,
-                "x-initiated-at": _initiated_at(),
-            }
-        )
-
-        if update_headers:
-            assert isinstance(update_headers, dict), "update_headers must be a dict"
-            headers.update(update_headers)
-
-        return AsyncSession(**self.session_kwargs(timeout, headers))
-
     @field_validator("api_token")
     def check_api_token(cls, v: SecretStr | None):
         if v is not None and not v.get_secret_value().startswith("pst"):
-            logger.warning("api token should start with `pst-`")
+            logger.warning("api_token should start with `pst-`")
         return v

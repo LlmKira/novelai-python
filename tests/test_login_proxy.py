@@ -55,3 +55,20 @@ async def test_login_error_does_not_carry_the_access_key(monkeypatch):
     with pytest.raises(APIError) as e:
         await login.request()
     assert login.key not in str(e.value.__dict__)
+
+
+def test_jwt_credential_accepts_no_token():
+    from novelai_python import JwtCredential
+
+    assert JwtCredential(jwt_token=None).jwt_token is None
+
+
+@pytest.mark.asyncio
+async def test_bearer_credentials_share_the_session_setup():
+    from novelai_python import JwtCredential
+
+    for credential in (ApiCredential(api_token="pst-a", proxy=PROXY), JwtCredential(jwt_token="eyB", proxy=PROXY)):
+        session = await credential.get_session()
+        assert session.headers["authorization"].startswith("Bearer ")
+        assert session.proxies == {"http": PROXY, "https": PROXY}
+        await session.close()
