@@ -1,5 +1,5 @@
 # Offline tests for the endpoints and request fields added from the official API spec
-# (image/text.novelai.net/docs/doc.json, 2026-10) and the web client bundle.
+# (image/text.novelai.net/docs/doc.json) and the web client bundle.
 import base64
 import io
 import json
@@ -274,7 +274,7 @@ async def test_oa_models_and_token_count():
     assert count.length == 3 and count.encoded == [1, 2, 3]
 
 
-# --- shapes captured from the web client on 2026-10-17 (Opus account, Chrome 155) ---
+# --- response shapes captured from the web client ---
 
 
 def test_trial_status_current_shape():
@@ -295,7 +295,7 @@ def test_trial_status_current_shape():
 
 
 def test_user_endpoints_use_image_host():
-    # api.novelai.net answers third-party clients "update to the image URL" (live 2026-10-17)
+    # api.novelai.net answers third-party clients "update to the image URL"
     from novelai_python import Information, Login, Subscription, Upscale
 
     for req in (Subscription(), Information(), Priority(), CreatePersistentToken()):

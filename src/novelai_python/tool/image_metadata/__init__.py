@@ -376,8 +376,8 @@ class ImageVerifier:
             return False, False
         rgb = image_array[:, :, :3].tobytes()
         parameter = json.dumps(parameter).encode("utf-8")
-        # Older images sign the RGB bytes; V5 (2026) signs RGBA with the alpha LSB cleared,
-        # because that bit carries the stealth metadata (official nai_sig.py, 2026-08-20).
+        # Older images sign the RGB bytes; V5 signs RGBA with the alpha LSB cleared,
+        # because that bit carries the stealth metadata (as NovelAI's nai_sig.py does).
         candidates = [rgb]
         if image_array.ndim == 3 and image_array.shape[-1] == 4:
             masked = image_array.copy()

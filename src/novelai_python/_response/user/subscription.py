@@ -25,7 +25,7 @@ class Perks(BaseModel):
     moduleTrainingSteps: int
     unlimitedMaxPriority: bool
     contextTokens: int
-    # no longer sent since the V5 usage bar (live response 2026-10-17); kept for older payloads
+    # optional: current responses leave these out, older payloads still carry them
     voiceGeneration: bool | None = None
     imageGeneration: bool | None = None
     unlimitedImageGeneration: bool | None = None
@@ -33,8 +33,7 @@ class Perks(BaseModel):
 
 
 class SubscriptionUsage(BaseModel):
-    """Opus usage limit for NovelAI Diffusion V5 (introduced with the V5 release,
-    2026-08). The bar refills continuously: ``timeUntilNextPercent`` is the
+    """Opus usage limit for NovelAI Diffusion V5. The bar refills continuously: ``timeUntilNextPercent`` is the
     PERIOD in seconds per +1 % (the web client derives "%/day" as
     86400 / timeUntilNextPercent), not a countdown. While ``isNegative`` is
     false, V5 generations at normal resolution / <= 28 steps are free; once the

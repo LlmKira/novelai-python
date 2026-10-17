@@ -19,7 +19,6 @@ class TrialStatusResp(RespBase):
     trialActivated: bool | None = Field(default=None, description="Whether the free trial is active")
     trialActionsLeft: int | None = Field(default=None, description="Text generations left in the trial")
     trialImagesLeft: int | None = Field(default=None, description="Image generations left in the trial")
-    # current shape (live 2026-10-17)
     used_text_actions: int | None = None
     remaining_text_actions: int | None = None
     used_image_actions: int | None = None

@@ -6,7 +6,7 @@ authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
 ]
 dependencies = [
-    # every dependency ships Python 3.12-3.14 wheels (checked on PyPI 2026-10-16)
+    # every dependency ships Python 3.12-3.14 wheels
     "pydantic>=2.14",
     "curl-cffi>=0.16.3",  # HTTP + Chrome TLS/HTTP2 impersonation
     "msgpack>=1.2",       # /ai/generate-image-stream frames

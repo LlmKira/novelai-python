@@ -139,7 +139,7 @@ def split_image_parts(request_data: dict) -> list[tuple[str, bytes]]:
 
     The server reads every image field of a multipart request as the NAME of a form part
     ("image field references unknown form part" otherwise). Mirrors the web client
-    (applyCacheTransformation + form building, 2026-10 bundle): ``image`` / ``mask`` /
+    (applyCacheTransformation + form building): ``image`` / ``mask`` /
     ``reference_image`` keep their key with the part name and get ``*_cache_secret_key``;
     ``reference_image_multiple`` / ``director_reference_images`` become ``*_cached`` lists of
     ``{cache_secret_key, data: <part name>}``. The image data is always sent, so the
@@ -274,7 +274,7 @@ class GenerateImageInfer(ApiBaseModel):
             # off, or already applied: a body that went through JSON comes back enhanced
             quality_tags, suffix = "", ""
         # Transparent BG (V5): the web client puts "transparent background" in front of the
-        # quality suffix, or alone when quality tags are off (addQualityToPrompt, 2026-10 bundle).
+        # quality suffix, or alone when quality tags are off (addQualityToPrompt).
         transparent = bool(self.parameters.tag_hint_transparent_background) and is_v5_model(self.model)
         if transparent:
             self.parameters.straight_alpha = True
@@ -383,7 +383,7 @@ class GenerateImageInfer(ApiBaseModel):
                 QualityPreset.STANDARD if self.parameters.qualityToggle else QualityPreset.NONE
             )
         if self.parameters.tag_hint_transparent_background is not True:
-            # the web client deletes the key unless Transparent BG is on (t8 constructor, 2026-10 bundle)
+            # the web client deletes the key unless Transparent BG is on
             self.parameters.tag_hint_transparent_background = None
         if is_v5_model(self.model) and self.parameters.image_format is None:
             self.parameters.image_format = ImageFormat.WEBP

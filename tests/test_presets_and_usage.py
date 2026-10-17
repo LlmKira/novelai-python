@@ -1,4 +1,4 @@
-"""Quality-tag strings per model (docs.novelai.net "Quality Tags", 2026-10)
+"""Quality-tag strings per model (docs.novelai.net "Quality Tags")
 and the Opus V5 usage bar on /user/subscription."""
 
 from novelai_python._response.user.subscription import SubscriptionResp, SubscriptionUsage
@@ -60,7 +60,7 @@ def test_subscription_usage_is_optional_and_derived():
 
 def test_v45_request_matches_live_web_client_shape():
     """Keys/defaults observed in a real nai-diffusion-4-5-full request captured
-    from the web client on 2026-10-16 (payload_samples)."""
+    from the web client (payload_samples)."""
     from novelai_python.sdk.ai.generate_image import GenerateImageInfer
 
     g = GenerateImageInfer.build_generate(prompt="x", model=Model.NAI_DIFFUSION_4_5_FULL, width=1216, height=832)

@@ -5,7 +5,7 @@ The web client's auto text block for V5.
 When the prompt has text in quotes and no ``Text:`` of its own, novelai.net appends
 ``, teXt: <quoted texts>`` to the end of the base prompt. Text rendering reads the text
 from that block, which has to come last (docs.novelai.net/en/image/textrendering).
-Separate texts are joined by an empty line. Ported from the web client (2026-10 bundle).
+Separate texts are joined by an empty line. Ported from the web client.
 """
 
 import re

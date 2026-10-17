@@ -77,7 +77,7 @@ class Upscale(ApiBaseModel):
         self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None
     ) -> UpscaleResp:
         """
-        Upscale an image (x4). Sent the way the web client does (2026-10): multipart with the PNG as
+        Upscale an image (x4). Sent the way the web client does: multipart with the PNG as
         part ``image`` and ``{"image": "image", "model": ..., "declared_blur_sigma": ...}`` as ``request``.
         :raises AuthError: 400 / 401 / 402 (402: not enough Anlas).
         :raises APIError: any other error status.

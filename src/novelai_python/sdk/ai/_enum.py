@@ -465,7 +465,7 @@ def get_supported_params(model: ModelTypeAlias):
         Model.NAI_DIFFUSION_4_5_FULL,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
     ]:
-        # vibe transfer with encoded vibes: on in the web client (2026-10 bundle), it was off at the V4.5 launch
+        # vibe transfer with encoded vibes, as the web client allows it for V4.5
         return SupportCondition(
             controlnet=False,
             vibetransfer=True,

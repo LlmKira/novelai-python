@@ -20,7 +20,7 @@ def set_json(resp, payload):
 
 def test_endpoint_setter():
     info = Information()
-    # api.novelai.net tells third-party clients to "update to the image URL" (2026-10)
+    # api.novelai.net tells third-party clients to "update to the image URL"
     assert info.endpoint == "https://image.novelai.net"
     new_endpoint = "https://api.testai.net"
     info.endpoint = new_endpoint

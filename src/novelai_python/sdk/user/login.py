@@ -108,7 +108,7 @@ class Login(ApiBaseModel):
             logger.debug("Fetching login-credential")
             try:
                 self.ensure_session_has_post_method(sess)
-                # per-request headers in the web client's order (2026-10 bundle, login())
+                # per-request headers in the web client's order
                 headers = {"x-correlation-id": _correlation_id(), "x-initiated-at": _initiated_at()}
                 if self.measure_id:
                     headers["x-measure-id"] = self.measure_id

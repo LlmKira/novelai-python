@@ -99,7 +99,7 @@ def test_v45_request_uses_params_version_4_too():
     assert params["params_version"] == 4
     assert params["ucPresetId"] == "heavy" and params["qualityPresetId"] == "standard"
     assert "ucPreset" not in params and "qualityToggle" not in params
-    # live web-client capture 2026-10-16: V4.5 also sends image_format=webp,
+    # as the web client: V4.5 also sends image_format=webp,
     # but straight_alpha stays V5-only
     assert params["image_format"] == "png" and "straight_alpha" not in params
 
