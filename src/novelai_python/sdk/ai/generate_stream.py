@@ -96,8 +96,13 @@ class LLMStream(LLM):
                     json=request_data,
                     stream=True,  # 使用 stream=True 参数
                 )
-                response_data = try_jsonfy(response.content, default_when_error={})
-                if not isinstance(response_data, dict):
+                header_type = response.headers.get("Content-Type")
+                if header_type not in ["text/event-stream"]:
+                    # a stream=True response has no .content yet; the error body has to be read
+                    response_data = try_jsonfy(await response.acontent(), default_when_error={})
+                    if not isinstance(response_data, dict):
+                        response_data = {}
+                else:
                     response_data = {}
                 message = (
                     response_data.get("error")
@@ -105,7 +110,6 @@ class LLMStream(LLM):
                     or f"Server error with status_code {response.status_code}"
                 )
                 status_code = response_data.get("statusCode", response.status_code)
-                header_type = response.headers.get("Content-Type")
                 # 检查 'Content-Type' 是否为 'text/event-stream'
                 if header_type not in ["text/event-stream"]:
                     if status_code == 400:

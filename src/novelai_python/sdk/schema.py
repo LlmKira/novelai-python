@@ -64,6 +64,7 @@ class ApiBaseModel(BaseModel, ABC):
         request_data: dict,
         content_hint: str = "Response content too long",
         max_content_length: int = 50,
+        stream: bool = False,
     ) -> dict:
         """
         Common method to handle error response
@@ -71,6 +72,8 @@ class ApiBaseModel(BaseModel, ABC):
         :param request_data: request data
         :param content_hint: hint for content too long
         :param max_content_length: max content length
+        :param stream: the response was opened with ``stream=True``; its body is read here,
+            because ``response.content`` stays empty on a streamed response
         :return: dict of error message
         """
         logger.debug(
@@ -79,15 +82,21 @@ class ApiBaseModel(BaseModel, ABC):
             f"  - Content-Type: {response.headers.get('Content-Type', 'N/A')}\n"
             f"  - Status      : {response.status_code}\n"
         )
+        content = b""
         try:
             # 尝试解析 JSON 响应
-            error_message = response.json()
+            if stream:
+                content = await response.acontent()
+                error_message = json.loads(content)
+            else:
+                content = response.content
+                error_message = response.json()
         except Exception as e:
             # 如果解析 JSON 失败，则记录日志，并尝试显示短内容
             logger.warning(f"Failed to parse error response: {e}")
             error_message = {
                 "statusCode": response.status_code,
-                "message": try_jsonfy(response.content) if len(response.content) < max_content_length else content_hint,
+                "message": try_jsonfy(content) if len(content) < max_content_length else content_hint,
             }
         # 日志记录解析出的错误消息
         logger.debug(f"Parsed error message: {error_message}")

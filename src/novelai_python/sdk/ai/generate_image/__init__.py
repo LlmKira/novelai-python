@@ -1108,7 +1108,7 @@ class GenerateImageInfer(ApiBaseModel):
                     stream=True,
                 )
                 if response.status_code >= 400:
-                    error_message = await self.handle_error_response(response, request_data)
+                    error_message = await self.handle_error_response(response, request_data, stream=True)
                     status_code = error_message.get("statusCode", response.status_code)
                     message = error_message.get("message", "Unknown error")
                     if status_code in [400, 401, 402]:

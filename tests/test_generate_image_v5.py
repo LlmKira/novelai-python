@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 from curl_cffi.requests import AsyncSession
 
-from novelai_python import DailyLimitExceeded, GenerateImageInfer
+from novelai_python import AuthError, DailyLimitExceeded, GenerateImageInfer
 from novelai_python.credential._base import CHROME_MAJOR_VERSION, DEFAULT_USER_AGENT, browser_headers
 from novelai_python.sdk.ai._enum import Model, get_uc_preset_id, is_v5_model
 from novelai_python.sdk.ai.generate_image import build_multipart_request
@@ -305,3 +305,20 @@ def test_save_writes_files(tmp_path):
     paths = resp.save(tmp_path / "out", prefix="run")
     assert [p.name for p in paths] == ["run_0.webp", "run_1.webp"]
     assert (tmp_path / "out" / "run_1.webp").read_bytes() == b"b"
+
+
+@pytest.mark.asyncio
+async def test_stream_error_keeps_the_server_message():
+    body = b'{"statusCode": 402, "message": "Insufficient Anlas"}'
+    response = mock.Mock()
+    response.status_code = 402
+    response.headers = {"Content-Type": "application/json"}
+    response.content = b""  # nothing is read yet on a stream=True response
+    response.json = mock.Mock(side_effect=ValueError("empty"))
+    response.acontent = mock.AsyncMock(return_value=body)
+    gen = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL)
+    with pytest.raises(AuthError) as e:
+        async for _ in gen.request_stream(_session(response)):
+            pass
+    assert e.value.message == "Insufficient Anlas"
+    assert e.value.code == 402
