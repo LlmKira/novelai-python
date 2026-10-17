@@ -184,13 +184,18 @@ IMAGE_MODEL_IDS = {
 """Numeric ids the web client stores in clientsettings for V5 models."""
 
 
-def is_v5_model(model: "ModelTypeAlias") -> bool:
+def as_model(model: "ModelTypeAlias") -> "ModelTypeAlias":
+    """A model name that matches a known model becomes that Model; anything else is returned as is."""
     if isinstance(model, str):
         try:
-            model = Model(model)
+            return Model(model)
         except ValueError:
-            return False
-    return model in V5_MODEL_LIST
+            return model
+    return model
+
+
+def is_v5_model(model: "ModelTypeAlias") -> bool:
+    return as_model(model) in V5_MODEL_LIST
 
 
 INPAINTING_MODEL_LIST = [
@@ -281,7 +286,7 @@ class SupportCondition:
 
 def supports_character_reference(model: ModelTypeAlias) -> bool:
     """Precise Reference (director_reference_*): V4.5 only in the web client (characterReferences flag)."""
-    return model in (
+    return as_model(model) in (
         Model.NAI_DIFFUSION_4_5_FULL,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
         Model.NAI_DIFFUSION_4_5_CURATED,
@@ -302,11 +307,7 @@ def get_supported_params(model: ModelTypeAlias):
     :param model: Model
     :return: SupportCondition
     """
-    if isinstance(model, str):
-        try:
-            model = Model(model)
-        except ValueError:
-            pass
+    model = as_model(model)
     if model in [
         Model.STABLE_DIFFUSION,
         Model.NAI_DIFFUSION,
@@ -562,11 +563,7 @@ def get_quality_presets(model: ModelTypeAlias) -> list[QualityPresetDef]:
     Quality presets the web client offers per model (qualityPresetId -> suffix).
     "none" is always available.
     """
-    if isinstance(model, str):
-        try:
-            model = Model(model)
-        except ValueError:
-            pass
+    model = as_model(model)
     if model in V5_MODEL_LIST or model == Model.CUSTOM:
         return [
             QualityPresetDef("standard", "very aesthetic, masterpiece, no text"),
@@ -608,13 +605,14 @@ def get_modifiers(model: ModelTypeAlias) -> Modifier:
     :param model:
     :return:
     """
+    model = as_model(model)
     if model in [
         Model.CUSTOM,
         *V5_MODEL_LIST,
     ]:
         # V5: qualityPresetId "standard" in the web client
         return Modifier(qualityTags="", suffix=", very aesthetic, masterpiece, no text")
-    # Strings below follow docs.novelai.net "Quality Tags" (checked 2026-10):
+    # Strings below follow docs.novelai.net "Quality Tags":
     # V4.5 Full keeps `location`, V4.5 Curated has no `very aesthetic`,
     # V4 Curated uses `amazing quality`. V5 dropped location/rating/absurdres.
     if model in [
@@ -663,7 +661,7 @@ def filter_by_model_noise_schedule(model: ModelTypeAlias, noise_schedule: list[N
     :return:
     """
     # 只有 Novelai4 系列不支持Native
-    if model in [
+    if as_model(model) in [
         *V5_MODEL_LIST,
         Model.NAI_DIFFUSION_4_5_CURATED,
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
@@ -727,12 +725,8 @@ def get_model_group(model: ModelTypeAlias) -> ModelGroups:
     :param model: Model enum or model name string
     :return: Model group
     """
-    if isinstance(model, str):
-        try:
-            model = Model(model)
-        except ValueError:
-            return ModelGroups.STABLE_DIFFUSION
-    if model is None:
+    model = as_model(model)
+    if model is None or isinstance(model, str):
         return ModelGroups.STABLE_DIFFUSION
     mapping = {
         Model.STABLE_DIFFUSION: ModelGroups.STABLE_DIFFUSION,
@@ -778,6 +772,7 @@ class UcPrompt:
 
 def get_uc_preset(model: ModelTypeAlias) -> list[UcPrompt]:
     prompts: list[UcPrompt] = []
+    model = as_model(model)
     if model in [
         Model.SAFE_DIFFUSION,
         Model.NAI_DIFFUSION,

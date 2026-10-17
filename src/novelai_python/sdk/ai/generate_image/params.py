@@ -17,6 +17,7 @@ from novelai_python.sdk.ai._enum import (
     QualityPreset,
     Sampler,
     UCPresetTypeAlias,
+    as_model,
     is_v5_model,
 )
 from novelai_python.sdk.ai.generate_image.schema import Character, V4NegativePrompt, V4Prompt
@@ -376,6 +377,7 @@ def get_default_params(model: Model | str | None = None) -> Params:
     :param model: Model to get default parameters for
     :return: Params instance with default values
     """
+    model = as_model(model)
     if model in [
         Model.STABLE_DIFFUSION,
         Model.NAI_DIFFUSION,

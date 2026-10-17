@@ -21,7 +21,7 @@ from zipfile import BadZipFile, ZipFile
 import curl_cffi
 import msgpack
 from curl_cffi.requests import AsyncSession
-from pydantic import ConfigDict, Field, PrivateAttr, model_validator
+from pydantic import ConfigDict, Field, PrivateAttr, field_validator, model_validator
 
 from novelai_python._retry import retry_on_server_error
 from novelai_python.sdk.ai._cost import CostCalculator
@@ -37,6 +37,7 @@ from novelai_python.sdk.ai._enum import (
     QualityPreset,
     Sampler,
     UCPresetTypeAlias,
+    as_model,
     get_default_noise_schedule,
     get_default_uc_preset,
     get_max_characters,
@@ -165,6 +166,17 @@ def split_image_parts(request_data: dict) -> list[tuple[str, bytes]]:
     return [(name, base64.b64decode(b64)) for b64, name in names.items()]
 
 
+def _has_quality(prompt: str, quality_tags: str, suffix: str) -> bool:
+    """True when the base prompt already holds the quality tags this model adds."""
+    if not (quality_tags or suffix):
+        return False
+    base = re.split(r" Text:|, teXt:", prompt.split("|")[0])[0]
+    base = re.sub(r":[\d.]+$", "", base).rstrip(".")
+    if quality_tags and base.startswith(quality_tags):
+        return True
+    return bool(suffix) and base.endswith(suffix)
+
+
 class GenerateImageInfer(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://image.novelai.net")
     """Endpoint"""
@@ -195,6 +207,13 @@ class GenerateImageInfer(ApiBaseModel):
     input: str = "1girl"
     model: ModelTypeAlias = Model.NAI_DIFFUSION_5_FULL
     action: str | Action = Field(default=Action.GENERATE, description="Mode for img generate")
+
+    @field_validator("model", mode="after")
+    @classmethod
+    def _model_enum(cls, value: ModelTypeAlias) -> ModelTypeAlias:
+        # A JSON body brings the model as a string, and the smart union keeps it a str
+        return as_model(value)
+
     parameters: Params
     use_new_shared_trial: bool = False
     recaptcha_token: str | None = None
@@ -233,6 +252,12 @@ class GenerateImageInfer(ApiBaseModel):
             if self.parameters.negative_prompt and default_negative_prompt == "lowres":
                 default_negative_prompt = ""
 
+            # A body that went through JSON (the server routes) already carries the preset
+            # (maybe without the nsfw tag, removed below when the prompt asks for it)
+            have = {t.strip() for t in self.parameters.negative_prompt.split(",")}
+            if default_negative_prompt and {t.strip() for t in default_negative_prompt.split(",")} - {"nsfw"} <= have:
+                default_negative_prompt = ""
+
             # Combine the negative prompt preset and the user's negative prompt
             self.parameters.negative_prompt = ", ".join(
                 filter(None, [default_negative_prompt, self.parameters.negative_prompt])
@@ -245,7 +270,8 @@ class GenerateImageInfer(ApiBaseModel):
         if isinstance(quality_preset, Enum):
             quality_preset = quality_preset.value
         use_quality = bool(self.parameters.qualityToggle and quality_preset != "none")
-        if not use_quality:
+        if not use_quality or _has_quality(self.input, quality_tags, suffix):
+            # off, or already applied: a body that went through JSON comes back enhanced
             quality_tags, suffix = "", ""
         # Transparent BG (V5): the web client puts "transparent background" in front of the
         # quality suffix, or alone when quality tags are off (addQualityToPrompt, 2026-10 bundle).
