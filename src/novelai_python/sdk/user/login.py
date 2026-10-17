@@ -23,6 +23,8 @@ class Login(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://image.novelai.net")
     key: str = Field(..., description="User's key")
     recaptcha: str | None = Field(default=None, description="reCAPTCHA token, as the web client sends it")
+    proxy: str | None = Field(default=None, exclude=True)
+    """Outbound proxy for the login request, like ``CredentialBase.proxy``. None = direct."""
     measure_id: str | None = Field(default=None, exclude=True)
     """
     FingerprintJS event_id the web client sends as ``x-measure-id``. The client leaves the header
@@ -44,28 +46,37 @@ class Login(ApiBaseModel):
 
     @property
     def session(self):
+        kw: dict = {}
+        if self.proxy:
+            kw["proxies"] = {"http": self.proxy, "https": self.proxy}
         return AsyncSession(
             timeout=180,
-            headers=browser_headers(
-                {
-                    "Content-Type": "application/json",
-                }
-            ),
+            headers=browser_headers({"Content-Type": "application/json"}),
             impersonate=IMPERSONATE,
             trust_env=False,  # never route through a system HTTP(S)_PROXY by accident
+            **kw,
         )
 
     @classmethod
-    def build(cls, *, user_name: str, password: str, recaptcha: str | None = None, measure_id: str | None = None):
+    def build(
+        cls,
+        *,
+        user_name: str,
+        password: str,
+        recaptcha: str | None = None,
+        measure_id: str | None = None,
+        proxy: str | None = None,
+    ):
         """
         From username and password to build a Login instance
         :param user_name: account email
         :param password:
         :param recaptcha: optional reCAPTCHA token
         :param measure_id: optional FingerprintJS event_id from a real browser (see ``measure_id``)
+        :param proxy: outbound proxy for the login request
         :return:
         """
-        return cls(key=encode_access_key(user_name, password), recaptcha=recaptcha, measure_id=measure_id)
+        return cls(key=encode_access_key(user_name, password), recaptcha=recaptcha, measure_id=measure_id, proxy=proxy)
 
     async def request(
         self,
@@ -79,8 +90,19 @@ class Login(ApiBaseModel):
         """
         # Data Build
         request_data = self.model_dump(mode="json", exclude_none=True)
+        # errors carry the request; the key is derived from the password, keep it out of them
+        logged_request = {**request_data, "key": "<redacted>"}
 
-        async with session if isinstance(session, AsyncSession) else self.session as sess:
+        if isinstance(session, AsyncSession):
+            own_session = session
+        elif isinstance(session, CredentialBase):
+            # the credential's proxy, not its get_session(): that one may log in itself
+            own_session = AsyncSession(
+                **session.session_kwargs(180, browser_headers({"Content-Type": "application/json"}))
+            )
+        else:
+            own_session = self.session
+        async with own_session as sess:
             # Header
             if override_headers:
                 sess.headers.clear()
@@ -96,17 +118,17 @@ class Login(ApiBaseModel):
                     self.base_url, data=json.dumps(request_data).encode("utf-8"), headers=headers
                 )
                 if "application/json" not in response.headers.get("Content-Type") or response.status_code != 201:
-                    error_message = await self.handle_error_response(response=response, request_data=request_data)
+                    error_message = await self.handle_error_response(response=response, request_data=logged_request)
                     status_code = error_message.get("statusCode", response.status_code)
                     message = error_message.get("message", "Unknown error")
                     if status_code in [400, 401]:
                         # 400 : A validation error occured.
                         # 401 : Access Key is incorrect.
-                        raise APIError(message, request=request_data, code=status_code, response=error_message)
+                        raise APIError(message, request=logged_request, code=status_code, response=error_message)
                     if status_code in [500]:
                         # An unknown error occured.
-                        raise APIError(message, request=request_data, code=status_code, response=error_message)
-                    raise APIError(message, request=request_data, code=status_code, response=error_message)
+                        raise APIError(message, request=logged_request, code=status_code, response=error_message)
+                    raise APIError(message, request=logged_request, code=status_code, response=error_message)
                 return LoginResp.model_validate_json(response.content)
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
