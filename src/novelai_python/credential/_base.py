@@ -10,20 +10,8 @@ from datetime import UTC, datetime
 from curl_cffi.requests import AsyncSession
 from pydantic import BaseModel
 
-# Browser identity sent with every request.
-# Captured from the novelai.net web client (Chrome 155 / Windows; stable с 06.10.2026, цикл теперь 2 недели). Bump both
-# values together when refreshing.
-CHROME_MAJOR_VERSION = "155"
-DEFAULT_USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-    f"Chrome/{CHROME_MAJOR_VERSION}.0.0.0 Safari/537.36"
-)
-DEFAULT_SEC_CH_UA = (
-    # exact brand list and order Chrome 155 sends (HAR from the web client, 2026-10-16)
-    f'"Google Chrome";v="{CHROME_MAJOR_VERSION}", "Chromium";v="{CHROME_MAJOR_VERSION}", "Not(A:Brand";v="24"'
-)
-# Accept-Language the captured client sent; override via browser_headers(accept_language=...)
-DEFAULT_ACCEPT_LANGUAGE = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7,tr;q=0.6,zh-CN;q=0.5,zh;q=0.4,ja;q=0.3,zh-TW;q=0.2"
+DEFAULT_ACCEPT_LANGUAGE = "en-US,en;q=0.9"
+"""Accept-Language of the simulated browser; override via browser_headers(accept_language=...)."""
 _CORR_ALPHABET = string.ascii_letters + string.digits
 
 
@@ -44,8 +32,9 @@ def browser_headers(
     extra: dict[str, str] | None = None, accept_language: str = DEFAULT_ACCEPT_LANGUAGE
 ) -> dict[str, str]:
     """
-    Headers the novelai.net web client sends on API calls, in the order a real
-    Chrome 155 emits them (HAR capture 2026-10-16). ``accept-encoding`` and
+    Headers the novelai.net web client sends on API calls, in the order Chrome emits
+    them. The browser version and OS follow the curl_cffi impersonate target, so the
+    headers and the TLS fingerprint describe the same browser. ``accept-encoding`` and
     ``content-length`` are added by curl itself.
     :param extra: headers merged on top (e.g. Authorization)
     :param accept_language: Accept-Language of the simulated browser profile
@@ -61,7 +50,7 @@ def browser_headers(
         "referer": f"{NOVELAI_WEB_ORIGIN}/",
         "sec-ch-ua": DEFAULT_SEC_CH_UA,
         "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
+        "sec-ch-ua-platform": SEC_CH_UA_PLATFORM,
         "sec-fetch-dest": "empty",
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-site",
@@ -86,6 +75,45 @@ def get_impersonate_target() -> str:
 
 
 IMPERSONATE = get_impersonate_target()
+
+
+def _target_os(target: str) -> str:
+    """OS of the curl_cffi profile; the headers have to claim the same one as the TLS fingerprint."""
+    try:
+        from curl_cffi.fingerprints import NATIVE_IMPERSONATE_TARGETS
+
+        for fp in NATIVE_IMPERSONATE_TARGETS:
+            if fp.get("target_name") == target:
+                return str(fp.get("os") or "Windows")
+    except Exception:
+        pass
+    return "Windows"
+
+
+def chrome_brands(major: int) -> str:
+    """sec-ch-ua as Chrome builds it for a major version (GREASE brand, version and order are seeded by it)."""
+    chars = [" ", "(", ":", "-", ".", "/", ")", ";", "=", "?", "_"]
+    grease = (
+        f'"Not{chars[major % len(chars)]}A{chars[(major + 1) % len(chars)]}Brand";v="{["8", "99", "24"][major % 3]}"'
+    )
+    orders = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]]
+    order = orders[major % len(orders)]
+    brands = ["", "", ""]
+    brands[order[0]] = grease
+    brands[order[1]] = f'"Chromium";v="{major}"'
+    brands[order[2]] = f'"Google Chrome";v="{major}"'
+    return ", ".join(brands)
+
+
+CHROME_MAJOR_VERSION = "".join(c for c in IMPERSONATE if c.isdigit()) or "136"
+_OS = _target_os(IMPERSONATE)
+_UA_PLATFORM = "Macintosh; Intel Mac OS X 10_15_7" if _OS == "macOS" else "Windows NT 10.0; Win64; x64"
+DEFAULT_USER_AGENT = (
+    f"Mozilla/5.0 ({_UA_PLATFORM}) AppleWebKit/537.36 (KHTML, like Gecko) "
+    f"Chrome/{CHROME_MAJOR_VERSION}.0.0.0 Safari/537.36"
+)
+DEFAULT_SEC_CH_UA = chrome_brands(int(CHROME_MAJOR_VERSION))
+SEC_CH_UA_PLATFORM = '"macOS"' if _OS == "macOS" else '"Windows"'
 
 
 class CredentialBase(BaseModel):
