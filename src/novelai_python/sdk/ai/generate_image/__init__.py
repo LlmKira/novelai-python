@@ -1051,6 +1051,29 @@ class GenerateImageInfer(ApiBaseModel):
 
         return GenerateImageInfer(input=prompt, model=model, action=Action.INFILL, parameters=params)
 
+    def _resolve_limiter(self, limiter: DailyImageLimiter | bool | None) -> DailyImageLimiter | None:
+        """The limiter a request uses (``True`` = the process-wide one); checks the budget first."""
+        resolved = get_default_limiter() if limiter is True else limiter or None
+        if resolved is not None:
+            resolved.check(self.parameters.n_samples)
+        return resolved
+
+    def _build_body(self, *, stream: bool) -> tuple[dict, bytes, str]:
+        """(request data, body, content type) of a generate-image call, the same for both endpoints."""
+        request_data = self.model_dump(mode="json", exclude_none=True)
+        if self.parameters.params_version < 4:
+            if stream:
+                request_data["parameters"]["stream"] = "msgpack"
+            return request_data, json.dumps(request_data).encode("utf-8"), "application/json"
+        # the web client sends this key as null, and wraps the call in multipart/form-data
+        # with every image as its own part
+        request_data["parameters"].setdefault("skip_cfg_above_sigma", None)
+        if stream:
+            request_data["parameters"]["stream"] = "msgpack"
+        files = split_image_parts(request_data)
+        body, content_type = build_multipart_request(json.dumps(request_data).encode("utf-8"), files)
+        return request_data, body, content_type
+
     @staticmethod
     def _iter_msgpack_frames(buffer: bytearray):
         """Yield complete [uint32 BE length][msgpack] frames from ``buffer``, leaving partial data in place."""
@@ -1081,20 +1104,8 @@ class GenerateImageInfer(ApiBaseModel):
         :raises DailyLimitExceeded: If the local image budget is used up (no request is sent).
         :raises APIError / AuthError / ConcurrentGenerationError / SessionHttpError: as :meth:`request`.
         """
-        if limiter is True:
-            limiter = get_default_limiter()
-        elif limiter is False:
-            limiter = None
-        if limiter is not None:
-            limiter.check(self.parameters.n_samples)
-
-        request_data = self.model_dump(mode="json", exclude_none=True)
-        if self.parameters.params_version >= 4:
-            # the web client sends this key explicitly as null (live sample 2026-10-16)
-            request_data["parameters"].setdefault("skip_cfg_above_sigma", None)
-        request_data["parameters"]["stream"] = "msgpack"
-        files = split_image_parts(request_data)
-        body, content_type = build_multipart_request(json.dumps(request_data).encode("utf-8"), files)
+        limiter = self._resolve_limiter(limiter)
+        request_data, body, content_type = self._build_body(stream=True)
         async with use_session(session) as sess:
             if override_headers:
                 sess.headers.clear()
@@ -1175,25 +1186,8 @@ class GenerateImageInfer(ApiBaseModel):
         :raises SessionHttpError: If an HTTP error occurs.
         :raises DataSerializationError: If an error occurs while processing the response data.
         """
-        if limiter is True:
-            limiter = get_default_limiter()
-        elif limiter is False:
-            limiter = None
-        if limiter is not None:
-            limiter.check(self.parameters.n_samples)
-
-        # Prepare request data
-        request_data = self.model_dump(mode="json", exclude_none=True)
-        if self.parameters.params_version >= 4:
-            # the web client sends this key explicitly as null (live sample 2026-10-16)
-            request_data["parameters"].setdefault("skip_cfg_above_sigma", None)
-        files = split_image_parts(request_data) if self.parameters.params_version >= 4 else []
-        request_json = json.dumps(request_data).encode("utf-8")
-        if self.parameters.params_version >= 4:
-            # the web client wraps every generate-image call in multipart/form-data
-            body, content_type = build_multipart_request(request_json, files)
-        else:
-            body, content_type = request_json, "application/json"
+        limiter = self._resolve_limiter(limiter)
+        request_data, body, content_type = self._build_body(stream=False)
         async with use_session(session) as sess:
             if override_headers:
                 sess.headers.clear()
