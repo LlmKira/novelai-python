@@ -36,9 +36,9 @@ def test_v5_costs_one_and_a_half_times_v45():
 
 def test_opus_free_generation_and_usage_bar():
     assert _price(Model.NAI_DIFFUSION_5_FULL, opus=True) == 0
-    # the bar below zero ends the free generation on V5 Full / Curated, not on Medium
+    # the bar below zero ends the free generation on V5 Full, Medium and Curated
     assert _price(Model.NAI_DIFFUSION_5_FULL, opus=True, negative=True) == 30
-    assert _price(Model.NAI_DIFFUSION_5_FULL_MEDIUM, opus=True, negative=True) == 0
+    assert _price(Model.NAI_DIFFUSION_5_FULL_MEDIUM, opus=True, negative=True) == 29
     assert _price(Model.NAI_DIFFUSION_5_FULL, opus=True, n=4) == 90  # one of four is free
     assert _price(Model.NAI_DIFFUSION_5_FULL, opus=True, w=1216, h=1216) == 44
 
