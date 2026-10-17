@@ -80,7 +80,6 @@ class SuggestTags(ApiBaseModel):
         query_params = "&".join([f"{k}={v}" for k, v in request_data.items()])
 
         try:
-            self.ensure_session_has_get_method(sess)
             response = await sess.get(f"{self.base_url}?{query_params}")
 
             if response.status_code != 200:
@@ -100,8 +99,8 @@ class SuggestTags(ApiBaseModel):
         except curl_cffi.requests.errors.RequestsError as exc:
             logger.exception(exc)
             raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
-        except APIError as e:
-            raise e
+        except APIError:
+            raise  # not an unexpected error: keep it out of the handler below
         except Exception as e:
             logger.exception("Unexpected error occurred during the request.")
             raise Exception("An unexpected error occurred.") from e

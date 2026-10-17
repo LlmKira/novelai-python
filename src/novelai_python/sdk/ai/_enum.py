@@ -173,16 +173,6 @@ V5_MEDIUM_MODEL_LIST = [
 ]
 """Fast V5 variant: the web client pins steps=14, k_euler_ancestral and the heavy preset."""
 
-IMAGE_MODEL_IDS = {
-    Model.NAI_DIFFUSION_5_CURATED: 703,
-    Model.NAI_DIFFUSION_5_CURATED_INPAINTING: 703,
-    Model.NAI_DIFFUSION_5_FULL: 1471,
-    Model.NAI_DIFFUSION_5_FULL_INPAINTING: 1471,
-    Model.NAI_DIFFUSION_5_FULL_MEDIUM: 1471,
-    Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING: 1471,
-}
-"""Numeric ids the web client stores in clientsettings for V5 models."""
-
 
 def as_model(model: "ModelTypeAlias") -> "ModelTypeAlias":
     """A model name that matches a known model becomes that Model; anything else is returned as is."""

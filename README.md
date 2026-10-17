@@ -146,7 +146,7 @@ loop.run_until_complete(main())
 from novelai_python import Subscription, UserData, TrialStatus, get_default_limiter
 
 sub = await Subscription().request(session=session)
-print(sub.anlas_left, sub.get_tier_name, sub.is_unlimited_image_generation)
+print(sub.anlas_left, sub.tier_name, sub.is_unlimited_image_generation)
 
 data = await UserData().request(session=session)  # subscription + information in one call
 print(data.anlas_left)

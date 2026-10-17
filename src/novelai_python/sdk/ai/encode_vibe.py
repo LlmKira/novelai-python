@@ -29,7 +29,7 @@ class EncodeVibe(ApiBaseModel):
     The web client sends only ``image``, ``information_extracted``, ``mask`` and ``model``.
     """
 
-    _auth_on_400: ClassVar[bool] = False
+    _legacy_400_as_auth: ClassVar[bool] = False
 
     image: str | bytes
     model: ModelTypeAlias = Model.NAI_DIFFUSION_4_5_FULL

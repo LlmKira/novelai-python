@@ -30,6 +30,13 @@ def is_multiple_of_01(num, precision=1e-10):
     return abs(remainder) < precision or abs(0.01 - remainder) < precision
 
 
+_ALWAYS_SERIALIZED = {"skip_cfg_above_sigma"}
+"""Sent even when None (params_version < 4; see models before Anime V3)."""
+_V4_DROPPED_FIELDS = {"ucPreset", "qualityToggle"}
+"""The params_version 4 web client replaces these with ucPresetId / qualityPresetId before sending
+(its migration does `delete t.qualityToggle, delete t.ucPreset`)."""
+
+
 class Params(BaseModel):
     params_version: int = 4
     """Params Version For Request (the web client sends 4 for every model)"""
@@ -152,18 +159,6 @@ class Params(BaseModel):
     """Undesired Content Strength"""
 
     # region Custom serializer
-    __strong_values__: set[str] = {
-        "skip_cfg_above_sigma",  # See models before Anime V3
-    }
-    """Settings with none value to strongly include"""
-
-    __v4_dropped_fields__: set[str] = {
-        # The params_version 4 web client replaces these with ucPresetId / qualityPresetId
-        # before sending (see its migration: `delete t.qualityToggle, delete t.ucPreset`).
-        "ucPreset",
-        "qualityToggle",
-    }
-    """Fields the web client stopped sending with params_version >= 4"""
 
     @model_serializer(mode="wrap")
     def _serialize(self, handler):
@@ -176,7 +171,7 @@ class Params(BaseModel):
         # Create ordered dict following JavaScript field order
         ordered_fields = list(self.__class__.model_fields.keys())
         ordered_data = OrderedDict()
-        dropped = self.__v4_dropped_fields__ if self.params_version >= 4 else set()
+        dropped = _V4_DROPPED_FIELDS if self.params_version >= 4 else set()
 
         for field_name in ordered_fields:
             if field_name in dropped:
@@ -184,7 +179,7 @@ class Params(BaseModel):
             if field_name in data:
                 # Field exists in data, include it
                 ordered_data[field_name] = data[field_name]
-            elif field_name in self.__strong_values__ and self.params_version < 4:
+            elif field_name in _ALWAYS_SERIALIZED and self.params_version < 4:
                 # Since we iterate from `self.__class__.model_fields`,、
                 # the field is guaranteed to exist. The previous safety check was redundant.
                 ordered_data[field_name] = getattr(self, field_name, None)

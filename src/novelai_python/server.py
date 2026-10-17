@@ -77,7 +77,7 @@ async def anlas(current_token: str = Depends(get_current_token)):
             "anlas_left": result.anlas_left,
             "fixed": result.trainingStepsLeft.fixedTrainingStepsLeft,
             "purchased": result.trainingStepsLeft.purchasedTrainingSteps,
-            "tier": result.get_tier_name,
+            "tier": result.tier_name,
             "active": result.is_active,
             "unlimited_image_generation": result.is_unlimited_image_generation,
             "expires_at": result.expiresAt,

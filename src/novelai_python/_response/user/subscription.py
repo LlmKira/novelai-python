@@ -88,20 +88,11 @@ class SubscriptionResp(RespBase):
         return bool(self.perks.unlimitedImageGeneration and self.perks.imageGeneration)
 
     @property
-    def get_tier_name(self) -> str:
-        if self.tier == 0:
-            return "Paper"
-        elif self.tier == 1:
-            return "Tablet"
-        elif self.tier == 2:
-            return "Scroll"
-        elif self.tier == 3:
-            return "Opus"
-        else:
-            return "Unknown"
+    def tier_name(self) -> str:
+        return {0: "Paper", 1: "Tablet", 2: "Scroll", 3: "Opus"}.get(self.tier, "Unknown")
 
     @property
-    def limit_perks(self):
+    def disabled_perks(self) -> list[str]:
         perks = []
         if self.perks.imageGeneration is False:
             perks.append("imageGeneration")
@@ -112,3 +103,13 @@ class SubscriptionResp(RespBase):
         if not self.perks.unlimitedMaxPriority:
             perks.append("unlimitedMaxPriority")
         return perks
+
+    @property
+    def get_tier_name(self) -> str:
+        """Deprecated name of ``tier_name``."""
+        return self.tier_name
+
+    @property
+    def limit_perks(self) -> list[str]:
+        """Deprecated name of ``disabled_perks``."""
+        return self.disabled_perks

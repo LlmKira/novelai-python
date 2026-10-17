@@ -110,7 +110,6 @@ class Login(ApiBaseModel):
                 sess.headers.update(override_headers)
             logger.debug("Fetching login-credential")
             try:
-                self.ensure_session_has_post_method(sess)
                 # per-request headers in the web client's order
                 headers = {"x-correlation-id": _correlation_id(), "x-initiated-at": _initiated_at()}
                 if self.measure_id:
@@ -136,8 +135,8 @@ class Login(ApiBaseModel):
                 raise SessionHttpError(
                     "An AsyncSession RequestsError occurred, maybe SSL error. Try again later!"
                 ) from exc
-            except APIError as e:
-                raise e
+            except APIError:
+                raise  # not an unexpected error: keep it out of the handler below
             except Exception as e:
                 logger.exception("An Unexpected error occurred")
                 raise e

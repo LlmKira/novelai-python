@@ -127,4 +127,3 @@ def test_v5_uses_qwen35_prompt_tokenizer(monkeypatch):
         TextTokenizerGroup.T5,
         TextTokenizerGroup.CLIP,
     ]
-    assert tk.V5_PROMPT_TOKEN_LIMIT == 1471

@@ -98,7 +98,6 @@ class VoiceGenerate(ApiBaseModel):
             logger.debug(f"Voice request data: {request_data}")
             # Request
             try:
-                self.ensure_session_has_post_method(sess)
                 response = await sess.post(url=self.base_url, json=request_data)
                 header_type = response.headers.get("Content-Type")
                 if (
@@ -121,8 +120,8 @@ class VoiceGenerate(ApiBaseModel):
                 raise SessionHttpError(
                     "An AsyncSession RequestsError occurred, maybe SSL error. Try again later!"
                 ) from exc
-            except APIError as e:
-                raise e
+            except APIError:
+                raise  # not an unexpected error: keep it out of the handler below
             except Exception as e:
                 logger.exception("An Unexpected error occurred")
                 raise e

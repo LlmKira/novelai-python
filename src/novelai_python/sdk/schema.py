@@ -33,7 +33,7 @@ async def use_session(session: AsyncSession | CredentialBase) -> AsyncGenerator[
 
 class ApiBaseModel(BaseModel, ABC):
     _endpoint: str = PrivateAttr("")
-    _auth_on_400: ClassVar[bool] = True
+    _legacy_400_as_auth: ClassVar[bool] = True
     """The older endpoints raise AuthError for a 400 validation error; newer ones set False (APIError)."""
 
     @property
@@ -49,16 +49,6 @@ class ApiBaseModel(BaseModel, ABC):
     @endpoint.setter
     def endpoint(self, value) -> None:
         self._endpoint = value
-
-    @staticmethod
-    def ensure_session_has_post_method(session) -> None:
-        if not hasattr(session, "post"):
-            raise AttributeError("SESSION_MUST_HAVE_POST_METHOD")
-
-    @staticmethod
-    def ensure_session_has_get_method(session) -> None:
-        if not hasattr(session, "get"):
-            raise AttributeError("SESSION_MUST_HAVE_GET_METHOD")
 
     async def handle_error_response(
         self,
@@ -131,7 +121,7 @@ class ApiBaseModel(BaseModel, ABC):
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
         if response.status_code >= 400:
-            self._raise_for_status(response.status_code, response.content, request_data, self._auth_on_400)
+            self._raise_for_status(response.status_code, response.content, request_data, self._legacy_400_as_auth)
         return response
 
     @staticmethod

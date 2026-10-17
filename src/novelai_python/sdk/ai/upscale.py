@@ -95,7 +95,6 @@ class Upscale(ApiBaseModel):
                 sess.headers.update(override_headers)
             logger.debug(f"Request Data: {request_data}")
             try:
-                self.ensure_session_has_post_method(sess)
                 response = await sess.post(self.base_url, data=body, headers={"Content-Type": content_type})
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)

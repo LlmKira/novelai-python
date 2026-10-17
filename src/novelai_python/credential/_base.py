@@ -121,8 +121,6 @@ SEC_CH_UA_PLATFORM = '"Windows"'
 
 
 class CredentialBase(BaseModel):
-    _session: AsyncSession | None = None
-    """会话"""
     proxy: str | None = None
     """Outbound proxy for every request, e.g. ``http://user:pass@host:port``
     (curl_cffi ``proxies`` for http and https). None = direct."""

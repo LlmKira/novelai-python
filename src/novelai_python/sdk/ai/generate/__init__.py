@@ -374,7 +374,6 @@ class LLM(ApiBaseModel):
             logger.debug(f"LLM request data: {json.dumps(request_data)}")
             # Request
             try:
-                self.ensure_session_has_post_method(sess)
                 response = await sess.post(self.base_url, json=request_data, stream=False)
                 response_data = try_jsonfy(response.content, default_when_error={})
                 if not isinstance(response_data, dict):
@@ -432,8 +431,8 @@ class LLM(ApiBaseModel):
                 raise SessionHttpError(
                     "An AsyncSession RequestsError occurred, perhaps it's an SSL error. Please try again later!"
                 ) from exc
-            except APIError as e:
-                raise e
+            except APIError:
+                raise  # not an unexpected error: keep it out of the handler below
             except Exception as e:
                 logger.exception("An unexpected error occurred")
                 raise e
