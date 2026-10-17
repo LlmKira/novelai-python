@@ -1,56 +1,71 @@
 # src/novelai_python/tool/random_prompt/logic.py
 import random
-from typing import Any
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Any, Protocol
+
+
+@dataclass(frozen=True)
+class PromptOption:
+    """One row of a tag table: ``[tag, weight, provides, requires, excludes]``."""
+
+    tag: str | int
+    weight: int
+    provides: tuple[str, ...] = ()
+    requires: tuple[str, ...] = ()
+    excludes: tuple[str, ...] = ()
+
+    @classmethod
+    def from_row(cls, row: Sequence[Any]) -> "PromptOption":
+        def tags(i: int) -> tuple[str, ...]:
+            value = row[i] if len(row) > i else ()
+            if isinstance(value, str):
+                return (value,)
+            # the web client's tables have a few malformed rows, e.g. ["opaque glasses", 12, 12, ...]
+            return tuple(value) if isinstance(value, (list, tuple)) else ()
+
+        return cls(row[0], int(row[1]), tags(2), tags(3), tags(4))
+
+
+class TagConditions(Protocol):
+    """A set of tags already in the prompt (a ``set`` or the V1 ``Conditions``)."""
+
+    def __contains__(self, item: str, /) -> bool: ...
+    def add(self, item: str, /) -> None: ...
+
+
+def pick_option(rows: Sequence[Sequence[Any]], conditions: TagConditions | None = None) -> str | int:
+    """
+    Pick a weighted row. With ``conditions``, a row is skipped when one of its exclusions is
+    already a condition or one of its requirements is missing, and the picked row adds the
+    tags it provides. Without them every row can be picked. Returns "" when nothing fits.
+    """
+    options = [PromptOption.from_row(row) for row in rows]
+    if conditions is not None:
+        options = [
+            o
+            for o in options
+            if not any(tag in conditions for tag in o.excludes) and all(tag in conditions for tag in o.requires)
+        ]
+    options = [o for o in options if o.weight > 0]
+    if not options:
+        return ""
+    chosen = random.choices(options, weights=[o.weight for o in options])[0]
+    if conditions is not None:
+        for tag in chosen.provides:
+            conditions.add(tag)
+    return chosen.tag
 
 
 class TagSelector:
     def __init__(self):
-        self.selected_tags = set()
+        self.selected_tags: set[str] = set()
 
-    def weighted_choice(self, choices: list[Any], simple: bool = False) -> str:
-        valid_choices = []
-        for item in choices:
-            if not simple:
-                blockers = item[4] if len(item) > 4 else []
-                if blockers and any(b in self.selected_tags for b in blockers):
-                    continue
-                requirements = item[3] if len(item) > 3 else []
-                if requirements and not all(r in self.selected_tags for r in requirements):
-                    continue
-            valid_choices.append(item)
+    def weighted_choice(self, choices: Sequence[Sequence[Any]], simple: bool = False) -> str:
+        return str(pick_option(choices, None if simple else self.selected_tags))
 
-        if not valid_choices:
-            return ""
-
-        total_weight = sum(item[1] for item in valid_choices)
-        # JS: let r = tf(i, 1) -> floor(random * (i-1)) + 1
-        r = int(random.random() * (total_weight - 1)) + 1
-
-        upto = 0
-        for item in valid_choices:
-            upto += item[1]  # JS: s += e[1]
-            if r <= upto:  # JS: if (r <= s)
-                tag = item[0]
-                if not simple and len(item) > 2:
-                    adds = item[2]
-                    if isinstance(adds, list):
-                        for t in adds:
-                            self.selected_tags.add(t)
-                    elif isinstance(adds, str):
-                        self.selected_tags.add(adds)
-                return tag
-        return valid_choices[0][0]
-
-    def pick_count(self, ranges: list[list[int]]) -> int:
-        # То же самое для чисел
-        total = sum(item[1] for item in ranges)
-        r = int(random.random() * (total - 1)) + 1
-        upto = 0
-        for item in ranges:
-            upto += item[1]
-            if r <= upto:
-                return item[0]
-        return ranges[0][0]
+    def pick_count(self, ranges: Sequence[Sequence[Any]]) -> int:
+        return int(pick_option(ranges) or 0)
 
 
 def apply_curly_brackets(tag: str) -> str:

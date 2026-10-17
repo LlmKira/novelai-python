@@ -56,8 +56,8 @@ def test_get_holiday_themed_tags():
     assert len({result_m, result_f, result_o}) != 1
 
 
-def test_selector_matches_web_client():
-    """Exclusions [4] and requirements [3] filter rows; only [3] is added after a pick, as in the web client."""
+def test_selector_uses_provides_requires_excludes():
+    """[2] is what a picked row provides, [3] what it requires, [4] what excludes it."""
     from novelai_python.tool.random_prompt.generate_scene_composition import select_weighted_option
 
     rows = [["foot focus", 12, [], ["feet"], []], ["hip focus", 12, [], [], ["front"]]]
@@ -66,8 +66,20 @@ def test_selector_matches_web_client():
     assert select_weighted_option([rows[0]], {"feet"}) == "foot focus"
     assert select_weighted_option([rows[1]], {"front"}) == ""
     conditions: set[str] = set()
-    select_weighted_option([["full body", 12, ["feet", "legs"], [], []]], conditions)
-    assert conditions == set()  # [2] is not read by the web client
+    assert select_weighted_option([["full body", 12, ["feet", "legs"], [], []]], conditions) == "full body"
+    assert conditions == {"feet", "legs"}
+
+
+def test_requirement_gated_rows_are_reachable():
+    import random
+
+    random.seed(0)
+    prompts = [", ".join(RandomPromptGenerator.generate_scene_composition()) for _ in range(3000)]
+    prompts += [
+        ", ".join(map(str, RandomPromptGenerator.generate_character(tags=[], gender="f", character_limit=1)))
+        for _ in range(3000)
+    ]
+    assert any("foot focus" in p for p in prompts)
 
 
 def test_v2_generators_run_in_every_mode():
