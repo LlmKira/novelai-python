@@ -4,8 +4,7 @@ import pathlib
 import zlib
 from typing import Dict, List, Optional
 
-import requests
-from json_repair import repair_json
+from curl_cffi import requests
 from pydantic import BaseModel, model_validator
 from tokenizers import Regex, Tokenizer, decoders, pre_tokenizers
 from tokenizers.models import BPE
@@ -48,8 +47,8 @@ encoded_data = file.read_bytes()
 decompress_obj = zlib.decompressobj(-zlib.MAX_WBITS)
 decode = decompress_obj.decompress(encoded_data)
 
-# 修复和解析 JSON
-repaired_json = repair_json(decode.decode('utf-8'), return_objects=True)
+# 解析 JSON
+repaired_json = json.loads(decode.decode('utf-8'))
 json.dump(repaired_json, open(f"{model_name}.json", "w"), indent=2)
 tokenizer_setting = TokenizerSetting.model_validate(repaired_json)
 

@@ -7,6 +7,9 @@ this module re-implements the same code in NumPy. Bit layout matches the
 kernel exactly (checked against vectors produced by bchlib 2.1.3, see
 ``tests/fixtures/bch_vectors.json``): data bytes MSB-first, followed by the
 ECC bits; ECC = data(x) * x^(m*t) mod g(x).
+
+Corrections match bchlib bit for bit up to t = 16 bit errors per chunk. Beyond
+that the code cannot correct, and what is reported may differ from bchlib.
 """
 
 from functools import lru_cache

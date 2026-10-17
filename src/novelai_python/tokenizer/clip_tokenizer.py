@@ -1,10 +1,15 @@
 """CLIP BPE tokenizer (NovelAI Diffusion V1-V3 prompts) on top of HF ``tokenizers``.
 
-Reproduces OpenAI's ``SimpleTokenizer`` token ids (checked on 3000 random
-prompts with unicode, case and whitespace variations) without the ``ftfy`` and
-``regex`` dependencies. ``clean_text`` keeps the parts of ``ftfy.fix_text`` that
-matter for prompts: HTML entities, curly quotes, ligatures and full/half-width
-forms. Mojibake repair (``ftfy``'s cp1252 guessing) is intentionally dropped.
+Gives the same token ids as OpenAI's ``SimpleTokenizer`` on ordinary prompts
+(random prompts with unicode, case and whitespace variations) without the
+``ftfy`` and ``regex`` dependencies. ``clean_text`` keeps the parts of
+``ftfy.fix_text`` that matter for prompts: HTML entities, curly quotes,
+ligatures and full/half-width forms.
+
+Known differences from ``SimpleTokenizer``: ftfy's mojibake repair (cp1252
+guessing) is dropped, and HTML-escaped curly quotes, the quotes ``„ ‟ ʼ``,
+zero-width characters and a literal ``<|endoftext|>`` in the text give
+different ids.
 """
 
 import html
