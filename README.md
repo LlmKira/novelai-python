@@ -22,26 +22,44 @@
 The goal of this repository is to use Pydantic to build legitimate requests to access
 the [NovelAI API service](https://api.novelai.net/docs).
 
-> Python >= 3.10 is required (tested on 3.10 – 3.14).
+> Python >= 3.12 is required (tested on 3.12 – 3.14).
 
 ### 📰 News
 
 - **NovelAI Diffusion V5** family: `nai-diffusion-5-full`, `-full-medium` (fast, 14 steps), `-curated` and their
-  `-inpainting` variants. Request shape, defaults, quality presets (`standard` / `light` / `none`) and negative
-  presets are taken from the current web client bundle; every model now uses `params_version` 4
-  (`ucPresetId` / `qualityPresetId`) and the same `multipart/form-data` body the web client sends.
+  `-inpainting` variants, with the web client's quality presets (`standard` / `light` / `none`) and negative
+  presets. Every model uses `params_version` 4 (`ucPresetId` / `qualityPresetId`) and the
+  `multipart/form-data` body the web client sends.
 - **Streaming**: `async for event in gen.request_stream(session)` on `/ai/generate-image-stream` yields
-  intermediate previews and the final image per sample (msgpack frames, like the web client).
-- Dependencies refreshed (pydantic 2.11+, httpx 0.28, numpy 2, opencv 4.11+, curl_cffi 0.13+, msgpack);
-  `bchlib` replaced by a pure-NumPy BCH codec (bit-exact, no C compiler needed).
-- Browser identity refreshed to Chrome 155 (User-Agent + `sec-ch-ua`) on every session, newest `curl_cffi`
-  TLS fingerprint picked automatically.
-- Built-in image budget: **2500 images per 24h window** by default (counted from the first image after start-up,
-  persisted to `~/.novelai_python/image_limit.json`). Tune with `NOVELAI_DAILY_IMAGE_LIMIT` (0 disables) or pass
-  `limiter=` to `request()`.
-- New endpoints: `UserData` (`image.novelai.net/user/data`), `TrialStatus` (`text.novelai.net/ai/trial-status`);
-  server routes `/user/anlas`, `/user/data`, `/user/trial-status`, `/limit`.
-- `ImageGenerateResp.save(dir)` writes the returned images to disk.
+  intermediate previews and the final image per sample.
+- New: character reference (V4.5), `EncodeVibe`, transparent background (V5), `Upscale` on the image host,
+  `UserData`, `TrialStatus`, `Priority`, `CreatePersistentToken`, the OpenAI-compatible text API (`/oa/v1`),
+  and `GenerateImageInfer.from_metadata()` to rebuild a request from an image's metadata.
+- Fewer dependencies: pydantic, curl_cffi, msgpack, Pillow, numpy, pynacl and tokenizers. httpx, opencv,
+  argon2-cffi, ftfy/regex and `bchlib` are gone (`bchlib` has no Python 3.14 wheel; a NumPy BCH codec
+  replaces it).
+- Optional local image budget (`limiter=True`, see below).
+
+### ⬆️ Upgrading from 0.7
+
+Some changes do not raise an error, so check these when you upgrade:
+
+- **`HTTP(S)_PROXY` is ignored.** Sessions use `trust_env=False`, so a system proxy no longer routes NovelAI
+  traffic by accident. Pass `proxy="http://user:pass@host:port"` to the credential (`ApiCredential`,
+  `LoginCredential`, ...) or to `Login`; tokenizer downloads and tag suggestions read `NOVELAI_PROXY`.
+- **The default model is V5** (`nai-diffusion-5-full`) in `GenerateImageInfer` and `build_generate`.
+- **V5 returns webp** by default (`image_format`); set `parameters.image_format = ImageFormat.PNG` for PNG.
+- **`auto_text`** (V5 only, on by default): quoted text in the prompt is appended as a `, teXt: ...` block, as
+  novelai.net does. Pass `auto_text=False` to send the prompt untouched.
+- **Image and user endpoints moved to `image.novelai.net`**; `api.novelai.net` rejects third-party clients
+  there.
+- **The browser identity follows curl_cffi**: User-Agent, `sec-ch-ua` and platform are those of the
+  impersonated Chrome, and Accept-Language is `en-US,en;q=0.9`.
+- **The image budget is off by default.** Pass `limiter=True` to `request()` / `request_stream()` for the
+  process-wide budget (`NOVELAI_DAILY_IMAGE_LIMIT`, default 2500 per 24h, saved to
+  `~/.novelai_python/image_limit.json`), or a `DailyImageLimiter` of your own. The budget is per process and
+  shared by all tokens it uses.
+
 - [New Model. No Restrictions. V4.5 Full Is Here.](https://blog.novelai.net/novelai-diffusion-v4-5-full-release-678318c86205)
 - [NovelAI Diffusion V4.5 Curated is Here!](https://blog.novelai.net/novelai-diffusion-v4-5-curated-is-here-9e5ba1f628f3)
 - [Image Generation Model Release — NovelAI Anime Diffusion V4 Curated Preview (EN)](https://blog.novelai.net/release-novelai-anime-diffusion-v4-curated-preview-en-ca4b0b11e671)
@@ -135,6 +153,7 @@ print(data.anlas_left)
 trial = await TrialStatus().request(session=session)
 print(trial.trialImagesLeft)
 
+# only when requests opt in with limiter=True
 print(get_default_limiter().status())  # {'limit': 2500, 'used': ..., 'remaining': ..., 'reset_at': ...}
 ```
 
