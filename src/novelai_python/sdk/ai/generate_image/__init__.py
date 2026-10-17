@@ -216,7 +216,8 @@ class GenerateImageInfer(ApiBaseModel):
         value = as_model(value)
         if value == Model.NAI_DIFFUSION_5_CURATED_INPAINTING:
             logger.warning(
-                f"{value.value} does not exist on NovelAI; inpainting with V4.5 Curated, as the web client does"
+                "nai-diffusion-5-curated-inpainting does not exist on NovelAI; "
+                "inpainting with V4.5 Curated, as the web client does"
             )
             return get_inpainting_model(value)
         return value
@@ -1024,7 +1025,7 @@ class GenerateImageInfer(ApiBaseModel):
         :return:
         """
         # A base model is inpainted with its inpainting model, as in the web client
-        model = get_inpainting_model(model)
+        model = get_inpainting_model(model) or model
         # Get default parameters for the model
         params = get_default_params(model)
 
