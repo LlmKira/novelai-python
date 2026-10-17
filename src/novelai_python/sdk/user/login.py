@@ -14,7 +14,7 @@ from ..._response.user.login import LoginResp
 from ...credential import CredentialBase
 from ...credential._base import IMPERSONATE, _correlation_id, _initiated_at, browser_headers
 from ...utils import encode_access_key
-from ..schema import ApiBaseModel
+from ..schema import ApiBaseModel, use_session
 
 logger = logging.getLogger(__name__)
 
@@ -94,15 +94,13 @@ class Login(ApiBaseModel):
         logged_request = {**request_data, "key": "<redacted>"}
 
         if isinstance(session, AsyncSession):
-            own_session = session
+            context = use_session(session)  # the caller's session stays open
         elif isinstance(session, CredentialBase):
             # the credential's proxy, not its get_session(): that one may log in itself
-            own_session = AsyncSession(
-                **session.session_kwargs(180, browser_headers({"Content-Type": "application/json"}))
-            )
+            context = AsyncSession(**session.session_kwargs(180, browser_headers({"Content-Type": "application/json"})))
         else:
-            own_session = self.session
-        async with own_session as sess:
+            context = self.session
+        async with context as sess:
             # Header
             if override_headers:
                 sess.headers.clear()

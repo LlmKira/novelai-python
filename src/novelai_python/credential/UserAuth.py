@@ -36,10 +36,6 @@ class LoginCredential(CredentialBase):
         if not self.session_headers or self.update_at is None or int(time.time()) - self.update_at > 29 * 24 * 60 * 60:
             from ..sdk import Login
 
-            # log in through the same proxy / fingerprint as every later request
-            login_session = AsyncSession(
-                **self.session_kwargs(timeout, browser_headers({"Content-Type": "application/json"}))
-            )
             if not self.username or self.password is None:
                 raise ValueError("LoginCredential needs username and password")
             resp = await Login.build(
@@ -47,7 +43,7 @@ class LoginCredential(CredentialBase):
                 password=self.password.get_secret_value(),
                 recaptcha=self.recaptcha,
                 measure_id=self.measure_id,
-            ).request(login_session)
+            ).request(self)  # logs in through this credential's proxy
             headers["Authorization"] = f"Bearer {resp.accessToken}"
             self.session_headers = headers
             self.update_at = int(time.time())

@@ -11,6 +11,7 @@ from ..._exceptions import APIError, SessionHttpError
 from ..._response.ai.generate_stream import LLMStreamResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy
+from ..schema import use_session
 from .generate import LLM, AdvanceLLMSetting, LLMGenerationParams, PenStyle, TextLLMModel
 
 logger = logging.getLogger(__name__)
@@ -80,7 +81,7 @@ class LLMStream(LLM):
             **self.model_dump(mode="json", include={"input", "model"}),
             "parameters": parameters,
         }
-        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+        async with use_session(session) as sess:
             # Header
             if override_headers:
                 sess.headers.clear()

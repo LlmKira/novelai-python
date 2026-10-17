@@ -10,7 +10,7 @@ from pydantic import PrivateAttr
 from ..._exceptions import APIError, AuthError, SessionHttpError
 from ..._response.user.data import UserDataResp
 from ...credential import CredentialBase
-from ..schema import ApiBaseModel
+from ..schema import ApiBaseModel, use_session
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class UserData(ApiBaseModel):
         :return:
         """
         request_data = {}
-        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+        async with use_session(session) as sess:
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)

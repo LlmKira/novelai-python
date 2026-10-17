@@ -61,7 +61,7 @@ from ...._response.ai.generate_image import ImageGenerateResp, ImageStreamEvent,
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
 from ....utils.daily_limit import DailyImageLimiter, get_default_limiter
-from ...schema import ApiBaseModel
+from ...schema import ApiBaseModel, use_session
 from .auto_text import apply_auto_text
 from .auto_text import strip_auto_text as strip_auto_text  # re-export
 from .params import Params, get_default_params
@@ -1095,7 +1095,7 @@ class GenerateImageInfer(ApiBaseModel):
         request_data["parameters"]["stream"] = "msgpack"
         files = split_image_parts(request_data)
         body, content_type = build_multipart_request(json.dumps(request_data).encode("utf-8"), files)
-        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+        async with use_session(session) as sess:
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
@@ -1194,7 +1194,7 @@ class GenerateImageInfer(ApiBaseModel):
             body, content_type = build_multipart_request(request_json, files)
         else:
             body, content_type = request_json, "application/json"
-        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+        async with use_session(session) as sess:
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)

@@ -24,7 +24,7 @@ from ....credential import CredentialBase
 from ....tokenizer import NaiTokenizer
 from ....utils import try_jsonfy
 from ....utils.encode import tokens_to_b64
-from ...schema import ApiBaseModel
+from ...schema import ApiBaseModel, use_session
 from ._enum import (
     get_bad_words_ids,
     get_default_preset,
@@ -365,7 +365,7 @@ class LLM(ApiBaseModel):
             **self.model_dump(mode="json", include={"input", "model"}),
             "parameters": parameters,
         }
-        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+        async with use_session(session) as sess:
             # Header
             if override_headers:
                 sess.headers.clear()

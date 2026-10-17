@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from ..._exceptions import SessionHttpError
 from ...credential import CredentialBase
-from ..schema import ApiBaseModel
+from ..schema import ApiBaseModel, use_session
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class _OAIGenerateBase(ApiBaseModel):
     ) -> AsyncIterator[dict[str, Any]]:
         """Streaming call (server-sent events); yields each OpenAI-format chunk until ``[DONE]``."""
         body = self._body(True)
-        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+        async with use_session(session) as sess:
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)

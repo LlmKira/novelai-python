@@ -13,7 +13,7 @@ from novelai_python._retry import retry_on_server_error
 from ...._exceptions import APIError, SessionHttpError
 from ...._response.ai.generate_voice import VoiceResponse
 from ....credential import CredentialBase
-from ...schema import ApiBaseModel
+from ...schema import ApiBaseModel, use_session
 from ._enum import Speaker, VoiceSpeakerV1, VoiceSpeakerV2
 
 logger = logging.getLogger(__name__)
@@ -89,7 +89,7 @@ class VoiceGenerate(ApiBaseModel):
         """
         # Data Build
         request_data = self.model_dump(mode="json", exclude_none=True)
-        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+        async with use_session(session) as sess:
             # Header
             if override_headers:
                 sess.headers.clear()

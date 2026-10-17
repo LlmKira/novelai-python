@@ -5,7 +5,8 @@
 import json
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Coroutine
+from collections.abc import AsyncGenerator, Coroutine
+from contextlib import asynccontextmanager
 from typing import Any, Literal, NoReturn
 
 import curl_cffi
@@ -17,6 +18,17 @@ from ..credential import CredentialBase
 from ..utils import try_jsonfy
 
 logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def use_session(session: AsyncSession | CredentialBase) -> AsyncGenerator[AsyncSession]:
+    """The session for one request. A caller's AsyncSession stays open: it may be reused, e.g. by a
+    retry. A session made from a credential is closed when the request is done."""
+    if isinstance(session, AsyncSession):
+        yield session
+        return
+    async with await session.get_session() as sess:
+        yield sess
 
 
 class ApiBaseModel(BaseModel, ABC):
@@ -98,7 +110,7 @@ class ApiBaseModel(BaseModel, ABC):
         :raises SessionHttpError: transport error (SSL, timeout...).
         """
         request_data = json_body or {}
-        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+        async with use_session(session) as sess:
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)

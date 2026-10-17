@@ -18,7 +18,7 @@ from ..._exceptions import DataSerializationError, SessionHttpError
 from ..._response.ai.upscale import UpscaleResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy
-from ..schema import ApiBaseModel
+from ..schema import ApiBaseModel, use_session
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ class Upscale(ApiBaseModel):
         body, content_type = build_multipart_request(
             json.dumps(request_data).encode("utf-8"), [("image", base64.b64decode(self.image))]
         )
-        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+        async with use_session(session) as sess:
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)

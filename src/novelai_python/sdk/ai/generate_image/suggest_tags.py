@@ -16,7 +16,7 @@ from ...._exceptions import APIError, AuthError, SessionHttpError
 from ...._response.ai.generate_image import SuggestTagsResp
 from ....credential import CredentialBase
 from ....credential._base import IMPERSONATE, browser_headers
-from ...schema import ApiBaseModel
+from ...schema import ApiBaseModel, use_session
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class SuggestTags(ApiBaseModel):
             ) as sess:
                 return await self._make_request(sess, request_data, override_headers)
         else:
-            async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+            async with use_session(session) as sess:
                 return await self._make_request(sess, request_data, override_headers)
 
     async def _make_request(self, sess, request_data, override_headers):
