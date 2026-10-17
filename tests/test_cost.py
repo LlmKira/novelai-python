@@ -88,3 +88,11 @@ def test_variety_boost_uses_the_model_sigma_in_img2img():
     v4 = GenerateImageInfer.build_img2img("1girl", model=Model.NAI_DIFFUSION_4_FULL, **common)
     assert v45.parameters.skip_cfg_above_sigma == 58
     assert v4.parameters.skip_cfg_above_sigma == 19
+
+
+def test_v5_curated_is_inpainted_with_v45_curated():
+    from novelai_python.sdk.ai._enum import get_inpainting_model
+
+    assert get_inpainting_model(Model.NAI_DIFFUSION_5_CURATED) == Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING
+    assert get_inpainting_model("nai-diffusion-5-full") == Model.NAI_DIFFUSION_5_FULL_INPAINTING
+    assert get_inpainting_model(Model.NAI_DIFFUSION_4_5_FULL_INPAINTING) == Model.NAI_DIFFUSION_4_5_FULL_INPAINTING

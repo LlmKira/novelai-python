@@ -194,6 +194,31 @@ def as_model(model: "ModelTypeAlias") -> "ModelTypeAlias":
     return model
 
 
+def get_inpainting_model(model: "ModelTypeAlias") -> "ModelTypeAlias":
+    """
+    Model the web client inpaints with for a model. NovelAI has no V5 Curated inpainting model
+    (``nai-diffusion-5-curated-inpainting`` answers "doesn't exist"); the web client inpaints
+    V5 Curated images with V4.5 Curated inpainting.
+    """
+    model = as_model(model)
+    mapping = {
+        Model.NAI_DIFFUSION: Model.NAI_DIFFUSION_INPAINTING,
+        Model.SAFE_DIFFUSION: Model.SAFE_DIFFUSION_INPAINTING,
+        Model.NAI_DIFFUSION_FURRY: Model.FURRY_DIFFUSION_INPAINTING,
+        Model.NAI_DIFFUSION_3: Model.NAI_DIFFUSION_3_INPAINTING,
+        Model.NAI_DIFFUSION_FURRY_3: Model.NAI_DIFFUSION_FURRY_3_INPAINTING,
+        Model.NAI_DIFFUSION_4_CURATED_PREVIEW: Model.NAI_DIFFUSION_4_CURATED_INPAINTING,
+        Model.NAI_DIFFUSION_4_FULL: Model.NAI_DIFFUSION_4_FULL_INPAINTING,
+        Model.NAI_DIFFUSION_4_5_CURATED: Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+        Model.NAI_DIFFUSION_4_5_FULL: Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
+        Model.NAI_DIFFUSION_5_CURATED: Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+        Model.NAI_DIFFUSION_5_CURATED_INPAINTING: Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+        Model.NAI_DIFFUSION_5_FULL: Model.NAI_DIFFUSION_5_FULL_INPAINTING,
+        Model.NAI_DIFFUSION_5_FULL_MEDIUM: Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING,
+    }
+    return mapping.get(model, model) if isinstance(model, Model) else model
+
+
 def is_v5_model(model: "ModelTypeAlias") -> bool:
     return as_model(model) in V5_MODEL_LIST
 

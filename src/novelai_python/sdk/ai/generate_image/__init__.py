@@ -40,6 +40,7 @@ from novelai_python.sdk.ai._enum import (
     as_model,
     get_default_noise_schedule,
     get_default_uc_preset,
+    get_inpainting_model,
     get_max_characters,
     get_model_group,
     get_quality_suffix,
@@ -212,7 +213,13 @@ class GenerateImageInfer(ApiBaseModel):
     @classmethod
     def _model_enum(cls, value: ModelTypeAlias) -> ModelTypeAlias:
         # A JSON body brings the model as a string, and the smart union keeps it a str
-        return as_model(value)
+        value = as_model(value)
+        if value == Model.NAI_DIFFUSION_5_CURATED_INPAINTING:
+            logger.warning(
+                f"{value.value} does not exist on NovelAI; inpainting with V4.5 Curated, as the web client does"
+            )
+            return get_inpainting_model(value)
+        return value
 
     parameters: Params
     use_new_shared_trial: bool = False
@@ -1016,6 +1023,8 @@ class GenerateImageInfer(ApiBaseModel):
         :param variety_boost: A new feature to improve the diversity of samples.
         :return:
         """
+        # A base model is inpainted with its inpainting model, as in the web client
+        model = get_inpainting_model(model)
         # Get default parameters for the model
         params = get_default_params(model)
 
