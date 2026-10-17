@@ -7,7 +7,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator, Coroutine
 from contextlib import asynccontextmanager
-from typing import Any, Literal, NoReturn
+from typing import Any, ClassVar, Literal, NoReturn
 
 import curl_cffi
 from curl_cffi.requests import AsyncSession, Response
@@ -33,6 +33,8 @@ async def use_session(session: AsyncSession | CredentialBase) -> AsyncGenerator[
 
 class ApiBaseModel(BaseModel, ABC):
     _endpoint: str = PrivateAttr("")
+    _auth_on_400: ClassVar[bool] = True
+    """The older endpoints raise AuthError for a 400 validation error; newer ones set False (APIError)."""
 
     @property
     @abstractmethod
@@ -129,11 +131,11 @@ class ApiBaseModel(BaseModel, ABC):
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
         if response.status_code >= 400:
-            self._raise_for_status(response.status_code, response.content, request_data)
+            self._raise_for_status(response.status_code, response.content, request_data, self._auth_on_400)
         return response
 
     @staticmethod
-    def _raise_for_status(status_code: int, content: bytes, request_data: dict) -> NoReturn:
+    def _raise_for_status(status_code: int, content: bytes, request_data: dict, auth_on_400: bool = True) -> NoReturn:
         """Raise the SDK exception for an error response body (``{"statusCode", "message"}`` JSON or text)."""
         try:
             error_message = json.loads(content)
@@ -143,7 +145,8 @@ class ApiBaseModel(BaseModel, ABC):
             error_message = {"statusCode": status_code, "message": content[:200].decode("utf-8", errors="replace")}
         code = error_message.get("statusCode", status_code)
         message = str(error_message.get("message", "Unknown error"))
-        if code in (400, 401, 402):
+        # 400 is a validation error; the older endpoints report it as AuthError and keep doing so
+        if code in (401, 402) or (code == 400 and auth_on_400):
             raise AuthError(message, request=request_data, code=code, response=error_message)
         if code == 429:
             raise ConcurrentGenerationError(message, request=request_data, code=code, response=error_message)

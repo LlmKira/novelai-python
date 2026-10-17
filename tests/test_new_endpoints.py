@@ -326,3 +326,19 @@ def test_images_travel_as_form_parts():
     assert p["director_reference_images_cached"][0]["data"] == "image"
     assert [name for name, _ in parts] == ["image", "ref_multiple_0"]
     assert parts[1][1] == b"vibe-bytes"
+
+
+@pytest.mark.asyncio
+async def test_400_is_a_validation_error_on_the_newer_endpoints():
+    from novelai_python import APIError, AuthError, EncodeVibe, OAITokenCount
+
+    body = json.dumps({"statusCode": 400, "message": "bad input"}).encode()
+    for request in (OAITokenCount(model="glm-4-6", prompt="x"), EncodeVibe(image=_png(8, 8))):
+        response = mock.Mock()
+        response.status_code = 400
+        response.headers = {"Content-Type": "application/json"}
+        response.content = body
+        with pytest.raises(APIError) as e:
+            await request.request(_session(response))
+        assert not isinstance(e.value, AuthError)
+        assert e.value.message == "bad input"

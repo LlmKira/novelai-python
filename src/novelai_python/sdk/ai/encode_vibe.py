@@ -1,6 +1,7 @@
 # @File    : encode_vibe.py
 
 import base64
+from typing import ClassVar
 
 from curl_cffi.requests import AsyncSession
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator, model_validator
@@ -27,6 +28,8 @@ class EncodeVibe(ApiBaseModel):
     Only models with ``encodedVibes`` (V4 / V4.5) take vibes; V5 has no vibe transfer.
     The web client sends only ``image``, ``information_extracted``, ``mask`` and ``model``.
     """
+
+    _auth_on_400: ClassVar[bool] = False
 
     image: str | bytes
     model: ModelTypeAlias = Model.NAI_DIFFUSION_4_5_FULL

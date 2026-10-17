@@ -45,6 +45,7 @@ async def test_request_method_successful():
     )
     session = mock.MagicMock(spec=AsyncSession)
     session.get = mock.AsyncMock(return_value=successful_response)
+    session.request = session.get
     session.headers = {}
 
     session.__aenter__ = mock.AsyncMock(return_value=session)
@@ -60,11 +61,12 @@ async def test_request_method_unauthorized_error():
     auth_response = mock.Mock()
     auth_response.headers = {"Content-Type": "application/json"}
     auth_response.status_code = 401
-    auth_response.json = mock.Mock(return_value={"statusCode": 401, "message": "Access Token is incorrect."})
+    set_json(auth_response, {"statusCode": 401, "message": "Access Token is incorrect."})
 
     session = mock.MagicMock(spec=AsyncSession)
     session.headers = {}
     session.get = mock.AsyncMock(return_value=auth_response)
+    session.request = session.get
 
     session.__aenter__ = mock.AsyncMock(return_value=session)
     session.__aexit__ = mock.AsyncMock(return_value=None)
@@ -87,6 +89,7 @@ async def test_request_method_unknown_error():
     session = mock.MagicMock(spec=AsyncSession)
     session.headers = {}
     session.get = mock.AsyncMock(return_value=unknown_error_response)
+    session.request = session.get
 
     session.__aenter__ = mock.AsyncMock(return_value=session)
     session.__aexit__ = mock.AsyncMock(return_value=None)

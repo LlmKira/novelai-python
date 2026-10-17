@@ -10,7 +10,7 @@ fields pass through unchanged.
 import json
 import logging
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, ClassVar
 
 import curl_cffi
 from curl_cffi.requests import AsyncSession
@@ -32,6 +32,7 @@ class OAIChatMessage(BaseModel):
 
 
 class _OAIGenerateBase(ApiBaseModel):
+    _auth_on_400: ClassVar[bool] = False
     model: str
     max_tokens: int | None = None
     temperature: float | None = None
@@ -71,7 +72,7 @@ class _OAIGenerateBase(ApiBaseModel):
             try:
                 response = await sess.post(self.base_url, json=body, stream=True)
                 if response.status_code >= 400:
-                    self._raise_for_status(response.status_code, await response.acontent(), body)
+                    self._raise_for_status(response.status_code, await response.acontent(), body, self._auth_on_400)
                 async for line in response.aiter_lines():
                     text = line.decode("utf-8") if isinstance(line, bytes) else line
                     if not text.startswith("data:"):
@@ -114,6 +115,8 @@ class OAITokenCountResp(BaseModel):
 class OAITokenCount(ApiBaseModel):
     """POST /oa/v1/internal/token-count: tokenize a prompt with the model's tokenizer."""
 
+    _auth_on_400: ClassVar[bool] = False
+
     model: str
     prompt: str | list[str]
     model_config = ConfigDict(extra="allow")
@@ -145,6 +148,8 @@ class OAIModelsResp(BaseModel):
 
 class OAIModels(ApiBaseModel):
     """GET /oa/v1/models: models available to this account."""
+
+    _auth_on_400: ClassVar[bool] = False
 
     _endpoint: str = PrivateAttr(_TEXT_ENDPOINT)
 

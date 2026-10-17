@@ -50,6 +50,7 @@ async def test_successful_subscription_request():
     )
     session = mock.MagicMock(spec=AsyncSession)
     session.get = mock.AsyncMock(return_value=successful_response)
+    session.request = session.get
     session.headers = {}
 
     session.__aenter__ = mock.AsyncMock(return_value=session)
@@ -68,6 +69,7 @@ async def test_incorrect_access_token_subscription_request():
     set_json(incorrect_token_response, {"statusCode": 401, "message": "Access Token is incorrect."})
     session = mock.MagicMock(spec=AsyncSession)
     session.get = mock.AsyncMock(return_value=incorrect_token_response)
+    session.request = session.get
     session.headers = {}
 
     session.__aenter__ = mock.AsyncMock(return_value=session)
@@ -89,6 +91,7 @@ async def test_unknown_error_subscription_request():
     set_json(unknown_error_response, {"statusCode": 500, "message": "An unknown error occurred."})
     session = mock.MagicMock(spec=AsyncSession)
     session.get = mock.AsyncMock(return_value=unknown_error_response)
+    session.request = session.get
     session.headers = {}
 
     session.__aenter__ = mock.AsyncMock(return_value=session)
