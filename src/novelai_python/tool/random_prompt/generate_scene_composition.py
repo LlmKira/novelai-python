@@ -2590,8 +2590,10 @@ def select_weighted_option(
             return []
         return item[4]
 
-    # As the web client's selector (LR, 2026-10 bundle): drop a row if any of its exclusions
-    # ([4]) is already a condition, or if any of its requirements ([3]) is missing.
+    # Same as the web client's selector: drop a row if any of its exclusions ([4]) is already a
+    # condition, or if any of its requirements ([3]) is missing. The web client never reads [2]
+    # (e.g. "full body" -> feet), so rows that require "feet" or "female" are never picked there
+    # either; this port keeps that behaviour rather than inventing one.
     filtered_options = [
         option
         for option in options
@@ -2615,10 +2617,8 @@ def select_weighted_option(
     for option in filtered_options:
         cumulative_weight += get_weight(option[1])
         if random_value <= cumulative_weight:
-            required = []
-            if len(option) >= 4:
-                required = option[3]
-            for req in required:
+            # the web client adds the row's requirements, not the tags in [2]
+            for req in get_fourth_array(option):
                 conditions.add(req)
             return option[0]
     return ""
