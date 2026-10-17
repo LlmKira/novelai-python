@@ -71,7 +71,8 @@ def test_auto_text_only_on_v5_and_can_be_turned_off():
         input='sign, "Hello"', model=Model.NAI_DIFFUSION_5_FULL, parameters=gen.parameters, auto_text=False
     )
     assert "teXt:" not in off.input
-    assert "auto_text" not in off.model_dump(mode="json")
+    assert off.model_dump(mode="json")["auto_text"] is False  # kept for a round trip through JSON
+    assert "auto_text" not in off._build_body(stream=False)[0]  # but never sent to NovelAI
 
 
 # --- random prompt selector: exclusions and requirements (web client LR) ---

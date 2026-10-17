@@ -3,7 +3,7 @@ from enum import Enum
 from io import BytesIO
 
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CharacterPosition(BaseModel):
@@ -52,6 +52,15 @@ class Character(BaseModel):
     prompt: str = Field(default="", description="Prompt")
     uc: str = Field(default="", description="Negative Prompt")
     center: PositionMap | CharacterPosition = Field(default=PositionMap.AUTO, description="Center")
+
+    @field_validator("center", mode="after")
+    @classmethod
+    def _normalize_center(cls, value: "PositionMap | CharacterPosition") -> "PositionMap | CharacterPosition":
+        # from JSON the AUTO position comes back as a plain (0, 0); keep it AUTO so use_coords stays off
+        if isinstance(value, CharacterPosition) and (value.x, value.y) == (0, 0):
+            return PositionMap.AUTO
+        return value
+
     """Center"""
     enabled: bool = Field(default=True, description="Enabled")
 

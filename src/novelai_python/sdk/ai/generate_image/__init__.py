@@ -207,7 +207,13 @@ class GenerateImageInfer(ApiBaseModel):
 
     input: str = "1girl"
     model: ModelTypeAlias = Model.NAI_DIFFUSION_5_FULL
-    action: str | Action = Field(default=Action.GENERATE, description="Mode for img generate")
+    action: Action = Field(default=Action.GENERATE, description="Mode for img generate")
+
+    @field_validator("action", mode="before")
+    @classmethod
+    def _coerce_action(cls, value: Action | str) -> Action:
+        # JSON brings "infill" / "img2img" as a string; the validators compare with Action
+        return Action(value)
 
     @field_validator("model", mode="after")
     @classmethod
@@ -229,7 +235,7 @@ class GenerateImageInfer(ApiBaseModel):
     reCAPTCHA Enterprise token the web client attaches to free-trial generations.
     Not produced by this library; pass one through only if you already hold it.
     """
-    auto_text: bool = Field(default=True, exclude=True)
+    auto_text: bool = Field(default=True)
     """V5: append ``teXt:`` with the quoted texts of the prompt, as novelai.net does (see auto_text.py)."""
     model_config = ConfigDict(extra="ignore")
 
@@ -1077,6 +1083,8 @@ class GenerateImageInfer(ApiBaseModel):
     def _build_body(self, *, stream: bool) -> tuple[dict, bytes, str]:
         """(request data, body, content type) of a generate-image call, the same for both endpoints."""
         request_data = self.model_dump(mode="json", exclude_none=True)
+        # auto_text travels in a serialized request (the server reads it) but is not an API field
+        request_data.pop("auto_text", None)
         if self.parameters.params_version < 4:
             if stream:
                 request_data["parameters"]["stream"] = "msgpack"
