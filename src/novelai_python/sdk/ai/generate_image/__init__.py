@@ -182,14 +182,6 @@ class GenerateImageInfer(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://image.novelai.net")
     """Endpoint"""
 
-    @property
-    def endpoint(self):
-        return self._endpoint
-
-    @endpoint.setter
-    def endpoint(self, value) -> None:
-        self._endpoint = value
-
     _mutual_exclusion: bool = PrivateAttr(False)
     """Positive words and negative words are mutually exclusive, and conflicting negative words are deleted first."""
 
@@ -774,6 +766,62 @@ class GenerateImageInfer(ApiBaseModel):
         return infer
 
     @staticmethod
+    def _apply_overrides(
+        params: Params,
+        model: Model | str,
+        *,
+        negative_prompt: str | None = None,
+        ucPreset: UCPresetTypeAlias = None,
+        sm: bool | None = None,
+        steps: int | None = None,
+        seed: int | None = None,
+        sampler: Sampler | str | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        add_original_image: bool | None = None,
+        character_prompts: list[Character] | None = None,
+        reference_image_multiple: list[str | bytes] | None = None,
+        reference_strength_multiple: list[float] | None = None,
+        reference_information_extracted_multiple: list[float] | None = None,
+        qualityToggle: bool | None = None,
+        decrisp_mode: bool | None = None,
+        variety_boost: bool | None = None,
+    ) -> None:
+        """Apply the overrides shared by ``build_generate``, ``build_img2img`` and ``build_infill``."""
+        if negative_prompt is not None:
+            params.negative_prompt = negative_prompt
+        if ucPreset is not None:
+            params.ucPreset = ucPreset
+        if sm is not None:
+            params.sm = sm
+        if steps is not None:
+            params.steps = steps
+        if seed is not None:
+            params.seed = seed
+        if sampler is not None:
+            params.sampler = Sampler(sampler)
+        if width is not None:
+            params.width = width
+        if height is not None:
+            params.height = height
+        if add_original_image is not None:
+            params.add_original_image = add_original_image
+        if character_prompts is not None:
+            params.characterPrompts = character_prompts
+        if reference_image_multiple is not None:
+            params.reference_image_multiple = reference_image_multiple
+        if reference_strength_multiple is not None:
+            params.reference_strength_multiple = reference_strength_multiple
+        if reference_information_extracted_multiple is not None:
+            params.reference_information_extracted_multiple = reference_information_extracted_multiple
+        if qualityToggle is not None:
+            params.qualityToggle = qualityToggle
+        if decrisp_mode is not None:
+            params.dynamic_thresholding = decrisp_mode
+        if variety_boost is not None:
+            params.skip_cfg_above_sigma = get_supported_params(model).cfgDelaySigma if variety_boost else None
+
+    @staticmethod
     def build_generate(
         prompt: str,
         *,
@@ -828,42 +876,27 @@ class GenerateImageInfer(ApiBaseModel):
         :param character_references: V4.5 only: Precise Reference images (character / style / costume...).
         :return:
         """
-        # Get default parameters for the model
         params = get_default_params(model)
-
-        # Update only explicitly set parameters
-        if negative_prompt is not None:
-            params.negative_prompt = negative_prompt
-        if ucPreset is not None:
-            params.ucPreset = ucPreset
-        if sm is not None:
-            params.sm = sm
-        if steps is not None:
-            params.steps = steps
-        if seed is not None:
-            params.seed = seed
-        if sampler is not None:
-            params.sampler = Sampler(sampler)
-        if width is not None:
-            params.width = width
-        if height is not None:
-            params.height = height
-        if add_original_image is not None:
-            params.add_original_image = add_original_image
-        if character_prompts is not None:
-            params.characterPrompts = character_prompts
-        if reference_image_multiple is not None:
-            params.reference_image_multiple = reference_image_multiple
-        if reference_strength_multiple is not None:
-            params.reference_strength_multiple = reference_strength_multiple
-        if reference_information_extracted_multiple is not None:
-            params.reference_information_extracted_multiple = reference_information_extracted_multiple
-        if qualityToggle is not None:
-            params.qualityToggle = qualityToggle
-        if decrisp_mode is not None:
-            params.dynamic_thresholding = decrisp_mode
-        if variety_boost is not None:
-            params.skip_cfg_above_sigma = get_supported_params(model).cfgDelaySigma if variety_boost else None
+        GenerateImageInfer._apply_overrides(
+            params,
+            model,
+            negative_prompt=negative_prompt,
+            ucPreset=ucPreset,
+            sm=sm,
+            steps=steps,
+            seed=seed,
+            sampler=sampler,
+            width=width,
+            height=height,
+            add_original_image=add_original_image,
+            character_prompts=character_prompts,
+            reference_image_multiple=reference_image_multiple,
+            reference_strength_multiple=reference_strength_multiple,
+            reference_information_extracted_multiple=reference_information_extracted_multiple,
+            qualityToggle=qualityToggle,
+            decrisp_mode=decrisp_mode,
+            variety_boost=variety_boost,
+        )
         if furry_mode is True:
             prompt = f"fur dataset, {prompt}"
         if transparent_background is not None:
@@ -930,48 +963,33 @@ class GenerateImageInfer(ApiBaseModel):
         :param variety_boost: A new feature to improve the diversity of samples.
         :return:
         """
-        # Get default parameters for the model
         params = get_default_params(model)
-
-        # Update only explicitly set parameters
         params.image = image  # image is required for img2img
         if strength is not None:
             params.strength = strength
         if noise is not None:
             params.noise = noise
-        if seed is not None:
-            params.seed = seed
         if extra_noise_seed is not None:
             params.extra_noise_seed = extra_noise_seed
-        if negative_prompt is not None:
-            params.negative_prompt = negative_prompt
-        if ucPreset is not None:
-            params.ucPreset = ucPreset
-        if steps is not None:
-            params.steps = steps
-        if sampler is not None:
-            params.sampler = Sampler(sampler)
-        if width is not None:
-            params.width = width
-        if height is not None:
-            params.height = height
-        if add_original_image is not None:
-            params.add_original_image = add_original_image
-        if character_prompts is not None:
-            params.characterPrompts = character_prompts
-        if reference_image_multiple is not None:
-            params.reference_image_multiple = reference_image_multiple
-        if reference_strength_multiple is not None:
-            params.reference_strength_multiple = reference_strength_multiple
-        if reference_information_extracted_multiple is not None:
-            params.reference_information_extracted_multiple = reference_information_extracted_multiple
-        if qualityToggle is not None:
-            params.qualityToggle = qualityToggle
-        if decrisp_mode is not None:
-            params.dynamic_thresholding = decrisp_mode
-        if variety_boost is not None:
-            params.skip_cfg_above_sigma = get_supported_params(model).cfgDelaySigma if variety_boost else None
-
+        GenerateImageInfer._apply_overrides(
+            params,
+            model,
+            negative_prompt=negative_prompt,
+            ucPreset=ucPreset,
+            steps=steps,
+            seed=seed,
+            sampler=sampler,
+            width=width,
+            height=height,
+            add_original_image=add_original_image,
+            character_prompts=character_prompts,
+            reference_image_multiple=reference_image_multiple,
+            reference_strength_multiple=reference_strength_multiple,
+            reference_information_extracted_multiple=reference_information_extracted_multiple,
+            qualityToggle=qualityToggle,
+            decrisp_mode=decrisp_mode,
+            variety_boost=variety_boost,
+        )
         return GenerateImageInfer(
             input=prompt, model=model, action=Action.IMG2IMG, parameters=params, use_new_shared_trial=use_trial
         )
@@ -1030,45 +1048,30 @@ class GenerateImageInfer(ApiBaseModel):
         """
         # A base model is inpainted with its inpainting model, as in the web client
         model = get_inpainting_model(model) or model
-        # Get default parameters for the model
         params = get_default_params(model)
-
-        # Update only explicitly set parameters
         params.image = image  # image is required for infill
         params.mask = mask  # mask is required for infill
         if strength is not None:
             params.strength = strength
-        if negative_prompt is not None:
-            params.negative_prompt = negative_prompt
-        if ucPreset is not None:
-            params.ucPreset = ucPreset
-        if steps is not None:
-            params.steps = steps
-        if seed is not None:
-            params.seed = seed
-        if sampler is not None:
-            params.sampler = Sampler(sampler)
-        if width is not None:
-            params.width = width
-        if height is not None:
-            params.height = height
-        if add_original_image is not None:
-            params.add_original_image = add_original_image
-        if character_prompts is not None:
-            params.characterPrompts = character_prompts
-        if reference_image_multiple is not None:
-            params.reference_image_multiple = reference_image_multiple
-        if reference_strength_multiple is not None:
-            params.reference_strength_multiple = reference_strength_multiple
-        if reference_information_extracted_multiple is not None:
-            params.reference_information_extracted_multiple = reference_information_extracted_multiple
-        if qualityToggle is not None:
-            params.qualityToggle = qualityToggle
-        if decrisp_mode is not None:
-            params.dynamic_thresholding = decrisp_mode
-        if variety_boost is not None:
-            params.skip_cfg_above_sigma = get_supported_params(model).cfgDelaySigma if variety_boost else None
-
+        GenerateImageInfer._apply_overrides(
+            params,
+            model,
+            negative_prompt=negative_prompt,
+            ucPreset=ucPreset,
+            steps=steps,
+            seed=seed,
+            sampler=sampler,
+            width=width,
+            height=height,
+            add_original_image=add_original_image,
+            character_prompts=character_prompts,
+            reference_image_multiple=reference_image_multiple,
+            reference_strength_multiple=reference_strength_multiple,
+            reference_information_extracted_multiple=reference_information_extracted_multiple,
+            qualityToggle=qualityToggle,
+            decrisp_mode=decrisp_mode,
+            variety_boost=variety_boost,
+        )
         return GenerateImageInfer(input=prompt, model=model, action=Action.INFILL, parameters=params)
 
     def _resolve_limiter(self, limiter: DailyImageLimiter | bool | None) -> DailyImageLimiter | None:
@@ -1140,16 +1143,12 @@ class GenerateImageInfer(ApiBaseModel):
                     stream=True,
                 )
                 if response.status_code >= 400:
-                    error_message = await self.handle_error_response(response, request_data, stream=True)
-                    status_code = error_message.get("statusCode", response.status_code)
-                    message = error_message.get("message", "Unknown error")
-                    if status_code in [400, 401, 402]:
-                        raise AuthError(message, request=request_data, code=status_code, response=error_message)
-                    if status_code == 429:
-                        raise ConcurrentGenerationError(
-                            message, request=request_data, code=status_code, response=error_message
-                        )
-                    raise APIError(message, request=request_data, code=status_code, response=error_message)
+                    self._raise_for_status(
+                        response.status_code,
+                        await response.acontent(),
+                        request_data,
+                        self._legacy_400_as_auth,
+                    )
 
                 buffer = bytearray()
                 async for chunk in response.aiter_content():
@@ -1239,26 +1238,12 @@ class GenerateImageInfer(ApiBaseModel):
                 # Validate response content type and status code
                 response_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                 if response_type not in ZIP_CONTENT_TYPES + IMAGE_CONTENT_TYPES or response.status_code >= 400:
-                    error_message = await self.handle_error_response(response, request_data)
-                    status_code = error_message.get("statusCode", response.status_code)
-                    message = error_message.get("message", "Unknown error")
-                    if status_code in [400, 401, 402]:
-                        # 400 : validation error
-                        # 401 : unauthorized
-                        # 402 : payment required
-                        # 409 : conflict
-                        raise AuthError(message, request=request_data, code=status_code, response=error_message)
-                    elif status_code == 409:
-                        raise APIError(message, request=request_data, code=status_code, response=error_message)
-                    elif status_code == 429:
-                        raise ConcurrentGenerationError(
-                            message=message,
-                            request=request_data,
-                            code=status_code,
-                            response=error_message,
-                        )
-                    else:
-                        raise APIError(message, request=request_data, code=status_code, response=error_message)
+                    self._raise_for_status(
+                        response.status_code,
+                        response.content,
+                        request_data,
+                        self._legacy_400_as_auth,
+                    )
 
                 # Unpack the ZIP response (or accept a bare image, which V5 may return for webp)
                 try:

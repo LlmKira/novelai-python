@@ -6,6 +6,7 @@ from pydantic import ConfigDict, Field
 
 from ..schema import RespBase
 from .information import InformationResp
+from .priority import PriorityResp
 from .subscription import SubscriptionResp
 
 
@@ -21,7 +22,7 @@ class UserDataResp(RespBase):
 
     subscription: SubscriptionResp | None = Field(default=None, description="Same shape as /user/subscription")
     information: InformationResp | None = Field(default=None, description="Same shape as /user/information")
-    priority: dict[str, Any] | None = Field(default=None, description="Queue priority block")
+    priority: PriorityResp | None = Field(default=None, description="Queue priority block")
     keystore: dict[str, Any] | None = Field(default=None, description="Encrypted keystore block")
     settings: Any | None = Field(default=None, description="Client settings blob")
 

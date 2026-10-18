@@ -1,7 +1,7 @@
 # @Author  : sudoskys
 import logging
 from enum import Enum
-from typing import Literal, Union
+from typing import ClassVar, Literal, Union
 
 import curl_cffi
 import pydantic
@@ -25,6 +25,7 @@ class VoiceGenerate(ApiBaseModel):
     """
 
     _endpoint: str = PrivateAttr("https://api.novelai.net")
+    _legacy_400_as_auth: ClassVar[bool] = False
     text: str = Field(..., description="Text to generate voice", max_length=1000)
     """Limit 1000 characters"""
     voice: int = Field(default=-1, description="Seed", ge=-1)
@@ -49,14 +50,6 @@ class VoiceGenerate(ApiBaseModel):
     @property
     def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/generate-voice"
-
-    @property
-    def endpoint(self):
-        return self._endpoint
-
-    @endpoint.setter
-    def endpoint(self, value) -> None:
-        self._endpoint = value
 
     @classmethod
     def build(
@@ -104,13 +97,12 @@ class VoiceGenerate(ApiBaseModel):
                     header_type not in ["audio/mpeg", "audio/ogg", "audio/opus", "audio/wav", "audio/webm"]
                     or response.status_code >= 400
                 ):
-                    error_message = await self.handle_error_response(response=response, request_data=request_data)
-                    status_code = error_message.get("statusCode", response.status_code)
-                    message = error_message.get("message", "Unknown error")
-                    if status_code in [400]:
-                        # Validation tts version error
-                        raise APIError(message, request=request_data, code=status_code, response=error_message)
-                    raise APIError(message, request=request_data, code=status_code, response=error_message)
+                    self._raise_for_status(
+                        response.status_code,
+                        response.content,
+                        request_data,
+                        self._legacy_400_as_auth,
+                    )
                 return VoiceResponse(
                     meta=request_data,
                     audio=response.content,

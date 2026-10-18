@@ -79,6 +79,10 @@ class RandomPromptGeneratorV2:
     """
     New generator (V2). Based on NovelAI 'Magic Dice' logic.
     Supports Anime V3, V4 and Furry modes with advanced tag compatibility logic.
+
+    V1 (``RandomPromptGenerator``) follows the older scene-composition tables; V2 follows
+    Magic Dice. Both use the same ``PromptOption`` selector, but their tag probabilities
+    differ, so equal seeds are not expected to produce equal prompts.
     """
 
     @staticmethod

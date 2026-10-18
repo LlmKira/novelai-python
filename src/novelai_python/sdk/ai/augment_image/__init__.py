@@ -38,14 +38,6 @@ class AugmentImageInfer(ApiBaseModel):
 
     _endpoint: str = PrivateAttr("https://image.novelai.net")
 
-    @property
-    def endpoint(self):
-        return self._endpoint
-
-    @endpoint.setter
-    def endpoint(self, value) -> None:
-        self._endpoint = value
-
     req_type: ReqType = Field(..., description="Type of augmentation")
     width: int = Field(..., description="Width of the image")
     height: int = Field(..., description="Height of the image")
@@ -182,26 +174,12 @@ class AugmentImageInfer(ApiBaseModel):
                     response.headers.get("Content-Type") not in ["binary/octet-stream", "application/x-zip-compressed"]
                     or response.status_code >= 400
                 ):
-                    error_message = await self.handle_error_response(response, request_data)
-                    status_code = error_message.get("statusCode", response.status_code)
-                    message = error_message.get("message", "Unknown error")
-                    if status_code in [400, 401, 402]:
-                        # 400 : validation error
-                        # 401 : unauthorized
-                        # 402 : payment required
-                        # 409 : conflict
-                        raise AuthError(message, request=request_data, code=status_code, response=error_message)
-                    elif status_code == 409:
-                        raise APIError(message, request=request_data, code=status_code, response=error_message)
-                    elif status_code == 429:
-                        raise ConcurrentGenerationError(
-                            message=message,
-                            request=request_data,
-                            code=status_code,
-                            response=error_message,
-                        )
-                    else:
-                        raise APIError(message, request=request_data, code=status_code, response=error_message)
+                    self._raise_for_status(
+                        response.status_code,
+                        response.content,
+                        request_data,
+                        self._legacy_400_as_auth,
+                    )
 
                 # Unpack the ZIP response
                 try:

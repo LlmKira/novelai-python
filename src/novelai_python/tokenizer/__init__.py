@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import pathlib
+import tempfile
 import zlib
 
 from curl_cffi import requests as curl_requests
@@ -21,6 +22,9 @@ def download_file(url, destination_path, session) -> None:
     """
     Download a file from the specified URL and save it to the destination path.
 
+    The file is written to a temporary sibling and renamed into place, so a crash or
+    a concurrent process never leaves a half-written tokenizer behind.
+
     :param url: The URL to download the file from.
     :param destination_path: The path to save the downloaded file.
     :param session: a curl_cffi Session used for the download.
@@ -37,8 +41,16 @@ def download_file(url, destination_path, session) -> None:
         },
     )
     response.raise_for_status()
-    with open(destination_path, "wb") as f:
-        f.write(response.content)
+    destination = pathlib.Path(destination_path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(dir=destination.parent, prefix=f".{destination.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as temp_file:
+            temp_file.write(response.content)
+        os.replace(temp_name, destination)
+    except BaseException:
+        pathlib.Path(temp_name).unlink(missing_ok=True)
+        raise
 
 
 class TokenizerSetting(BaseModel):
@@ -75,6 +87,26 @@ def is_t5_model(model_name: str) -> bool:
     return model_name.lower().startswith("t5_tokenizer")
 
 
+def default_tokenizer_dir() -> pathlib.Path:
+    """Where downloaded ``.def`` files are cached.
+
+    The package directory is used when it is writable (editable installs); a system
+    site-packages is often read-only, so fall back to the user cache. ``NOVELAI_TOKENIZER_DIR``
+    overrides both.
+    """
+    override = os.environ.get("NOVELAI_TOKENIZER_DIR")
+    if override:
+        path = pathlib.Path(override)
+    else:
+        package_dir = pathlib.Path(__file__).parent
+        if os.access(package_dir, os.W_OK):
+            return package_dir
+        cache_root = pathlib.Path(os.environ.get("XDG_CACHE_HOME", pathlib.Path.home() / ".cache"))
+        path = cache_root / "novelai_python" / "tokenizer"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 class NaiTokenizer:
     def __init__(
         self,
@@ -94,7 +126,7 @@ class NaiTokenizer:
             )
         self._download_session = download_session
         if tokenizer_model_path is None:
-            tokenizer_model_path = pathlib.Path(__file__).parent
+            tokenizer_model_path = default_tokenizer_dir()
         self.tokenizer_model_path = tokenizer_model_path
         self._load_tokenizer_settings()
         self.tokenizer: Tokenizer = self._create_tokenizer()
