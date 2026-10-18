@@ -4,14 +4,15 @@
 # @File    : suggest_tag.py
 
 import asyncio
+import logging
 import os
 
 from dotenv import load_dotenv
-from loguru import logger
 from pydantic import SecretStr
 
-from novelai_python import APIError
-from novelai_python import SuggestTags, SuggestTagsResp, JwtCredential
+from novelai_python import APIError, JwtCredential, SuggestTags, SuggestTagsResp
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 

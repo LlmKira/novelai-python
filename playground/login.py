@@ -4,13 +4,14 @@
 # @File    : login.py
 
 import asyncio
+import logging
 import os
 
 from dotenv import load_dotenv
-from loguru import logger
 
-from novelai_python import APIError
-from novelai_python import Login, LoginResp
+from novelai_python import APIError, Login, LoginResp
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 

@@ -1,41 +1,31 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/1/26 上午11:04
 # @Author  : sudoskys
 # @File    : JwtToken.py
 
 
-import arrow
-import shortuuid
-from curl_cffi.requests import AsyncSession
-from loguru import logger
-from pydantic import SecretStr, Field, field_validator
+import logging
 
-from ._base import CredentialBase
+from pydantic import Field, SecretStr, field_validator
+
+from ._base import BearerCredential
+
+logger = logging.getLogger(__name__)
 
 
-class JwtCredential(CredentialBase):
+class JwtCredential(BearerCredential):
     """
-    JwtCredential is the base class for all credential.
+    JwtCredential sends a JWT access token as the bearer token.
     """
-    jwt_token: SecretStr = Field(None, description="jwt token")
-    x_correlation_id: str = shortuuid.uuid()[0:6]
 
-    async def get_session(self, timeout: int = 180, update_headers: dict = None):
-        headers = {
-            "Authorization": f"Bearer {self.jwt_token.get_secret_value()}",
-            "Content-Type": "application/json",
-            "x-correlation-id": self.x_correlation_id,
-            "x-initiated-at": f"{arrow.utcnow().isoformat()}Z",
-        }
+    jwt_token: SecretStr | None = Field(default=None, description="jwt token")
 
-        if update_headers:
-            assert isinstance(update_headers, dict), "update_headers must be a dict"
-            headers.update(update_headers)
+    def _token(self) -> str:
+        if self.jwt_token is None:
+            raise ValueError("jwt_token is not set")
+        return self.jwt_token.get_secret_value()
 
-        return AsyncSession(timeout=timeout, headers=headers, impersonate="chrome136")
-
-    @field_validator('jwt_token')
-    def check_jwt_token(cls, v: SecretStr):
-        if not v.get_secret_value().startswith("ey"):
+    @field_validator("jwt_token")
+    def check_jwt_token(cls, v: SecretStr | None):
+        if v is not None and not v.get_secret_value().startswith("ey"):
             logger.warning("jwt_token should start with ey")
         return v

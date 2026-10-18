@@ -2,7 +2,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from novelai_python.tool.image_metadata import ImageMetadata, ImageLsbDataExtractor, ImageVerifier
+from novelai_python.tool.image_metadata import ImageLsbDataExtractor, ImageMetadata, ImageVerifier
 
 '''
     You can apply metadata to an image using the LSB method.

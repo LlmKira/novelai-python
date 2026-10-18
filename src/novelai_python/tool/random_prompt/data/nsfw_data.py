@@ -3,36 +3,36 @@ from __future__ import annotations
 
 import base64
 import json
-from typing import List, cast, TypedDict, Union
+from typing import TypedDict, cast
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TagEntry(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     tag: str = Field(..., description="Тег или несколько через запятую")
-    weight: Union[int, float] = Field(..., ge=1, le=100)
+    weight: int | float = Field(..., ge=1, le=100)
     extra: list[str] = Field(default_factory=list, exclude=True)
 
 
 class NsfwData(TypedDict, total=False):
-    p: List[list[Union[str, int, list[str]]]]
-    mp: List[list[Union[str, int]]]
-    n: List[list[Union[str, int]]]
-    u: List[list[Union[str, int]]]
-    nk: List[list[Union[str, int]]]
-    bd: List[list[Union[str, int]]]
-    nEx: List[list[Union[str, int]]]
-    nSM: List[list[Union[str, int, list[str]]]]  # тут бывают кривые записи
-    nSA: List[list[Union[str, int]]]
-    nSP: List[list[Union[str, int]]]
-    nPM: List[list[Union[str, int, list[str]]]]
-    nPA: List[list[Union[str, int]]]
-    nPP: List[list[Union[str, int]]]
-    sMod: List[list[Union[str, int]]]
-    sActMod: List[list[Union[str, int]]]
-    sT: List[list[Union[str, int]]]
+    p: list[list[str | int | list[str]]]
+    mp: list[list[str | int]]
+    n: list[list[str | int]]
+    u: list[list[str | int]]
+    nk: list[list[str | int]]
+    bd: list[list[str | int]]
+    nEx: list[list[str | int]]
+    nSM: list[list[str | int | list[str]]]  # тут бывают кривые записи
+    nSA: list[list[str | int]]
+    nSP: list[list[str | int]]
+    nPM: list[list[str | int | list[str]]]
+    nPA: list[list[str | int]]
+    nPP: list[list[str | int]]
+    sMod: list[list[str | int]]
+    sActMod: list[list[str | int]]
+    sT: list[list[str | int]]
     h: str
     yu: str
     ya: str
@@ -61,24 +61,24 @@ _raw = cast(NsfwData, _decode())
 
 
 # ====================== ЭКСПОРТ ======================
-NSFW_P       = _raw.get("p", [])
-NSFW_MP      = _raw.get("mp", [])
-NSFW_N       = _raw.get("n", [])
-NSFW_U       = _raw.get("u", [])
-NSFW_NK      = _raw.get("nk", [])
-NSFW_BD      = _raw.get("bd", [])
-NSFW_NEX     = _raw.get("nEx", [])
-NSFW_NSM     = _raw.get("nSM", [])
-NSFW_NSA     = _raw.get("nSA", [])
-NSFW_NSP     = _raw.get("nSP", [])
-NSFW_NPM     = _raw.get("nPM", [])
-NSFW_NPA     = _raw.get("nPA", [])
-NSFW_NPP     = _raw.get("nPP", [])
-NSFW_SMOD    = _raw.get("sMod", [])
+NSFW_P = _raw.get("p", [])
+NSFW_MP = _raw.get("mp", [])
+NSFW_N = _raw.get("n", [])
+NSFW_U = _raw.get("u", [])
+NSFW_NK = _raw.get("nk", [])
+NSFW_BD = _raw.get("bd", [])
+NSFW_NEX = _raw.get("nEx", [])
+NSFW_NSM = _raw.get("nSM", [])
+NSFW_NSA = _raw.get("nSA", [])
+NSFW_NSP = _raw.get("nSP", [])
+NSFW_NPM = _raw.get("nPM", [])
+NSFW_NPA = _raw.get("nPA", [])
+NSFW_NPP = _raw.get("nPP", [])
+NSFW_SMOD = _raw.get("sMod", [])
 NSFW_SACTMOD = _raw.get("sActMod", [])
-NSFW_ST      = _raw.get("sT", [])
+NSFW_ST = _raw.get("sT", [])
 
-NSFW_H  = _raw.get("h", "hetero")
+NSFW_H = _raw.get("h", "hetero")
 NSFW_YU = _raw.get("yu", "yuri")
 NSFW_YA = _raw.get("ya", "yaoi")
 NSFW_FU = _raw.get("fu", "futanari")

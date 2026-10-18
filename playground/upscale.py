@@ -16,8 +16,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
-from novelai_python import APIError, Upscale
-from novelai_python import UpscaleResp, JwtCredential
+from novelai_python import APIError, JwtCredential, Upscale, UpscaleResp
 from novelai_python.sdk.ai.generate_image import Action
 from novelai_python.utils.useful import enum_to_list
 

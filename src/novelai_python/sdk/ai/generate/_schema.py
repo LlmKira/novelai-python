@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 """
 class StorySettings(BaseModel):
@@ -52,7 +51,7 @@ class PenStyle(Enum):
 
 
 @dataclass
-class Key(object):
+class Key:
     Temperature = ("temperature", 0)
     TopK = ("top_k", 1)
     TopP = ("top_p", 2)
@@ -67,13 +66,13 @@ class Key(object):
 
 
 class KeyOrderEntry(BaseModel):
-    id: Tuple[str, int]
+    id: tuple[str, int]
     enabled: bool
 
 
 class LogitBiasGroup(BaseModel):
-    sequence: List[int]
-    bias: float = Field(default=None, gt=-1, lt=1)
+    sequence: list[int]
+    bias: float | None = Field(default=None, gt=-1, lt=1)
     ensure_sequence_finish: bool
     generate_once: bool
 
@@ -82,18 +81,19 @@ class AdvanceLLMSetting(BaseModel):
     """
     LLM Generation Request Parameters
     """
-    min_length: Optional[int] = 1
-    max_length: Optional[int] = None
-    repetition_penalty: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
-    generate_until_sentence: Optional[bool] = True
-    use_cache: Optional[bool] = False
-    use_string: Optional[bool] = False
-    return_full_text: Optional[bool] = False
-    prefix: Optional[str] = ""
-    logit_bias_exp: Optional[List[LogitBiasGroup]] = None
-    num_logprobs: Optional[int] = None
-    order: List[int] = Field(default_factory=list)
-    bracket_ban: Optional[bool] = True
+
+    min_length: int | None = 1
+    max_length: int | None = None
+    repetition_penalty: float | int | None = Field(default=None, allow_inf_nan=False)
+    generate_until_sentence: bool | None = True
+    use_cache: bool | None = False
+    use_string: bool | None = False
+    return_full_text: bool | None = False
+    prefix: str | None = ""
+    logit_bias_exp: list[LogitBiasGroup] | None = None
+    num_logprobs: int | None = None
+    order: list[int] = Field(default_factory=list)
+    bracket_ban: bool | None = True
     model_config = ConfigDict(extra="allow")
 
 
@@ -101,39 +101,40 @@ class LLMGenerationParams(BaseModel):
     """
     LLM Generation Settings
     """
-    textGenerationSettingsVersion: Optional[int] = None
-    temperature: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
-    max_length: Optional[int] = Field(default=None, ge=1, le=100)  # Max 150(vip3),100(vip2)
-    min_length: Optional[int] = Field(default=None, ge=1, le=100)  # Max 150(vip3),100(vip2)
-    top_k: Optional[int] = Field(default=None, ge=0)
-    top_p: Optional[Union[float, int]] = Field(default=None, gt=0, le=1, allow_inf_nan=False)
-    top_a: Optional[Union[float, int]] = Field(default=None, ge=0, allow_inf_nan=False)
-    typical_p: Optional[Union[float, int]] = Field(default=None, ge=0, le=1, allow_inf_nan=False)
-    tail_free_sampling: Optional[Union[float, int]] = Field(default=None, ge=0, allow_inf_nan=False)
-    repetition_penalty: Optional[Union[float, int]] = Field(default=None, gt=0, allow_inf_nan=False)
-    repetition_penalty_range: Optional[int] = Field(default=None, ge=0)
-    repetition_penalty_slope: Optional[Union[float, int]] = Field(default=None, ge=0, allow_inf_nan=False)
 
-    eos_token_id: int = None
-    bad_words_ids: Optional[List[List[int]]] = None
-    logit_bias_groups: Optional[List[LogitBiasGroup]] = Field(default_factory=list)
+    textGenerationSettingsVersion: int | None = None
+    temperature: float | int | None = Field(default=None, allow_inf_nan=False)
+    max_length: int | None = Field(default=None, ge=1, le=100)  # Max 150(vip3),100(vip2)
+    min_length: int | None = Field(default=None, ge=1, le=100)  # Max 150(vip3),100(vip2)
+    top_k: int | None = Field(default=None, ge=0)
+    top_p: float | int | None = Field(default=None, gt=0, le=1, allow_inf_nan=False)
+    top_a: float | int | None = Field(default=None, ge=0, allow_inf_nan=False)
+    typical_p: float | int | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    tail_free_sampling: float | int | None = Field(default=None, ge=0, allow_inf_nan=False)
+    repetition_penalty: float | int | None = Field(default=None, gt=0, allow_inf_nan=False)
+    repetition_penalty_range: int | None = Field(default=None, ge=0)
+    repetition_penalty_slope: float | int | None = Field(default=None, ge=0, allow_inf_nan=False)
 
-    repetition_penalty_frequency: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
-    repetition_penalty_presence: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
-    repetition_penalty_whitelist: Optional[List[int]] = None
-    repetition_penalty_default_whitelist: Optional[bool] = None
-    cfg_scale: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
-    cfg_uc: Optional[str] = None
+    eos_token_id: int | None = None
+    bad_words_ids: list[list[int]] | None = None
+    logit_bias_groups: list[LogitBiasGroup] | None = Field(default_factory=list)
+
+    repetition_penalty_frequency: float | int | None = Field(default=None, allow_inf_nan=False)
+    repetition_penalty_presence: float | int | None = Field(default=None, allow_inf_nan=False)
+    repetition_penalty_whitelist: list[int] | None = None
+    repetition_penalty_default_whitelist: bool | None = None
+    cfg_scale: float | int | None = Field(default=None, allow_inf_nan=False)
+    cfg_uc: str | None = None
     phrase_rep_pen: PenStyle = PenStyle.Off
-    top_g: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
-    mirostat_tau: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
-    mirostat_lr: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
-    math1_temp: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
-    math1_quad: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
-    math1_quad_entropy_scale: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
-    min_p: Optional[Union[float, int]] = Field(default=None, allow_inf_nan=False)
+    top_g: float | int | None = Field(default=None, allow_inf_nan=False)
+    mirostat_tau: float | int | None = Field(default=None, allow_inf_nan=False)
+    mirostat_lr: float | int | None = Field(default=None, allow_inf_nan=False)
+    math1_temp: float | int | None = Field(default=None, allow_inf_nan=False)
+    math1_quad: float | int | None = Field(default=None, allow_inf_nan=False)
+    math1_quad_entropy_scale: float | int | None = Field(default=None, allow_inf_nan=False)
+    min_p: float | int | None = Field(default=None, allow_inf_nan=False)
 
-    order: Union[List[int], List[KeyOrderEntry]] = Field(
+    order: list[int] | list[KeyOrderEntry] = Field(
         default=[
             KeyOrderEntry(id=Key.Cfg, enabled=False),
             KeyOrderEntry(id=Key.Temperature, enabled=True),
@@ -156,7 +157,7 @@ class LLMGenerationParams(BaseModel):
             "eos_token_id",
             "bad_words_ids",
             "logit_bias_groups",
-            "order"
+            "order",
         }
         return {key: value for key, value in parameters.items() if key not in skipped_params}
 
@@ -188,7 +189,7 @@ class LoreDefaults(BaseModel):
     contextConfig: ContextConfig
     lastUpdatedAt: str
     displayName: str
-    keys: List[str]
+    keys: list[str]
     searchRange: int
     enabled: bool
     forceActivation: bool
@@ -214,10 +215,10 @@ class ContextDefaults(BaseModel):
 
 
 class ContextPresets(BaseModel):
-    contextDefaults: Optional[List[ContextDefaults]]
-    ephemeralDefaults: Optional[List[EphemeralDefaults]]
-    loreDefaults: Optional[List[LoreDefaults]]
-    storyDefault: Optional[StoryDefault]
+    contextDefaults: list[ContextDefaults] | None
+    ephemeralDefaults: list[EphemeralDefaults] | None
+    loreDefaults: list[LoreDefaults] | None
+    storyDefault: StoryDefault | None
 
 
 class Preset(BaseModel):
@@ -227,4 +228,4 @@ class Preset(BaseModel):
     id: str
     parameters: LLMGenerationParams
     description: str
-    contextPresets: Optional[ContextPresets] = None
+    contextPresets: ContextPresets | None = None

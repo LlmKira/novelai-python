@@ -1,30 +1,37 @@
 import json
 import pathlib
 from functools import lru_cache
-from typing import List, Dict, Optional
 
-from novelai_python._enum import TextLLMModelTypeAlias, TextTokenizerGroup, TextLLMModel, \
-    COLORS_LLM
+from novelai_python._enum import COLORS_LLM, TextLLMModel, TextLLMModelTypeAlias, TextTokenizerGroup
 from novelai_python.sdk.ai.generate._const import BanWords, DefaultBanWords, RepetitionPenaltyWhitelist
-from novelai_python.sdk.ai.generate._schema import Theme, Preset, StoryDefault, ContextConfig, LoreDefaults, \
-    EphemeralDefaults, ContextDefaults, ContextPresets, KeyOrderEntry, Key, PenStyle, LLMGenerationParams, \
-    LogitBiasGroup
+from novelai_python.sdk.ai.generate._schema import (
+    ContextConfig,
+    ContextDefaults,
+    ContextPresets,
+    EphemeralDefaults,
+    Key,
+    KeyOrderEntry,
+    LLMGenerationParams,
+    LogitBiasGroup,
+    LoreDefaults,
+    PenStyle,
+    Preset,
+    StoryDefault,
+    Theme,
+)
 
 themes_json = pathlib.Path(__file__).parent / "themes.json"
 
 
 @lru_cache
-def get_themes() -> List[Theme]:
+def get_themes() -> list[Theme]:
     theme_data = json.loads(themes_json.read_text())
     assert isinstance(theme_data, list)
     return [Theme.model_validate(data) for data in theme_data]
 
 
-def get_bad_words_ids(group: TextTokenizerGroup, use_banBrackets: bool):
-    if use_banBrackets:
-        ban_words = BanWords()
-    else:
-        ban_words = DefaultBanWords()
+def get_bad_words_ids(group: str | None, use_banBrackets: bool):
+    ban_words = BanWords() if use_banBrackets else DefaultBanWords()
     if group == TextTokenizerGroup.GENJI:
         return ban_words.GENJI
     elif group == TextTokenizerGroup.PILE:
@@ -43,7 +50,7 @@ def get_bad_words_ids(group: TextTokenizerGroup, use_banBrackets: bool):
     return []
 
 
-def get_eos_token_id(group: TextTokenizerGroup):
+def get_eos_token_id(group: str | None) -> int:
     if group in [TextTokenizerGroup.PILE, TextTokenizerGroup.PILE_NAI]:
         return 31
     elif group == TextTokenizerGroup.GPT2:
@@ -52,10 +59,10 @@ def get_eos_token_id(group: TextTokenizerGroup):
         return 49405
     elif group == TextTokenizerGroup.LLAMA3:
         return 29
-    raise NotImplementedError(f"Invalid tokenizer for adventure EOS token")
+    raise NotImplementedError("Invalid tokenizer for adventure EOS token")
 
 
-def get_end_exclude_sequences(group: TextTokenizerGroup):
+def get_end_exclude_sequences(group: str | None):
     if group in [TextTokenizerGroup.PILE, TextTokenizerGroup.PILE_NAI]:
         return [[187, 31]]
     elif group == TextTokenizerGroup.GPT2:
@@ -64,10 +71,10 @@ def get_end_exclude_sequences(group: TextTokenizerGroup):
         return [[85, 49405]]
     elif group == TextTokenizerGroup.LLAMA3:
         return [[29]]
-    raise NotImplementedError(f"Invalid tokenizer for adventure end sequences")
+    raise NotImplementedError("Invalid tokenizer for adventure end sequences")
 
 
-def get_logit_bias_group(group: TextTokenizerGroup):
+def get_logit_bias_group(group: str | None):
     """
     Get logit bias group
     :param group:
@@ -78,7 +85,7 @@ def get_logit_bias_group(group: TextTokenizerGroup):
             LogitBiasGroup(sequence=[7398], bias=-0.25, ensure_sequence_finish=False, generate_once=False),
             LogitBiasGroup(sequence=[15864], bias=-0.25, ensure_sequence_finish=False, generate_once=False),
             LogitBiasGroup(sequence=[29146], bias=-0.25, ensure_sequence_finish=False, generate_once=False),
-            LogitBiasGroup(sequence=[4707], bias=-0.25, ensure_sequence_finish=False, generate_once=False)
+            LogitBiasGroup(sequence=[4707], bias=-0.25, ensure_sequence_finish=False, generate_once=False),
         ]
     return []
 
@@ -103,41 +110,79 @@ def pickup_reverse_bias_model(model: TextLLMModelTypeAlias):
     return model
 
 
-def get_default_prefix(model: TextLLMModel) -> List[str]:
+def get_default_prefix(model: TextLLMModel) -> list[str]:
     """
     Get prefix for model
     :param model:
     :return:
     """
     if model in [TextLLMModel.J_6B_V4, TextLLMModel.EUTERPE_V2]:
-        return [
-            theme.label for theme in get_themes()
-            if theme.label not in ["special_instruct", "special_openings"]
-        ]
+        return [theme.label for theme in get_themes() if theme.label not in ["special_instruct", "special_openings"]]
     elif model == TextLLMModel.KRAKE_V2:
         return [
-            "vanilla", "general_crossgenre", "theme_textadventure", "style_algernonblackwood",
-            "style_arthurconandoyle", "style_edgarallanpoe", "style_hplovecraft", "style_shridanlefanu",
-            "style_julesverne", "theme_19thcenturyromance", "theme_actionarcheology", "theme_ai",
-            "theme_animalfiction", "theme_childrens", "theme_christmas", "theme_comedicfantasy", "theme_cyberpunk",
-            "theme_darkfantasy", "theme_dragons", "theme_egypt", "theme_feudaljapan", "theme_generalfantasy",
-            "theme_history", "theme_horror", "theme_huntergatherer", "theme_litrpg", "theme_magicacademy",
-            "theme_libraries", "theme_mars", "theme_medieval", "theme_militaryscifi", "theme_mystery",
-            "theme_naval", "theme_philosophy", "theme_pirates", "theme_poeticfantasy", "theme_postapocalyptic",
-            "theme_rats", "theme_romanempire", "theme_sciencefantasy", "theme_spaceopera", "theme_superheroes",
-            "theme_airships", "theme_travel", "theme_urbanfantasy", "theme_valentines", "theme_vikings",
-            "theme_westernromance", "inspiration_crabsnailandmonkey", "inspiration_mercantilewolfgirlromance",
-            "inspiration_nervegear", "theme_romanceofthreekingdoms", "inspiration_thronewars",
-            "inspiration_witchatlevelcap"
+            "vanilla",
+            "general_crossgenre",
+            "theme_textadventure",
+            "style_algernonblackwood",
+            "style_arthurconandoyle",
+            "style_edgarallanpoe",
+            "style_hplovecraft",
+            "style_shridanlefanu",
+            "style_julesverne",
+            "theme_19thcenturyromance",
+            "theme_actionarcheology",
+            "theme_ai",
+            "theme_animalfiction",
+            "theme_childrens",
+            "theme_christmas",
+            "theme_comedicfantasy",
+            "theme_cyberpunk",
+            "theme_darkfantasy",
+            "theme_dragons",
+            "theme_egypt",
+            "theme_feudaljapan",
+            "theme_generalfantasy",
+            "theme_history",
+            "theme_horror",
+            "theme_huntergatherer",
+            "theme_litrpg",
+            "theme_magicacademy",
+            "theme_libraries",
+            "theme_mars",
+            "theme_medieval",
+            "theme_militaryscifi",
+            "theme_mystery",
+            "theme_naval",
+            "theme_philosophy",
+            "theme_pirates",
+            "theme_poeticfantasy",
+            "theme_postapocalyptic",
+            "theme_rats",
+            "theme_romanempire",
+            "theme_sciencefantasy",
+            "theme_spaceopera",
+            "theme_superheroes",
+            "theme_airships",
+            "theme_travel",
+            "theme_urbanfantasy",
+            "theme_valentines",
+            "theme_vikings",
+            "theme_westernromance",
+            "inspiration_crabsnailandmonkey",
+            "inspiration_mercantilewolfgirlromance",
+            "inspiration_nervegear",
+            "theme_romanceofthreekingdoms",
+            "inspiration_thronewars",
+            "inspiration_witchatlevelcap",
         ]
-    elif model in [TextLLMModel.CASSANDRA] + COLORS_LLM:
+    elif model in [TextLLMModel.CASSANDRA, *COLORS_LLM]:
         return ["vanilla", "special_instruct", "special_proseaugmenter", "theme_textadventure"]
     elif model == TextLLMModel.KAYRA:
         return ["vanilla", "special_instruct", "special_proseaugmenter", "theme_textadventure", "theme_christmas"]
     return []
 
 
-def get_repetition_penalty_whitelist(group: TextTokenizerGroup) -> List[str]:
+def get_repetition_penalty_whitelist(group: str | None) -> list[str]:
     whitelist = RepetitionPenaltyWhitelist()
     if group == TextTokenizerGroup.NERDSTASH:
         return whitelist.NERDSTASH
@@ -152,13 +197,15 @@ def get_model_preset(model: TextLLMModel) -> "ModelPresetManager":
     return PresetMapping.get(model, Default)
 
 
-def get_default_preset(model: TextLLMModel) -> Preset:
+def get_default_preset(model: TextLLMModel | str) -> Preset:
+    if isinstance(model, str):
+        model = TextLLMModel(model)
     return get_model_preset(model).get_all_presets()[0]
 
 
 class ModelPresetManager:
-    def __init__(self):
-        self.presets: Dict[TextLLMModel, List[Preset]] = {}
+    def __init__(self) -> None:
+        self.presets: dict[TextLLMModel, list[Preset]] = {}
 
     def register_preset(self, model: TextLLMModel, preset: Preset) -> None:
         if model not in self.presets:
@@ -168,10 +215,10 @@ class ModelPresetManager:
     def get_presets(self, model: TextLLMModel) -> list[Preset]:
         return self.presets.get(model, [])
 
-    def get_all_presets(self) -> List[Preset]:
+    def get_all_presets(self) -> list[Preset]:
         return [preset for presets in self.presets.values() for preset in presets]
 
-    def get_preset_by_id(self, model: TextLLMModel, preset_id: str) -> Optional[Preset]:
+    def get_preset_by_id(self, model: TextLLMModel, preset_id: str) -> Preset | None:
         for preset in self.get_presets(model):
             if preset.id == preset_id:
                 return preset
@@ -207,11 +254,11 @@ Default.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TopK, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="The default Lore Generation preset for Sigurd."
-    )
+        description="The default Lore Generation preset for Sigurd.",
+    ),
 )
 Default.register_preset(
     TextLLMModel.EUTERPE_V2,
@@ -241,11 +288,11 @@ Default.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TopK, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="The default Lore Generation preset for Euterpe."
-    )
+        description="The default Lore Generation preset for Euterpe.",
+    ),
 )
 
 Default.register_preset(
@@ -278,11 +325,11 @@ Default.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description=""
-    )
+        description="",
+    ),
 )
 
 J6bv4 = ModelPresetManager()
@@ -303,10 +350,10 @@ J6bv4.register_preset(
             repetition_penalty=2.75,
             repetition_penalty_range=2048,
             repetition_penalty_slope=0.18,
-            bad_words_ids=[]
+            bad_words_ids=[],
         ),
-        description="Optimized settings for relevant output."
-    )
+        description="Optimized settings for relevant output.",
+    ),
 )
 
 J6bv4.register_preset(
@@ -326,10 +373,10 @@ J6bv4.register_preset(
             repetition_penalty=3.875,
             repetition_penalty_range=2048,
             repetition_penalty_slope=0,
-            bad_words_ids=[]
+            bad_words_ids=[],
         ),
-        description="A good balance between coherence, creativity, and quality of prose."
-    )
+        description="A good balance between coherence, creativity, and quality of prose.",
+    ),
 )
 
 J6bv4.register_preset(
@@ -349,10 +396,10 @@ J6bv4.register_preset(
             repetition_penalty=2.975,
             repetition_penalty_range=2048,
             repetition_penalty_slope=0,
-            bad_words_ids=[]
+            bad_words_ids=[],
         ),
-        description="A great degree of creativity without losing coherency."
-    )
+        description="A great degree of creativity without losing coherency.",
+    ),
 )
 
 J6bv4.register_preset(
@@ -372,10 +419,10 @@ J6bv4.register_preset(
             repetition_penalty=3,
             repetition_penalty_range=2048,
             repetition_penalty_slope=0,
-            bad_words_ids=[]
+            bad_words_ids=[],
         ),
-        description="Maximum randomness while still being plot relevant. Like Sphinx riddles!"
-    )
+        description="Maximum randomness while still being plot relevant. Like Sphinx riddles!",
+    ),
 )
 
 J6bv4.register_preset(
@@ -395,11 +442,11 @@ J6bv4.register_preset(
             repetition_penalty=2.75,
             repetition_penalty_range=2048,
             repetition_penalty_slope=0,
-            bad_words_ids=[]
+            bad_words_ids=[],
         ),
         description="Medium randomness with a decent bit of creative writing.",
-        contextPresets=None
-    )
+        contextPresets=None,
+    ),
 )
 
 J6bv4.register_preset(
@@ -419,7 +466,7 @@ J6bv4.register_preset(
             repetition_penalty=3.1,
             repetition_penalty_range=512,
             repetition_penalty_slope=3.33,
-            bad_words_ids=[]
+            bad_words_ids=[],
         ),
         description="A subtle change with alternative context settings.",
         contextPresets=ContextPresets(
@@ -435,8 +482,8 @@ J6bv4.register_preset(
                         trimDirection="doNotTrim",
                         insertionType="newline",
                         maximumTrimType="sentence",
-                        insertionPosition=-12
-                    )
+                        insertionPosition=-12,
+                    ),
                 ),
                 ContextDefaults(
                     text="",
@@ -449,9 +496,9 @@ J6bv4.register_preset(
                         trimDirection="doNotTrim",
                         insertionType="newline",
                         maximumTrimType="sentence",
-                        insertionPosition=-4
-                    )
-                )
+                        insertionPosition=-4,
+                    ),
+                ),
             ],
             ephemeralDefaults=[
                 EphemeralDefaults(
@@ -465,13 +512,13 @@ J6bv4.register_preset(
                         trimDirection="doNotTrim",
                         insertionType="newline",
                         maximumTrimType="newline",
-                        insertionPosition=-2
+                        insertionPosition=-2,
                     ),
                     startingStep=1,
                     delay=0,
                     duration=1,
                     repeat=False,
-                    reverse=False
+                    reverse=False,
                 )
             ],
             loreDefaults=[
@@ -486,7 +533,7 @@ J6bv4.register_preset(
                         trimDirection="trimBottom",
                         insertionType="newline",
                         maximumTrimType="sentence",
-                        insertionPosition=-10
+                        insertionPosition=-10,
                     ),
                     lastUpdatedAt="2021-07-19T01:16:17.425Z",
                     displayName="New Lorebook Entry",
@@ -495,7 +542,7 @@ J6bv4.register_preset(
                     enabled=True,
                     forceActivation=False,
                     keyRelative=False,
-                    nonStoryActivatable=False
+                    nonStoryActivatable=False,
                 )
             ],
             storyDefault=StoryDefault(
@@ -507,10 +554,10 @@ J6bv4.register_preset(
                 trimDirection="trimTop",
                 insertionType="newline",
                 maximumTrimType="sentence",
-                insertionPosition=-1
-            )
-        )
-    )
+                insertionPosition=-1,
+            ),
+        ),
+    ),
 )
 J6bv4.register_preset(
     TextLLMModel.J_6B_V4,
@@ -529,7 +576,7 @@ J6bv4.register_preset(
             repetition_penalty=3.35,
             repetition_penalty_range=1024,
             repetition_penalty_slope=6.75,
-            bad_words_ids=[]
+            bad_words_ids=[],
         ),
         description="Expectable output with alternative context settings.",
         contextPresets=ContextPresets(
@@ -545,8 +592,8 @@ J6bv4.register_preset(
                         trimDirection="trimBottom",
                         insertionType="newline",
                         maximumTrimType="sentence",
-                        insertionPosition=-11
-                    )
+                        insertionPosition=-11,
+                    ),
                 ),
                 ContextDefaults(
                     text="",
@@ -559,9 +606,9 @@ J6bv4.register_preset(
                         trimDirection="trimBottom",
                         insertionType="newline",
                         maximumTrimType="sentence",
-                        insertionPosition=-4
-                    )
-                )
+                        insertionPosition=-4,
+                    ),
+                ),
             ],
             ephemeralDefaults=[
                 EphemeralDefaults(
@@ -581,7 +628,7 @@ J6bv4.register_preset(
                     delay=0,
                     duration=1,
                     repeat=False,
-                    reverse=False
+                    reverse=False,
                 )
             ],
             loreDefaults=[
@@ -596,7 +643,7 @@ J6bv4.register_preset(
                         trimDirection="trimBottom",
                         insertionType="newline",
                         maximumTrimType="sentence",
-                        insertionPosition=-1
+                        insertionPosition=-1,
                     ),
                     lastUpdatedAt="2021-07-19T00:36:55.977Z",
                     displayName="New Lorebook Entry",
@@ -605,7 +652,7 @@ J6bv4.register_preset(
                     enabled=True,
                     forceActivation=False,
                     keyRelative=False,
-                    nonStoryActivatable=False
+                    nonStoryActivatable=False,
                 )
             ],
             storyDefault=StoryDefault(
@@ -617,10 +664,10 @@ J6bv4.register_preset(
                 trimDirection="trimTop",
                 insertionType="newline",
                 maximumTrimType="sentence",
-                insertionPosition=-1
-            )
-        )
-    )
+                insertionPosition=-1,
+            ),
+        ),
+    ),
 )
 Neo2b = ModelPresetManager()
 
@@ -639,10 +686,10 @@ Neo2b.register_preset(
             repetition_penalty=2.75,
             repetition_penalty_range=2048,
             repetition_penalty_slope=0.18,
-            bad_words_ids=[]
+            bad_words_ids=[],
         ),
-        description="Optimized settings for relevant output."
-    )
+        description="Optimized settings for relevant output.",
+    ),
 )
 
 Genjipython6b = ModelPresetManager()
@@ -661,10 +708,10 @@ Genjipython6b.register_preset(
             repetition_penalty=2.75,
             repetition_penalty_range=2048,
             repetition_penalty_slope=0.18,
-            bad_words_ids=[]
+            bad_words_ids=[],
         ),
-        description="Optimized settings for relevant output."
-    )
+        description="Optimized settings for relevant output.",
+    ),
 )
 
 Genjijp6bv2 = ModelPresetManager()
@@ -687,10 +734,10 @@ Genjijp6bv2.register_preset(
             repetition_penalty_range=2048,
             repetition_penalty_slope=3.33,
             repetition_penalty_frequency=0,
-            repetition_penalty_presence=0
+            repetition_penalty_presence=0,
         ),
         description="Default Settings",
-    )
+    ),
 )
 
 Euterpev2 = ModelPresetManager()
@@ -720,11 +767,11 @@ Euterpev2.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Stable and logical, but with scattered creativity."
-    )
+        description="Stable and logical, but with scattered creativity.",
+    ),
 )
 
 Euterpev2.register_preset(
@@ -743,8 +790,8 @@ Euterpev2.register_preset(
             repetition_penalty_range=2048,
             repetition_penalty_slope=0.33,
         ),
-        description="Keeps things on track."
-    )
+        description="Keeps things on track.",
+    ),
 )
 
 Euterpev2.register_preset(
@@ -773,11 +820,11 @@ Euterpev2.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Versatile, conforms well to poems, lists, chat, etc."
-    )
+        description="Versatile, conforms well to poems, lists, chat, etc.",
+    ),
 )
 
 Euterpev2.register_preset(
@@ -805,11 +852,11 @@ Euterpev2.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Expressive, while still staying focused."
-    )
+        description="Expressive, while still staying focused.",
+    ),
 )
 
 Euterpev2.register_preset(
@@ -840,11 +887,11 @@ Euterpev2.register_preset(
                 KeyOrderEntry(id=Key.Temperature, enabled=True),
                 KeyOrderEntry(id=Key.TopP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Tells a tale with confidence, but variety where it matters."
-    )
+        description="Tells a tale with confidence, but variety where it matters.",
+    ),
 )
 Euterpev2.register_preset(
     TextLLMModel.EUTERPE_V2,
@@ -874,10 +921,10 @@ Euterpev2.register_preset(
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
                 KeyOrderEntry(id=Key.Mirostat, enabled=False),
-            ]
+            ],
         ),
-        description="A rhythmic dance of prose, whoever takes the lead."
-    )
+        description="A rhythmic dance of prose, whoever takes the lead.",
+    ),
 )
 
 Euterpev2.register_preset(
@@ -906,11 +953,11 @@ Euterpev2.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Creative diction with room for embellishments."
-    )
+        description="Creative diction with room for embellishments.",
+    ),
 )
 
 Euterpev2.register_preset(
@@ -940,11 +987,11 @@ Euterpev2.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Reliable, aimed at story development."
-    )
+        description="Reliable, aimed at story development.",
+    ),
 )
 
 Euterpev2.register_preset(
@@ -974,11 +1021,11 @@ Euterpev2.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Let the AI generate without constraints."
-    )
+        description="Let the AI generate without constraints.",
+    ),
 )
 
 Euterpev2.register_preset(
@@ -1009,11 +1056,11 @@ Euterpev2.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Optimal settings for readability, based on AI-powered mass statistical analysis of Euterpe output."
-    )
+        description="Optimal settings for readability, based on AI-powered mass statistical analysis of Euterpe output.",
+    ),
 )
 
 Krakev1 = ModelPresetManager()
@@ -1045,11 +1092,11 @@ Krakev1.register_preset(
                 KeyOrderEntry(id=Key.TypicalP, enabled=True),
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Follows your style with precision."
-    )
+        description="Follows your style with precision.",
+    ),
 )
 
 Krakev1.register_preset(
@@ -1080,11 +1127,11 @@ Krakev1.register_preset(
                 KeyOrderEntry(id=Key.Temperature, enabled=True),
                 KeyOrderEntry(id=Key.TopK, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Balanced probability with the chance for less obvious outcomes."
-    )
+        description="Balanced probability with the chance for less obvious outcomes.",
+    ),
 )
 
 Krakev1.register_preset(
@@ -1116,11 +1163,11 @@ Krakev1.register_preset(
                 KeyOrderEntry(id=Key.TopK, enabled=False),
                 KeyOrderEntry(id=Key.TopP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="For logic and narrative progression with the right amount of spice."
-    )
+        description="For logic and narrative progression with the right amount of spice.",
+    ),
 )
 Krakev1.register_preset(
     TextLLMModel.KRAKE_V1,
@@ -1151,11 +1198,11 @@ Krakev1.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Keeps things on track."
-    )
+        description="Keeps things on track.",
+    ),
 )
 Krakev1.register_preset(
     TextLLMModel.KRAKE_V1,
@@ -1185,11 +1232,11 @@ Krakev1.register_preset(
                 KeyOrderEntry(id=Key.TypicalP, enabled=True),
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Gives you the tools to build your worlds."
-    )
+        description="Gives you the tools to build your worlds.",
+    ),
 )
 Krakev1.register_preset(
     TextLLMModel.KRAKE_V1,
@@ -1219,11 +1266,11 @@ Krakev1.register_preset(
                 KeyOrderEntry(id=Key.TopP, enabled=False),
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="A wide array of ideas from beyond to shake up your writing."
-    )
+        description="A wide array of ideas from beyond to shake up your writing.",
+    ),
 )
 Krakev1.register_preset(
     TextLLMModel.KRAKE_V1,
@@ -1253,11 +1300,11 @@ Krakev1.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=True),
                 KeyOrderEntry(id=Key.TypicalP, enabled=True),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Creatively elaborates upon an existing scene."
-    )
+        description="Creatively elaborates upon an existing scene.",
+    ),
 )
 Krakev2 = ModelPresetManager()
 
@@ -1289,11 +1336,11 @@ Krakev2.register_preset(
                 KeyOrderEntry(id=Key.TopP, enabled=True),
                 KeyOrderEntry(id=Key.Temperature, enabled=True),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Easy to steer, imaginative, and fast-paced."
-    )
+        description="Easy to steer, imaginative, and fast-paced.",
+    ),
 )
 Krakev2.register_preset(
     TextLLMModel.KRAKE_V2,
@@ -1323,11 +1370,11 @@ Krakev2.register_preset(
                 KeyOrderEntry(id=Key.Temperature, enabled=True),
                 KeyOrderEntry(id=Key.TopK, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Focuses on staying on track, only rarely deviating from what's already written."
-    )
+        description="Focuses on staying on track, only rarely deviating from what's already written.",
+    ),
 )
 Krakev2.register_preset(
     TextLLMModel.KRAKE_V2,
@@ -1357,11 +1404,11 @@ Krakev2.register_preset(
                 KeyOrderEntry(id=Key.Temperature, enabled=True),
                 KeyOrderEntry(id=Key.TopK, enabled=True),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Narrative consistency with a focus on paying attention to memory and module content."
-    )
+        description="Narrative consistency with a focus on paying attention to memory and module content.",
+    ),
 )
 
 Krakev2.register_preset(
@@ -1392,11 +1439,11 @@ Krakev2.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=True),
                 KeyOrderEntry(id=Key.TopK, enabled=True),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Creative and fast-paced. Go into less expected directions while staying coherent and avoiding repetitive loops."
-    )
+        description="Creative and fast-paced. Go into less expected directions while staying coherent and avoiding repetitive loops.",
+    ),
 )
 Krakev2.register_preset(
     TextLLMModel.KRAKE_V2,
@@ -1426,11 +1473,11 @@ Krakev2.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=True),
                 KeyOrderEntry(id=Key.TypicalP, enabled=True),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Weave an enrapturing endless tale, custom fit for 2nd person perspective but highly flexible for other uses."
-    )
+        description="Weave an enrapturing endless tale, custom fit for 2nd person perspective but highly flexible for other uses.",
+    ),
 )
 Krakev2.register_preset(
     TextLLMModel.KRAKE_V2,
@@ -1460,11 +1507,11 @@ Krakev2.register_preset(
                 KeyOrderEntry(id=Key.TopP, enabled=False),
                 KeyOrderEntry(id=Key.TopK, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Jumps from one idea to the next, logical but unpredictable."
-    )
+        description="Jumps from one idea to the next, logical but unpredictable.",
+    ),
 )
 
 Krakev2.register_preset(
@@ -1497,11 +1544,11 @@ Krakev2.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Keeps things on track."
-    )
+        description="Keeps things on track.",
+    ),
 )
 Krakev2.register_preset(
     TextLLMModel.KRAKE_V2,
@@ -1531,11 +1578,11 @@ Krakev2.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=True),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Adjusted for highly consistent output."
-    )
+        description="Adjusted for highly consistent output.",
+    ),
 )
 Krakev2.register_preset(
     TextLLMModel.KRAKE_V2,
@@ -1565,11 +1612,11 @@ Krakev2.register_preset(
                 KeyOrderEntry(id=Key.TopP, enabled=False),
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Imaginative and original, a kaleidoscope of unpredictability."
-    )
+        description="Imaginative and original, a kaleidoscope of unpredictability.",
+    ),
 )
 
 Krakev2.register_preset(
@@ -1600,11 +1647,11 @@ Krakev2.register_preset(
                 KeyOrderEntry(id=Key.TypicalP, enabled=True),
                 KeyOrderEntry(id=Key.TopP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Controlled chaos, for random generation and chat style."
-    )
+        description="Controlled chaos, for random generation and chat style.",
+    ),
 )
 Colorful = ModelPresetManager()
 Colorful.register_preset(
@@ -1622,10 +1669,10 @@ Colorful.register_preset(
             repetition_penalty=1,
             repetition_penalty_slope=0,
             repetition_penalty_frequency=0,
-            repetition_penalty_presence=0
+            repetition_penalty_presence=0,
         ),
-        description=""
-    )
+        description="",
+    ),
 )
 Clio = ModelPresetManager()
 Clio.register_preset(
@@ -1657,11 +1704,11 @@ Clio.register_preset(
                 KeyOrderEntry(id=Key.TopK, enabled=True),
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="A good all-around default with a bent towards prose."
-    )
+        description="A good all-around default with a bent towards prose.",
+    ),
 )
 
 Clio.register_preset(
@@ -1694,11 +1741,11 @@ Clio.register_preset(
                 KeyOrderEntry(id=Key.TFS, enabled=True),
                 KeyOrderEntry(id=Key.TopP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Intended for creative prose."
-    )
+        description="Intended for creative prose.",
+    ),
 )
 Clio.register_preset(
     TextLLMModel.CLIO,
@@ -1730,11 +1777,11 @@ Clio.register_preset(
                 KeyOrderEntry(id=Key.TopP, enabled=True),
                 KeyOrderEntry(id=Key.TopK, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Handles a variety of generation styles well."
-    )
+        description="Handles a variety of generation styles well.",
+    ),
 )
 Clio.register_preset(
     TextLLMModel.CLIO,
@@ -1766,11 +1813,11 @@ Clio.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Keeps things on track."
-    )
+        description="Keeps things on track.",
+    ),
 )
 Clio.register_preset(
     TextLLMModel.CLIO,
@@ -1802,11 +1849,11 @@ Clio.register_preset(
                 KeyOrderEntry(id=Key.TFS, enabled=True),
                 KeyOrderEntry(id=Key.TopA, enabled=True),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Designed for chat style generation."
-    )
+        description="Designed for chat style generation.",
+    ),
 )
 Kayra = ModelPresetManager()
 Kayra.register_preset(
@@ -1843,11 +1890,11 @@ Kayra.register_preset(
                 KeyOrderEntry(id=Key.TopG, enabled=False),
                 KeyOrderEntry(id=Key.Mirostat, enabled=False),
                 KeyOrderEntry(id=Key.Math1, enabled=False),
-                KeyOrderEntry(id=Key.MinP, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.MinP, enabled=False),
+            ],
         ),
-        description="A good all-rounder."
-    )
+        description="A good all-rounder.",
+    ),
 )
 Kayra.register_preset(
     TextLLMModel.KAYRA,
@@ -1886,11 +1933,11 @@ Kayra.register_preset(
                 KeyOrderEntry(id=Key.TopG, enabled=False),
                 KeyOrderEntry(id=Key.Mirostat, enabled=False),
                 KeyOrderEntry(id=Key.Math1, enabled=False),
-                KeyOrderEntry(id=Key.MinP, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.MinP, enabled=False),
+            ],
         ),
-        description="More likely to choose reasonable alternatives. Variety on retries."
-    )
+        description="More likely to choose reasonable alternatives. Variety on retries.",
+    ),
 )
 Kayra.register_preset(
     TextLLMModel.KAYRA,
@@ -1927,11 +1974,11 @@ Kayra.register_preset(
                 KeyOrderEntry(id=Key.TopG, enabled=False),
                 KeyOrderEntry(id=Key.Mirostat, enabled=False),
                 KeyOrderEntry(id=Key.Math1, enabled=False),
-                KeyOrderEntry(id=Key.MinP, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.MinP, enabled=False),
+            ],
         ),
-        description="Keeps things on track. Handles instruct well."
-    )
+        description="Keeps things on track. Handles instruct well.",
+    ),
 )
 Kayra.register_preset(
     TextLLMModel.KAYRA,
@@ -1970,11 +2017,11 @@ Kayra.register_preset(
                 KeyOrderEntry(id=Key.TopP, enabled=False),
                 KeyOrderEntry(id=Key.Cfg, enabled=False),
                 KeyOrderEntry(id=Key.Math1, enabled=False),
-                KeyOrderEntry(id=Key.MinP, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.MinP, enabled=False),
+            ],
         ),
-        description="For creative writing. Expect unexpected twists."
-    )
+        description="For creative writing. Expect unexpected twists.",
+    ),
 )
 
 Kayra.register_preset(
@@ -2013,11 +2060,11 @@ Kayra.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=True),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
                 KeyOrderEntry(id=Key.Math1, enabled=False),
-                KeyOrderEntry(id=Key.MinP, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.MinP, enabled=False),
+            ],
         ),
-        description="Extremely imaginative, sometimes too much."
-    )
+        description="Extremely imaginative, sometimes too much.",
+    ),
 )
 
 Erato = ModelPresetManager()
@@ -2062,11 +2109,11 @@ Erato.register_preset(
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.Mirostat, enabled=False),
                 KeyOrderEntry(id=Key.MinP, enabled=False),
-                KeyOrderEntry(id=Key.TopG, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.TopG, enabled=False),
+            ],
         ),
-        description="A good all-rounder."
-    )
+        description="A good all-rounder.",
+    ),
 )
 Erato.register_preset(
     TextLLMModel.ERATO,
@@ -2109,14 +2156,11 @@ Erato.register_preset(
                 KeyOrderEntry(id=Key.Mirostat, enabled=False),
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Cfg, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Cfg, enabled=False),
+            ],
         ),
-        description=(
-            "Higher variety of word choice, more differences between rerolls, "
-            "more prone to mistakes."
-        )
-    )
+        description=("Higher variety of word choice, more differences between rerolls, more prone to mistakes."),
+    ),
 )
 Erato.register_preset(
     TextLLMModel.ERATO,
@@ -2159,11 +2203,11 @@ Erato.register_preset(
                 KeyOrderEntry(id=Key.TopA, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.Cfg, enabled=False),
-                KeyOrderEntry(id=Key.TopG, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.TopG, enabled=False),
+            ],
         ),
-        description="Avoids mistakes and repetition. Prioritizes more complex words."
-    )
+        description="Avoids mistakes and repetition. Prioritizes more complex words.",
+    ),
 )
 Erato.register_preset(
     TextLLMModel.ERATO,
@@ -2206,11 +2250,11 @@ Erato.register_preset(
                 KeyOrderEntry(id=Key.TopK, enabled=False),
                 KeyOrderEntry(id=Key.TopP, enabled=False),
                 KeyOrderEntry(id=Key.TFS, enabled=False),
-                KeyOrderEntry(id=Key.TopG, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.TopG, enabled=False),
+            ],
         ),
-        description="Varied and complex language with little repetition. More frequent mistakes and contradictions."
-    )
+        description="Varied and complex language with little repetition. More frequent mistakes and contradictions.",
+    ),
 )
 Erato.register_preset(
     TextLLMModel.ERATO,
@@ -2255,11 +2299,11 @@ Erato.register_preset(
                 KeyOrderEntry(id=Key.TFS, enabled=False),
                 KeyOrderEntry(id=Key.TypicalP, enabled=False),
                 KeyOrderEntry(id=Key.TopG, enabled=False),
-                KeyOrderEntry(id=Key.Mirostat, enabled=False)
-            ]
+                KeyOrderEntry(id=Key.Mirostat, enabled=False),
+            ],
         ),
-        description="Designed for writing in Japanese. Works fine for English too."
-    )
+        description="Designed for writing in Japanese. Works fine for English too.",
+    ),
 )
 
 PresetMapping = {

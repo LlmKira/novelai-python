@@ -1,37 +1,51 @@
-# -*- coding: utf-8 -*-
 # @Author  : sudoskys
 import itertools
 import json
-from typing import Optional, Union
-from urllib.parse import urlparse
+import logging
+from typing import Union
 
 import curl_cffi
-import httpx
 from curl_cffi.requests import AsyncSession
-from loguru import logger
-from pydantic import ConfigDict, PrivateAttr, model_validator, Field
-from tenacity import wait_random, retry, stop_after_attempt, retry_if_exception
+from pydantic import ConfigDict, Field, PrivateAttr, model_validator
 
-from ._enum import get_bad_words_ids, \
-    get_eos_token_id, get_end_exclude_sequences, get_logit_bias_group, \
-    pickup_reverse_bias_model, get_default_preset, get_repetition_penalty_whitelist
-from ._schema import PenStyle, Key, KeyOrderEntry, LogitBiasGroup, AdvanceLLMSetting, \
-    LLMGenerationParams
-from ...schema import ApiBaseModel
-from ...._enum import TextLLMModelTypeAlias, TextLLMModel, get_tokenizer_model, get_llm_group, COLORS_LLM, \
-    TextTokenizerGroup
+from novelai_python._retry import retry_on_server_error
+
+from ...._enum import (
+    COLORS_LLM,
+    TextLLMModel,
+    TextLLMModelTypeAlias,
+    TextTokenizerGroup,
+    get_llm_group,
+    get_tokenizer_model,
+)
 from ...._exceptions import APIError, SessionHttpError
 from ...._response.ai.generate import LLMResp
 from ....credential import CredentialBase
 from ....tokenizer import NaiTokenizer
 from ....utils import try_jsonfy
 from ....utils.encode import tokens_to_b64
+from ...schema import ApiBaseModel, use_session
+from ._enum import (
+    get_bad_words_ids,
+    get_default_preset,
+    get_eos_token_id,
+    get_logit_bias_group,
+    get_repetition_penalty_whitelist,
+    pickup_reverse_bias_model,
+)
+from ._enum import (
+    get_end_exclude_sequences as get_end_exclude_sequences,
+)
+from ._schema import AdvanceLLMSetting, Key, KeyOrderEntry, LLMGenerationParams, LogitBiasGroup, PenStyle
+
+logger = logging.getLogger(__name__)
 
 
 class LLM(ApiBaseModel):
     """
     LLM for /ai/generate
     """
+
     _endpoint: str = PrivateAttr("https://text.novelai.net")
     input: str = Field(..., description="Base64 encoded token text")
     model: TextLLMModelTypeAlias = TextLLMModel.ERATO
@@ -40,17 +54,17 @@ class LLM(ApiBaseModel):
     advanced_setting: AdvanceLLMSetting = AdvanceLLMSetting()
     """Advanced Setting"""
 
-    parameters: Optional[LLMGenerationParams] = None
+    parameters: LLMGenerationParams | None = None
     """Optional: Generation Parameters"""
 
-    default_bias: Optional[bool] = True
+    default_bias: bool | None = True
     """Default Bias"""
 
-    logprobs_count: Optional[int] = None
+    logprobs_count: int | None = None
     """Logprobs Count"""
 
-    bias_dinkus_asterism: Optional[bool] = False
-    prefix: Optional[str] = "vanilla"
+    bias_dinkus_asterism: bool | None = False
+    prefix: str | None = "vanilla"
     model_config = ConfigDict(extra="ignore")
 
     @property
@@ -58,20 +72,31 @@ class LLM(ApiBaseModel):
         return self._endpoint
 
     @endpoint.setter
-    def endpoint(self, value):
+    def endpoint(self, value) -> None:
         self._endpoint = value
 
     @property
-    def base_url(self):
+    def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/generate"
 
     @model_validator(mode="after")
     def normalize_model(self):
         if self.model in [
-            TextLLMModel.NEO_2B, TextLLMModel.J_6B, TextLLMModel.J_6B_V3, TextLLMModel.J_6B_V4,
-            TextLLMModel.GENJI_JP_6B, TextLLMModel.GENJI_JP_6B_V2, TextLLMModel.GENJI_PYTHON_6B,
-            TextLLMModel.EUTERPE_V0, TextLLMModel.EUTERPE_V2, TextLLMModel.KRAKE_V1, TextLLMModel.KRAKE_V2,
-            TextLLMModel.CASSANDRA, TextLLMModel.COMMENT_BOT, TextLLMModel.INFILL, TextLLMModel.CLIO
+            TextLLMModel.NEO_2B,
+            TextLLMModel.J_6B,
+            TextLLMModel.J_6B_V3,
+            TextLLMModel.J_6B_V4,
+            TextLLMModel.GENJI_JP_6B,
+            TextLLMModel.GENJI_JP_6B_V2,
+            TextLLMModel.GENJI_PYTHON_6B,
+            TextLLMModel.EUTERPE_V0,
+            TextLLMModel.EUTERPE_V2,
+            TextLLMModel.KRAKE_V1,
+            TextLLMModel.KRAKE_V2,
+            TextLLMModel.CASSANDRA,
+            TextLLMModel.COMMENT_BOT,
+            TextLLMModel.INFILL,
+            TextLLMModel.CLIO,
         ]:
             self.endpoint = "https://api.novelai.net"
         tokenizer = NaiTokenizer(get_tokenizer_model(self.model))
@@ -86,15 +111,19 @@ class LLM(ApiBaseModel):
             self.parameters = default_preset.parameters
 
         # repetition_penalty_default_whitelist
-        if self.parameters.repetition_penalty_default_whitelist and self.model in [TextLLMModel.CLIO,
-                                                                                   TextLLMModel.KAYRA,
-                                                                                   TextLLMModel.ERATO] + COLORS_LLM:
+        if self.parameters.repetition_penalty_default_whitelist and self.model in [
+            TextLLMModel.CLIO,
+            TextLLMModel.KAYRA,
+            TextLLMModel.ERATO,
+            *COLORS_LLM,
+        ]:
             if not isinstance(self.parameters.repetition_penalty_whitelist, list):
                 self.parameters.repetition_penalty_whitelist = []
-            self.parameters.repetition_penalty_whitelist += list(itertools.chain.from_iterable([
-                tokenizer.encode(tok)
-                for tok in get_repetition_penalty_whitelist(model_group)
-            ]))
+            self.parameters.repetition_penalty_whitelist += list(
+                itertools.chain.from_iterable(
+                    [tokenizer.encode(tok) for tok in get_repetition_penalty_whitelist(model_group)]
+                )
+            )
             self.parameters.repetition_penalty_default_whitelist = None
 
         # bad_words_ids
@@ -103,18 +132,16 @@ class LLM(ApiBaseModel):
             bad_words_ids = bad_words_ids + get_bad_words_ids(model_group, use_banBrackets=True)
         if self.bias_dinkus_asterism:
             bad_words_ids = bad_words_ids + get_bad_words_ids(model_group, use_banBrackets=False)
-            if self.model in [
-                TextLLMModel.CLIO, TextLLMModel.KAYRA, TextLLMModel.ERATO,
-            ] + COLORS_LLM:
+            if self.model in [TextLLMModel.CLIO, TextLLMModel.KAYRA, TextLLMModel.ERATO, *COLORS_LLM]:
                 self.parameters.eos_token_id = get_eos_token_id(model_group)
-                if self.parameters.min_length < 5:
+                if (self.parameters.min_length or 0) < 5:
                     self.parameters.min_length = 5
                 """
                 endExcludeSequences = get_end_exclude_sequences(model_group)
                 """
                 # context.length < 30
                 if len(self.input) < 3000:
-                    bad_words_ids = bad_words_ids + [[self.parameters.eos_token_id]]
+                    bad_words_ids = [*bad_words_ids, [self.parameters.eos_token_id]]
 
         # 有效的 logit_bias_group_exp
         self.parameters.logit_bias_groups = get_logit_bias_group(model_group)
@@ -134,41 +161,44 @@ class LLM(ApiBaseModel):
                     bias = -0.08
             for sequence in sequence_list:
                 # 如果不重复
-                if not any(
-                        cell.sequence == sequence and cell.bias == bias
-                        for cell in logit_bias_group_exp
-                ):
+                if not any(cell.sequence == sequence and cell.bias == bias for cell in logit_bias_group_exp):
                     logit_bias_group_exp.append(
-                        LogitBiasGroup(
-                            sequence=sequence,
-                            bias=bias,
-                            ensure_sequence_finish=False,
-                            generate_once=False
-                        )
+                        LogitBiasGroup(sequence=sequence, bias=bias, ensure_sequence_finish=False, generate_once=False)
                     )
-        if self.model in [
+        if (
+            self.model
+            in [
+                TextLLMModel.J_6B,
+                TextLLMModel.J_6B_V4,
+                TextLLMModel.J_6B_V3,
+                TextLLMModel.J_6B_V4,
+                TextLLMModel.EUTERPE_V0,
+                TextLLMModel.EUTERPE_V2,
+                TextLLMModel.GENJI_PYTHON_6B,
+                TextLLMModel.GENJI_JP_6B,
+                TextLLMModel.GENJI_JP_6B_V2,
+            ]
+            and self.parameters.repetition_penalty is not None
+        ):
+            self.parameters.repetition_penalty = (self.parameters.repetition_penalty - 1) * -0.5249999999999999 / -7 + 1
+        if self.prefix == "" or self.model in [
             TextLLMModel.J_6B,
-            TextLLMModel.J_6B_V4,
             TextLLMModel.J_6B_V3,
             TextLLMModel.J_6B_V4,
             TextLLMModel.EUTERPE_V0,
-            TextLLMModel.EUTERPE_V2, TextLLMModel.GENJI_PYTHON_6B,
-            TextLLMModel.GENJI_JP_6B,
-            TextLLMModel.GENJI_JP_6B_V2
-        ]:
-            self.parameters.repetition_penalty = (self.parameters.repetition_penalty - 1) * -0.5249999999999999 / -7 + 1
-        if self.prefix == "" or self.model in [
-            TextLLMModel.J_6B, TextLLMModel.J_6B_V3, TextLLMModel.J_6B_V4,
-            TextLLMModel.EUTERPE_V0, TextLLMModel.EUTERPE_V2,
-            TextLLMModel.KRAKE_V1, TextLLMModel.KRAKE_V2,
+            TextLLMModel.EUTERPE_V2,
+            TextLLMModel.KRAKE_V1,
+            TextLLMModel.KRAKE_V2,
             TextLLMModel.CLIO,
             TextLLMModel.KAYRA,
-        ] + COLORS_LLM:
+            *COLORS_LLM,
+        ]:
             self.prefix = "vanilla"
         if pickup_reverse_bias_model(self.model) == TextLLMModel.GENJI_JP_6B_V2:
             # 反转 logit_bias_group_exp 的 bias
             for group in logit_bias_group_exp:
-                group.bias = -group.bias
+                if group.bias is not None:
+                    group.bias = -group.bias
         order_queue = []
         for order in self.parameters.order:
             if isinstance(order, KeyOrderEntry):
@@ -203,22 +233,22 @@ class LLM(ApiBaseModel):
                         self.parameters.math1_quad_entropy_scale = None
                     elif order.id[0] == Key.MinP[0]:
                         self.parameters.min_p = None
-        if self.model not in [TextLLMModel.CLIO, TextLLMModel.KAYRA] + COLORS_LLM:
+        if self.model not in [TextLLMModel.CLIO, TextLLMModel.KAYRA, *COLORS_LLM]:
             self.parameters.top_g = None
             if Key.TopG[1] in order_queue:
                 order_queue.remove(Key.TopG[1])
-        if self.model not in [TextLLMModel.CLIO, TextLLMModel.KAYRA, TextLLMModel.ERATO] + COLORS_LLM:
+        if self.model not in [TextLLMModel.CLIO, TextLLMModel.KAYRA, TextLLMModel.ERATO, *COLORS_LLM]:
             self.parameters.mirostat_tau = None
             self.parameters.mirostat_lr = None
             if Key.Mirostat[1] in order_queue:
                 order_queue.remove(Key.Mirostat[1])
-        if self.model not in [TextLLMModel.KAYRA, TextLLMModel.ERATO] + COLORS_LLM:
+        if self.model not in [TextLLMModel.KAYRA, TextLLMModel.ERATO, *COLORS_LLM]:
             self.parameters.math1_temp = None
             self.parameters.math1_quad = None
             self.parameters.math1_quad_entropy_scale = None
             if Key.Math1[1] in order_queue:
                 order_queue.remove(Key.Math1[1])
-        if self.model not in [TextLLMModel.KAYRA, TextLLMModel.ERATO] + COLORS_LLM:
+        if self.model not in [TextLLMModel.KAYRA, TextLLMModel.ERATO, *COLORS_LLM]:
             self.parameters.min_p = None
             if Key.MinP[1] in order_queue:
                 order_queue.remove(Key.MinP[1])
@@ -231,9 +261,7 @@ class LLM(ApiBaseModel):
         for cell in logit_bias_group_exp:
             if any(token < 0 or token >= total_tokens for token in cell.sequence):
                 # 超出范围的 Token
-                logger.trace(
-                    f"Bias [{cell}] contains tokens that are out of range and will be ignored."
-                )
+                logger.debug(f"Bias [{cell}] contains tokens that are out of range and will be ignored.")
             else:
                 # 将有效偏置组添加到列表
                 valid_sequences.append(cell)
@@ -250,9 +278,7 @@ class LLM(ApiBaseModel):
         self.parameters.bad_words_ids = bad_words_ids
         for ban_word in self.parameters.bad_words_ids:
             if any(token < 0 or token >= total_tokens for token in ban_word):
-                logger.trace(
-                    f"Bad word {ban_word} contains tokens that are out of range and will be ignored."
-                )
+                logger.debug(f"Bad word {ban_word} contains tokens that are out of range and will be ignored.")
             else:
                 valid_bad_words_ids.append(ban_word)
         if len(valid_bad_words_ids) > 0:
@@ -275,19 +301,20 @@ class LLM(ApiBaseModel):
         return self
 
     @classmethod
-    def build(cls,
-              prompt: str,
-              model: TextLLMModelTypeAlias = TextLLMModel.ERATO,
-              phrase_rep_pen: PenStyle = PenStyle.Off,
-              *,
-              advanced_setting: AdvanceLLMSetting = AdvanceLLMSetting(),
-              parameters: Optional[LLMGenerationParams] = None,
-              default_bias: Optional[bool] = True,
-              logprobs_count: Optional[int] = None,
-              bias_dinkus_asterism: Optional[bool] = False,
-              prefix: Optional[str] = "vanilla",
-              **kwargs
-              ) -> "LLM":
+    def build(
+        cls,
+        prompt: str,
+        model: TextLLMModelTypeAlias = TextLLMModel.ERATO,
+        phrase_rep_pen: PenStyle = PenStyle.Off,
+        *,
+        advanced_setting: AdvanceLLMSetting = AdvanceLLMSetting(),
+        parameters: LLMGenerationParams | None = None,
+        default_bias: bool | None = True,
+        logprobs_count: int | None = None,
+        bias_dinkus_asterism: bool | None = False,
+        prefix: str | None = "vanilla",
+        **kwargs,
+    ) -> "LLM":
         """
         Generate
         :param phrase_rep_pen: Phrase_rep_pen
@@ -313,17 +340,10 @@ class LLM(ApiBaseModel):
         )
         return created
 
-    @retry(
-        wait=wait_random(min=1, max=3),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception(lambda e: hasattr(e, "code") and str(e.code) == "500"),
-        reraise=True
-    )
-    async def request(self,
-                      session: Union[AsyncSession, "CredentialBase"],
-                      *,
-                      override_headers: Optional[dict] = None
-                      ) -> LLMResp:
+    @retry_on_server_error()
+    async def request(
+        self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None
+    ) -> LLMResp:
         """
         Generate text using NovelAI's large language models. According to our Terms of Service, all generation requests must be initiated by a human action. Automating text or image generation to create excessive load on our systems is not allowed.
 
@@ -332,6 +352,8 @@ class LLM(ApiBaseModel):
         :return: LLMStreamResp
         """
         # Data Build
+        if self.parameters is None:
+            raise ValueError("parameters are not set")
         base_map = self.parameters.get_base_map()
         parameters = {
             **base_map,
@@ -343,7 +365,7 @@ class LLM(ApiBaseModel):
             **self.model_dump(mode="json", include={"input", "model"}),
             "parameters": parameters,
         }
-        async with session if isinstance(session, AsyncSession) else await session.get_session() as sess:
+        async with use_session(session) as sess:
             # Header
             if override_headers:
                 sess.headers.clear()
@@ -352,64 +374,65 @@ class LLM(ApiBaseModel):
             logger.debug(f"LLM request data: {json.dumps(request_data)}")
             # Request
             try:
-                self.ensure_session_has_post_method(sess)
-                response = await sess.post(
-                    self.base_url,
-                    json=request_data,
-                    stream=False
-                )
+                response = await sess.post(self.base_url, json=request_data, stream=False)
                 response_data = try_jsonfy(response.content, default_when_error={})
-                message = response_data.get("error") or response_data.get(
-                    "message") or f"Server error with status_code {response.status_code}"
+                if not isinstance(response_data, dict):
+                    response_data = {}
+                message = (
+                    response_data.get("error")
+                    or response_data.get("message")
+                    or f"Server error with status_code {response.status_code}"
+                )
                 status_code = response_data.get("statusCode", response.status_code)
                 if status_code == 200 or status_code == 201:
-                    output = response_data.get("output", None)
+                    output = response_data.get("output")
                     if not output:
                         raise APIError(
                             f"No Content Returned because {message}",
-                            request=request_data, code=response.status_code, response=response.content
+                            request=request_data,
+                            code=response.status_code,
+                            response=response.content,
                         )
-                    return LLMResp(
-                        output=output,
-                        text=LLMResp.decode_token(model=self.model, token_str=output)
-                    )
+                    return LLMResp(output=output, text=LLMResp.decode_token(model=self.model, token_str=output))
                 elif status_code == 400:
                     raise APIError(
                         f"A validation error occured. {message}",
-                        request=request_data, code=status_code, response=message
+                        request=request_data,
+                        code=status_code,
+                        response=message,
                     )
                 elif status_code == 401:
                     raise APIError(
                         f"Access Token is incorrect. {message}",
-                        request=request_data, code=status_code, response=message
+                        request=request_data,
+                        code=status_code,
+                        response=message,
                     )
                 elif status_code == 402:
                     raise APIError(
                         f"An active subscription is required to access this endpoint. {message}",
-                        request=request_data, code=status_code, response=message
+                        request=request_data,
+                        code=status_code,
+                        response=message,
                     )
                 elif status_code == 409:
                     raise APIError(
-                        f"A conflict error occured. {message}",
-                        request=request_data, code=status_code, response=message
+                        f"A conflict error occured. {message}", request=request_data, code=status_code, response=message
                     )
                 else:
                     raise APIError(
                         f"An unknown error occured. {response.status_code} {message}",
-                        request=request_data, code=status_code, response=message
+                        request=request_data,
+                        code=status_code,
+                        response=message,
                     )
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError(
                     "An AsyncSession RequestsError occurred, perhaps it's an SSL error. Please try again later!"
-                )
-            except httpx.HTTPError as exc:
-                logger.exception(exc)
-                raise SessionHttpError(
-                    "An HTTPError occurred, perhaps it's an SSL error. Please try again later!"
-                )
-            except APIError as e:
-                raise e
+                ) from exc
+            except APIError:
+                raise  # not an unexpected error: keep it out of the handler below
             except Exception as e:
-                logger.opt(exception=e).exception("An unexpected error occurred")
+                logger.exception("An unexpected error occurred")
                 raise e

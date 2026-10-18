@@ -1,4 +1,4 @@
-class RepetitionPenaltyWhitelist(object):
+class RepetitionPenaltyWhitelist:
     _NERDSTASH_COMMON = [
         "'", "\"", ",", ".", ":", "\n", "-", "*", ")", " the", " a", " an", " and", " or", " not",
         " no",
@@ -11,8 +11,8 @@ class RepetitionPenaltyWhitelist(object):
         "2", "3", "4",
         "5", "6", "7", "8", "9", ".\"", ",\"", "====", " "
     ]
-    NERDSTASH = _NERDSTASH_COMMON + ["ve", "s", "t", "n", "d", "ll", "re", "m"]
-    NERDSTASH_V2 = _NERDSTASH_COMMON + ["'t've", "'s", "'t", "'ve", "'n", "'d", "'ll", "'re", "'m"]
+    NERDSTASH = [*_NERDSTASH_COMMON, "ve", "s", "t", "n", "d", "ll", "re", "m"]
+    NERDSTASH_V2 = [*_NERDSTASH_COMMON, "'t've", "'s", "'t", "'ve", "'n", "'d", "'ll", "'re", "'m"]
     LLAMA3 = [
         "'", "\"", ",", ".", ":", "\n", "-", "*", ")", " the", " a", " an", " and", " or", " not", " no", " is",
         " was", " were", " did", " does", " isn", " wasn", " weren", " didn", " doesn", " him", " her", " his",
@@ -26,7 +26,7 @@ class RepetitionPenaltyWhitelist(object):
     ]
 
 
-class BanWords(object):
+class BanWords:
     PILE = [
         [60], [62], [544], [683], [696], [880], [905], [1008], [1019], [1084], [1092], [1181], [1184], [1254],
         [1447], [1570], [1656], [2194], [2470], [2479], [2498], [2947], [3138], [3291], [3455], [3725], [3851],
@@ -56,7 +56,7 @@ class BanWords(object):
         [48471], [48664], [48701], [49021], [49193], [49236], [49550], [49694], [49806], [49824], [50001],
         [50256], [0], [1]
     ]
-    PILE_NAI = PILE + [[50259], [50257], [50260]]
+    PILE_NAI = [*PILE, [50259], [50257], [50260]]
     GPT2 = [
         [58], [60], [90], [92], [685], [1391], [1782], [2361], [3693], [4083], [4357], [4895], [5512], [5974],
         [7131], [8183], [8351], [8762], [8964], [8973], [9063], [11208], [11709], [11907], [11919], [12878],
@@ -97,7 +97,7 @@ class BanWords(object):
     ]
 
 
-class DefaultBanWords(object):
+class DefaultBanWords:
     GENJI = []
     PILE = [
         [29], [31], [654], [870], [1138], [1168], [2033], [2239], [2730], [3001], [3073], [4357], [4398],

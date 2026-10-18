@@ -4,7 +4,6 @@
 # @File    : __init__.py.py
 
 import asyncio
-import base64
 import os
 import pathlib
 import random
@@ -12,9 +11,8 @@ import random
 from dotenv import load_dotenv
 from pydantic import SecretStr
 
-from novelai_python import APIError, LoginCredential
-from novelai_python import GenerateImageInfer, ImageGenerateResp, ApiCredential
-from novelai_python.sdk.ai.generate_image import Action, Model, Sampler, Character, UCPreset, Params
+from novelai_python import ApiCredential, APIError, GenerateImageInfer, ImageGenerateResp, LoginCredential
+from novelai_python.sdk.ai.generate_image import Action, Character, Model, Params, Sampler, UCPreset
 from novelai_python.sdk.ai.generate_image.schema import PositionMap
 from novelai_python.sdk.ai.generate_image.tokenizer import get_prompt_tokenizer
 from novelai_python.tool.random_prompt import RandomPromptGenerator

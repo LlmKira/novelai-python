@@ -5,18 +5,19 @@
 
 import asyncio
 import base64
+import logging
 import os
 import pathlib
 
 from dotenv import load_dotenv
-from loguru import logger
 from pydantic import SecretStr
 
-from novelai_python import APIError, LoginCredential
-from novelai_python import GenerateImageInfer, ImageGenerateResp, ApiCredential
+from novelai_python import ApiCredential, APIError, GenerateImageInfer, ImageGenerateResp, LoginCredential
 from novelai_python.sdk.ai._enum import Model
 from novelai_python.sdk.ai.generate_image import Action, Sampler
 from novelai_python.utils.useful import enum_to_list
+
+logger = logging.getLogger(__name__)
 
 
 async def generate(

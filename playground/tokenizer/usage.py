@@ -1,4 +1,4 @@
-from novelai_python._enum import get_tokenizer_model, TextLLMModel, TextTokenizerGroup
+from novelai_python._enum import TextLLMModel, TextTokenizerGroup, get_tokenizer_model
 from novelai_python.tokenizer import NaiTokenizer
 from novelai_python.utils.encode import b64_to_tokens
 

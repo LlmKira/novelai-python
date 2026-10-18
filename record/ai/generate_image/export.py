@@ -1,10 +1,12 @@
 import base64
 import json
+import logging
 import pathlib
 from io import BytesIO
 
 from PIL import Image
-from loguru import logger
+
+logger = logging.getLogger(__name__)
 
 
 def ignore(*args, **kwargs):
@@ -85,4 +87,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     main()

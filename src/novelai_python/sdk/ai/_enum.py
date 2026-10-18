@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/2/13 下午8:10
 # @Author  : sudoskys
 # @File    : _enum.py
 from enum import Enum, IntEnum
-from typing import List, Optional, Union
 
 from pydantic.dataclasses import dataclass
 
@@ -90,15 +88,37 @@ class Resolution(Enum):
     RES_1920_1088 = (1920, 1088)
 
 
+class QualityPreset(Enum):
+    """qualityPresetId sent by the web client for params_version >= 4"""
+
+    STANDARD = "standard"
+    LIGHT = "light"
+    NONE = "none"
+
+
+class ImageFormat(Enum):
+    WEBP = "webp"
+    PNG = "png"
+    JPEG = "jpeg"
+
+
 class Model(Enum):
     """
     Nai Diffusion series
     """
-    NAI_DIFFUSION_4_5_FULL = "nai-diffusion-4-5-full"
-    NAI_DIFFUSION_4_5_FULL_INPAINTING = 'nai-diffusion-4-5-full-inpainting'
 
-    NAI_DIFFUSION_4_5_CURATED = 'nai-diffusion-4-5-curated'
-    NAI_DIFFUSION_4_5_CURATED_INPAINTING = 'nai-diffusion-4-5-curated-inpainting'
+    NAI_DIFFUSION_5_FULL = "nai-diffusion-5-full"
+    NAI_DIFFUSION_5_FULL_INPAINTING = "nai-diffusion-5-full-inpainting"
+    NAI_DIFFUSION_5_FULL_MEDIUM = "nai-diffusion-5-full-medium"
+    NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING = "nai-diffusion-5-full-medium-inpainting"
+    NAI_DIFFUSION_5_CURATED = "nai-diffusion-5-curated"
+    NAI_DIFFUSION_5_CURATED_INPAINTING = "nai-diffusion-5-curated-inpainting"
+
+    NAI_DIFFUSION_4_5_FULL = "nai-diffusion-4-5-full"
+    NAI_DIFFUSION_4_5_FULL_INPAINTING = "nai-diffusion-4-5-full-inpainting"
+
+    NAI_DIFFUSION_4_5_CURATED = "nai-diffusion-4-5-curated"
+    NAI_DIFFUSION_4_5_CURATED_INPAINTING = "nai-diffusion-4-5-curated-inpainting"
 
     NAI_DIFFUSION_4_CURATED_PREVIEW = "nai-diffusion-4-curated-preview"
     NAI_DIFFUSION_4_FULL = "nai-diffusion-4-full"
@@ -134,6 +154,63 @@ class ModelGroups(Enum):
     STABLE_DIFFUSION_XL = "stable_diffusion_xl"
     STABLE_DIFFUSION_XL_FURRY = "stable_diffusion_xl_furry"
     V4 = "v4"
+    V5 = "v5"
+
+
+V5_MODEL_LIST = [
+    Model.NAI_DIFFUSION_5_FULL,
+    Model.NAI_DIFFUSION_5_FULL_INPAINTING,
+    Model.NAI_DIFFUSION_5_FULL_MEDIUM,
+    Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING,
+    Model.NAI_DIFFUSION_5_CURATED,
+    Model.NAI_DIFFUSION_5_CURATED_INPAINTING,
+]
+"""NovelAI Diffusion V5 family (web client model group "v5")."""
+
+V5_MEDIUM_MODEL_LIST = [
+    Model.NAI_DIFFUSION_5_FULL_MEDIUM,
+    Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING,
+]
+"""Fast V5 variant: the web client pins steps=14, k_euler_ancestral and the heavy preset."""
+
+
+def as_model(model: "ModelTypeAlias") -> "ModelTypeAlias":
+    """A model name that matches a known model becomes that Model; anything else is returned as is."""
+    if isinstance(model, str):
+        try:
+            return Model(model)
+        except ValueError:
+            return model
+    return model
+
+
+def get_inpainting_model(model: "ModelTypeAlias") -> "ModelTypeAlias":
+    """
+    Model the web client inpaints with for a model. NovelAI has no V5 Curated inpainting model
+    (``nai-diffusion-5-curated-inpainting`` answers "doesn't exist"); the web client inpaints
+    V5 Curated images with V4.5 Curated inpainting.
+    """
+    model = as_model(model)
+    mapping = {
+        Model.NAI_DIFFUSION: Model.NAI_DIFFUSION_INPAINTING,
+        Model.SAFE_DIFFUSION: Model.SAFE_DIFFUSION_INPAINTING,
+        Model.NAI_DIFFUSION_FURRY: Model.FURRY_DIFFUSION_INPAINTING,
+        Model.NAI_DIFFUSION_3: Model.NAI_DIFFUSION_3_INPAINTING,
+        Model.NAI_DIFFUSION_FURRY_3: Model.NAI_DIFFUSION_FURRY_3_INPAINTING,
+        Model.NAI_DIFFUSION_4_CURATED_PREVIEW: Model.NAI_DIFFUSION_4_CURATED_INPAINTING,
+        Model.NAI_DIFFUSION_4_FULL: Model.NAI_DIFFUSION_4_FULL_INPAINTING,
+        Model.NAI_DIFFUSION_4_5_CURATED: Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+        Model.NAI_DIFFUSION_4_5_FULL: Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
+        Model.NAI_DIFFUSION_5_CURATED: Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+        Model.NAI_DIFFUSION_5_CURATED_INPAINTING: Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+        Model.NAI_DIFFUSION_5_FULL: Model.NAI_DIFFUSION_5_FULL_INPAINTING,
+        Model.NAI_DIFFUSION_5_FULL_MEDIUM: Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING,
+    }
+    return mapping.get(model, model) if isinstance(model, Model) else model
+
+
+def is_v5_model(model: "ModelTypeAlias") -> bool:
+    return as_model(model) in V5_MODEL_LIST
 
 
 INPAINTING_MODEL_LIST = [
@@ -146,6 +223,9 @@ INPAINTING_MODEL_LIST = [
     Model.NAI_DIFFUSION_4_FULL_INPAINTING,
     Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
     Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
+    Model.NAI_DIFFUSION_5_FULL_INPAINTING,
+    Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING,
+    Model.NAI_DIFFUSION_5_CURATED_INPAINTING,
 ]
 
 PROMOTION = {
@@ -169,9 +249,9 @@ PROMOTION = {
     "Stable Diffusion XL 37C2B166": Model.NAI_DIFFUSION_FURRY_3,
     "Stable Diffusion XL F306816B": Model.NAI_DIFFUSION_FURRY_3,
     "Stable Diffusion XL 9CC2F394": Model.NAI_DIFFUSION_FURRY_3,
-    'NovelAI Diffusion V4.5 B9F340FD': Model.NAI_DIFFUSION_4_5_FULL,
-    'NovelAI Diffusion V4.5 F3D95188': Model.NAI_DIFFUSION_4_5_FULL,
-    'NovelAI Diffusion V4.5 5AB81C7C': Model.NAI_DIFFUSION_4_5_CURATED,
+    "NovelAI Diffusion V4.5 B9F340FD": Model.NAI_DIFFUSION_4_5_FULL,
+    "NovelAI Diffusion V4.5 F3D95188": Model.NAI_DIFFUSION_4_5_FULL,
+    "NovelAI Diffusion V4.5 5AB81C7C": Model.NAI_DIFFUSION_4_5_CURATED,
     "NovelAI Diffusion V4.5 B5A2A797": Model.NAI_DIFFUSION_4_5_CURATED,
     "NovelAI Diffusion V4 5AB81C7C": Model.NAI_DIFFUSION_4_5_CURATED,
     "NovelAI Diffusion V4 B5A2A797": Model.NAI_DIFFUSION_4_5_CURATED,
@@ -185,9 +265,9 @@ PROMOTION = {
     "NovelAI Diffusion V4 770A9E12": Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
 }
 
-ModelTypeAlias = Optional[Union[Model, str]]
-ImageBytesTypeAlias = Optional[Union[str, bytes]]
-UCPresetTypeAlias = Optional[Union[UCPreset, int]]
+ModelTypeAlias = Model | str | None
+ImageBytesTypeAlias = str | bytes | None
+UCPresetTypeAlias = UCPreset | int | None
 
 
 @dataclass
@@ -208,13 +288,32 @@ class SupportCondition:
     autoSmea: bool
     v4_0legacyUC: bool
     scaleRecommendedMin: int
-    scaleRecommendedMax: Optional[int]
+    scaleRecommendedMax: int | None
     numericEmphasis: bool
     encodedVibes: bool
     cfgDelaySigma: int
-    enhancePromptAdd: bool  # For enhance mode, see https://github.com/llmkira/novelai-python/blob/main/playground/enhance.py
+    enhancePromptAdd: (
+        bool  # For enhance mode, see https://github.com/llmkira/novelai-python/blob/main/playground/enhance.py
+    )
     hasFurryMode: bool
     img2imgInpainting: bool
+
+
+def supports_character_reference(model: ModelTypeAlias) -> bool:
+    """Precise Reference (director_reference_*): V4.5 only in the web client (characterReferences flag)."""
+    return as_model(model) in (
+        Model.NAI_DIFFUSION_4_5_FULL,
+        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
+        Model.NAI_DIFFUSION_4_5_CURATED,
+        Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
+    )
+
+
+def get_max_characters(model: ModelTypeAlias) -> int:
+    """Character prompts the model takes (web client maxCharacters: V5 32, V4/V4.5 6, older 0)."""
+    if is_v5_model(model):
+        return 32
+    return 6 if get_supported_params(model).characterPrompts else 0
 
 
 def get_supported_params(model: ModelTypeAlias):
@@ -223,11 +322,7 @@ def get_supported_params(model: ModelTypeAlias):
     :param model: Model
     :return: SupportCondition
     """
-    if isinstance(model, str):
-        try:
-            model = Model(model)
-        except ValueError:
-            pass
+    model = as_model(model)
     if model in [
         Model.STABLE_DIFFUSION,
         Model.NAI_DIFFUSION,
@@ -237,7 +332,7 @@ def get_supported_params(model: ModelTypeAlias):
         Model.CURATED_DIFFUSION_TEST,
         Model.NAI_DIFFUSION_INPAINTING,
         Model.SAFE_DIFFUSION_INPAINTING,
-        Model.FURRY_DIFFUSION_INPAINTING
+        Model.FURRY_DIFFUSION_INPAINTING,
     ]:
         return SupportCondition(
             controlnet=True,
@@ -262,7 +357,7 @@ def get_supported_params(model: ModelTypeAlias):
             cfgDelaySigma=19,
             enhancePromptAdd=False,
             hasFurryMode=False,
-            img2imgInpainting=False
+            img2imgInpainting=False,
         )
     if model in [Model.NAI_DIFFUSION_2]:
         return SupportCondition(
@@ -288,14 +383,14 @@ def get_supported_params(model: ModelTypeAlias):
             cfgDelaySigma=19,
             enhancePromptAdd=False,
             hasFurryMode=False,
-            img2imgInpainting=False
+            img2imgInpainting=False,
         )
     if model in [
         Model.NAI_DIFFUSION_XL,
         Model.NAI_DIFFUSION_3,
         Model.NAI_DIFFUSION_3_INPAINTING,
         Model.NAI_DIFFUSION_FURRY_3,
-        Model.NAI_DIFFUSION_FURRY_3_INPAINTING
+        Model.NAI_DIFFUSION_FURRY_3_INPAINTING,
     ]:
         return SupportCondition(
             controlnet=False,
@@ -320,7 +415,7 @@ def get_supported_params(model: ModelTypeAlias):
             cfgDelaySigma=19,
             enhancePromptAdd=False,
             hasFurryMode=False,
-            img2imgInpainting=False
+            img2imgInpainting=False,
         )
     if model in [
         Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
@@ -351,7 +446,7 @@ def get_supported_params(model: ModelTypeAlias):
             cfgDelaySigma=19,
             enhancePromptAdd=False,
             hasFurryMode=True,
-            img2imgInpainting=False
+            img2imgInpainting=False,
         )
     if model in [Model.CUSTOM]:
         return SupportCondition(
@@ -377,7 +472,7 @@ def get_supported_params(model: ModelTypeAlias):
             cfgDelaySigma=58,
             enhancePromptAdd=False,
             hasFurryMode=True,
-            img2imgInpainting=False
+            img2imgInpainting=False,
         )
     if model in [
         Model.NAI_DIFFUSION_4_5_CURATED,
@@ -385,9 +480,10 @@ def get_supported_params(model: ModelTypeAlias):
         Model.NAI_DIFFUSION_4_5_FULL,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
     ]:
+        # vibe transfer with encoded vibes, as the web client allows it for V4.5
         return SupportCondition(
             controlnet=False,
-            vibetransfer=False,
+            vibetransfer=True,
             scaleMax=10,
             negativePromptGuidance=True,
             noiseSchedule=True,
@@ -404,11 +500,39 @@ def get_supported_params(model: ModelTypeAlias):
             scaleRecommendedMin=0,
             scaleRecommendedMax=None,
             numericEmphasis=True,
+            encodedVibes=True,
+            cfgDelaySigma=58,
+            enhancePromptAdd=True,
+            hasFurryMode=True,
+            img2imgInpainting=False,
+        )
+    if model in V5_MODEL_LIST:
+        # From the web client: cfgRescale on, maxCharacters 32, streamed responses,
+        # transparency, img2img inpainting. Medium additionally pins steps/sampler/preset.
+        return SupportCondition(
+            controlnet=False,
+            vibetransfer=False,
+            scaleMax=10,
+            negativePromptGuidance=True,
+            noiseSchedule=True,
+            inpainting=True,
+            cfgDelay=False,
+            characterPrompts=True,
+            v4Prompts=True,
+            smea=False,
+            smeaDyn=False,
+            text=True,
+            dynamicThresholding=False,
+            autoSmea=False,
+            v4_0legacyUC=False,
+            scaleRecommendedMin=0,
+            scaleRecommendedMax=None,
+            numericEmphasis=True,
             encodedVibes=False,
             cfgDelaySigma=58,
             enhancePromptAdd=True,
             hasFurryMode=True,
-            img2imgInpainting=False
+            img2imgInpainting=True,
         )
     return SupportCondition(
         controlnet=False,
@@ -433,91 +557,106 @@ def get_supported_params(model: ModelTypeAlias):
         cfgDelaySigma=19,
         enhancePromptAdd=False,
         hasFurryMode=False,
-        img2imgInpainting=False
+        img2imgInpainting=False,
     )
 
 
 @dataclass
-class Modifier(object):
+class Modifier:
     qualityTags: str
     suffix: str
 
 
+@dataclass
+class QualityPresetDef:
+    id: str
+    suffix: str
+
+
+def get_quality_presets(model: ModelTypeAlias) -> list[QualityPresetDef]:
+    """
+    Quality presets the web client offers per model (qualityPresetId -> suffix).
+    "none" is always available.
+    """
+    model = as_model(model)
+    if model in V5_MODEL_LIST or model == Model.CUSTOM:
+        return [
+            QualityPresetDef("standard", "very aesthetic, masterpiece, no text"),
+            QualityPresetDef("light", "very aesthetic, amazing quality, no text"),
+            QualityPresetDef("none", ""),
+        ]
+    modifier = get_modifiers(model)
+    suffix = modifier.suffix.lstrip(", ") if modifier.suffix else modifier.qualityTags.rstrip(", ")
+    return [QualityPresetDef("standard", suffix), QualityPresetDef("none", "")]
+
+
+def get_quality_suffix(model: ModelTypeAlias, preset_id: str | QualityPreset | None) -> Modifier:
+    """Modifier for a named quality preset; falls back to the model's standard modifier."""
+    if isinstance(preset_id, Enum):
+        preset_id = preset_id.value
+    if preset_id in (None, "standard"):
+        return get_modifiers(model)
+    for preset in get_quality_presets(model):
+        if preset.id == preset_id:
+            return Modifier(qualityTags="", suffix=f", {preset.suffix}" if preset.suffix else "")
+    return get_modifiers(model)
+
+
 def find_model_by_hashcode(hashcode: str) -> ModelTypeAlias:
+    if "NovelAI Diffusion V5" in hashcode:
+        if "Curated" in hashcode:
+            return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_5_CURATED)
+        return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_5_FULL)
     if "NovelAI Diffusion V4.5" in hashcode:
         return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_4_5_FULL)
     if "NovelAI Diffusion V4" in hashcode:
         return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_4_CURATED_PREVIEW)
-    return PROMOTION.get(hashcode, None)
+    return PROMOTION.get(hashcode)
 
 
-def get_modifiers(model: Model) -> Modifier:
+def get_modifiers(model: ModelTypeAlias) -> Modifier:
     """
     Get modifiers from model
     :param model:
     :return:
     """
+    model = as_model(model)
     if model in [
         Model.CUSTOM,
-        Model.NAI_DIFFUSION_4_5_FULL,
-        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING
+        *V5_MODEL_LIST,
     ]:
-        return Modifier(
-            qualityTags="",
-            suffix=", very aesthetic, masterpiece, no text"
-        )
+        # V5: qualityPresetId "standard" in the web client
+        return Modifier(qualityTags="", suffix=", very aesthetic, masterpiece, no text")
+    # Strings below follow docs.novelai.net "Quality Tags":
+    # V4.5 Full keeps `location`, V4.5 Curated has no `very aesthetic`,
+    # V4 Curated uses `amazing quality`. V5 dropped location/rating/absurdres.
     if model in [
-        Model.NAI_DIFFUSION_4_5_CURATED,
-        Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING
+        Model.NAI_DIFFUSION_4_5_FULL,
+        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
     ]:
-        return Modifier(
-            qualityTags="",
-            suffix=", very aesthetic, location, masterpiece, no text, -0.8::feet::, rating:general"
-        )
+        return Modifier(qualityTags="", suffix=", location, very aesthetic, masterpiece, no text")
+    if model in [Model.NAI_DIFFUSION_4_5_CURATED, Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING]:
+        return Modifier(qualityTags="", suffix=", location, masterpiece, no text, -0.8::feet::, rating:general")
     if model in [
         Model.NAI_DIFFUSION_4_FULL,
         Model.NAI_DIFFUSION_4_FULL_INPAINTING,
     ]:
-        return Modifier(
-            qualityTags="",
-            suffix=", no text, best quality, very aesthetic, absurdres"
-        )
+        return Modifier(qualityTags="", suffix=", no text, best quality, very aesthetic, absurdres")
     if model in [
         Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
         Model.NAI_DIFFUSION_4_CURATED_INPAINTING,
     ]:
-        return Modifier(
-            qualityTags="",
-            suffix=", rating:general, best quality, very aesthetic, absurdres"
-        )
+        return Modifier(qualityTags="", suffix=", rating:general, amazing quality, very aesthetic, absurdres")
     if model in [Model.NAI_DIFFUSION_2]:
-        return Modifier(
-            qualityTags="very aesthetic, best quality, absurdres, ",
-            suffix=""
-        )
-    if model in [
-        Model.NAI_DIFFUSION_3,
-        Model.NAI_DIFFUSION_3_INPAINTING
-    ]:
-        return Modifier(
-            qualityTags="",
-            suffix=", best quality, amazing quality, very aesthetic, absurdres"
-        )
-    if model in [
-        Model.NAI_DIFFUSION_FURRY_3,
-        Model.NAI_DIFFUSION_FURRY_3_INPAINTING
-    ]:
-        return Modifier(
-            qualityTags="",
-            suffix=", {best quality}, {amazing quality}"
-        )
-    return Modifier(
-        qualityTags="masterpiece, best quality, ",
-        suffix=""
-    )
+        return Modifier(qualityTags="very aesthetic, best quality, absurdres, ", suffix="")
+    if model in [Model.NAI_DIFFUSION_3, Model.NAI_DIFFUSION_3_INPAINTING]:
+        return Modifier(qualityTags="", suffix=", best quality, amazing quality, very aesthetic, absurdres")
+    if model in [Model.NAI_DIFFUSION_FURRY_3, Model.NAI_DIFFUSION_FURRY_3_INPAINTING]:
+        return Modifier(qualityTags="", suffix=", {best quality}, {amazing quality}")
+    return Modifier(qualityTags="masterpiece, best quality, ", suffix="")
 
 
-def get_supported_noise_schedule(sample_type: Sampler, model: Model) -> List[NoiseSchedule]:
+def get_supported_noise_schedule(sample_type: Sampler, model: ModelTypeAlias) -> list[NoiseSchedule]:
     """
     Get supported noise schedule for a given sample type and model
     :param sample_type: Sampler
@@ -529,7 +668,7 @@ def get_supported_noise_schedule(sample_type: Sampler, model: Model) -> List[Noi
     return schedules
 
 
-def filter_by_model_noise_schedule(model: Model, noise_schedule: List[NoiseSchedule]) -> List[NoiseSchedule]:
+def filter_by_model_noise_schedule(model: ModelTypeAlias, noise_schedule: list[NoiseSchedule]) -> list[NoiseSchedule]:
     """
     Filter noise schedule by model
     :param model:
@@ -537,7 +676,8 @@ def filter_by_model_noise_schedule(model: Model, noise_schedule: List[NoiseSched
     :return:
     """
     # 只有 Novelai4 系列不支持Native
-    if model in [
+    if as_model(model) in [
+        *V5_MODEL_LIST,
         Model.NAI_DIFFUSION_4_5_CURATED,
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
         Model.NAI_DIFFUSION_4_5_FULL,
@@ -545,13 +685,13 @@ def filter_by_model_noise_schedule(model: Model, noise_schedule: List[NoiseSched
         Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
         Model.NAI_DIFFUSION_4_FULL,
         Model.NAI_DIFFUSION_4_FULL_INPAINTING,
-        Model.NAI_DIFFUSION_4_CURATED_INPAINTING
+        Model.NAI_DIFFUSION_4_CURATED_INPAINTING,
     ]:
         return [schedule for schedule in noise_schedule if schedule != NoiseSchedule.NATIVE]
     return noise_schedule
 
 
-def get_sampler_supported_noise_schedule(sample_type: Sampler) -> List[NoiseSchedule]:
+def get_sampler_supported_noise_schedule(sample_type: Sampler) -> list[NoiseSchedule]:
     """
     Get supported noise schedule for a given sample type
     :param sample_type: Sampler
@@ -563,19 +703,11 @@ def get_sampler_supported_noise_schedule(sample_type: Sampler) -> List[NoiseSche
         Sampler.K_DPMPP_2M,
         Sampler.K_DPMPP_2M_SDE,
         Sampler.K_DPMPP_SDE,
-        Sampler.K_EULER
+        Sampler.K_EULER,
     ]:
-        return [
-            NoiseSchedule.NATIVE,
-            NoiseSchedule.KARRAS,
-            NoiseSchedule.EXPONENTIAL,
-            NoiseSchedule.POLYEXPONENTIAL
-        ]
+        return [NoiseSchedule.NATIVE, NoiseSchedule.KARRAS, NoiseSchedule.EXPONENTIAL, NoiseSchedule.POLYEXPONENTIAL]
     elif sample_type in [Sampler.K_DPM_2]:
-        return [
-            NoiseSchedule.EXPONENTIAL,
-            NoiseSchedule.POLYEXPONENTIAL
-        ]
+        return [NoiseSchedule.EXPONENTIAL, NoiseSchedule.POLYEXPONENTIAL]
     else:
         return []
 
@@ -592,7 +724,7 @@ def get_default_noise_schedule(sample_type: Sampler) -> NoiseSchedule:
         Sampler.K_DPMPP_2M,
         Sampler.K_DPMPP_2M_SDE,
         Sampler.K_DPMPP_SDE,
-        Sampler.K_EULER
+        Sampler.K_EULER,
     ]:
         return NoiseSchedule.KARRAS
     elif sample_type in [Sampler.K_DPM_2]:
@@ -608,11 +740,9 @@ def get_model_group(model: ModelTypeAlias) -> ModelGroups:
     :param model: Model enum or model name string
     :return: Model group
     """
-    if isinstance(model, str):
-        try:
-            model = Model(model)
-        except ValueError:
-            return ModelGroups.STABLE_DIFFUSION
+    model = as_model(model)
+    if model is None or isinstance(model, str):
+        return ModelGroups.STABLE_DIFFUSION
     mapping = {
         Model.STABLE_DIFFUSION: ModelGroups.STABLE_DIFFUSION,
         Model.NAI_DIFFUSION: ModelGroups.STABLE_DIFFUSION,
@@ -638,6 +768,12 @@ def get_model_group(model: ModelTypeAlias) -> ModelGroups:
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING: ModelGroups.V4,
         Model.NAI_DIFFUSION_4_5_FULL: ModelGroups.V4,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING: ModelGroups.V4,
+        Model.NAI_DIFFUSION_5_FULL: ModelGroups.V5,
+        Model.NAI_DIFFUSION_5_FULL_INPAINTING: ModelGroups.V5,
+        Model.NAI_DIFFUSION_5_FULL_MEDIUM: ModelGroups.V5,
+        Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING: ModelGroups.V5,
+        Model.NAI_DIFFUSION_5_CURATED: ModelGroups.V5,
+        Model.NAI_DIFFUSION_5_CURATED_INPAINTING: ModelGroups.V5,
     }
     return mapping.get(model, ModelGroups.STABLE_DIFFUSION)
 
@@ -649,8 +785,9 @@ class UcPrompt:
     text: str
 
 
-def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
-    prompts: List[UcPrompt] = []
+def get_uc_preset(model: ModelTypeAlias) -> list[UcPrompt]:
+    prompts: list[UcPrompt] = []
+    model = as_model(model)
     if model in [
         Model.SAFE_DIFFUSION,
         Model.NAI_DIFFUSION,
@@ -661,18 +798,14 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="lowQualityPlusBadAnatomy",
-                text="nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
+                text="nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
             ),
             UcPrompt(
                 category="light",
                 name="lowQuality",
-                text="nsfw, lowres, text, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry"
+                text="nsfw, lowres, text, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry",
             ),
-            UcPrompt(
-                category="none",
-                name="none",
-                text="lowres"
-            ),
+            UcPrompt(category="none", name="none", text="lowres"),
         ]
     elif model in [
         Model.NAI_DIFFUSION_FURRY,
@@ -682,18 +815,14 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="light",
                 name="lowQuality",
-                text="nsfw, worst quality, low quality, what has science done, what, nightmare fuel, eldritch horror, where is your god now, why"
+                text="nsfw, worst quality, low quality, what has science done, what, nightmare fuel, eldritch horror, where is your god now, why",
             ),
             UcPrompt(
                 category="heavy",
                 name="badAnatomy",
-                text="nsfw, {worst quality}, low quality, distracting watermark, [nightmare fuel], {{unfinished}}, deformed, outline, pattern, simple background"
+                text="nsfw, {worst quality}, low quality, distracting watermark, [nightmare fuel], {{unfinished}}, deformed, outline, pattern, simple background",
             ),
-            UcPrompt(
-                category="none",
-                name="none",
-                text="low res"
-            ),
+            UcPrompt(category="none", name="none", text="low res"),
         ]
     elif model in [
         Model.NAI_DIFFUSION_2,
@@ -702,18 +831,14 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="heavy",
-                text="nsfw, lowres, bad, text, error, missing, extra, fewer, cropped, jpeg artifacts, worst quality, bad quality, watermark, displeasing, unfinished, chromatic aberration, scan, scan artifacts"
+                text="nsfw, lowres, bad, text, error, missing, extra, fewer, cropped, jpeg artifacts, worst quality, bad quality, watermark, displeasing, unfinished, chromatic aberration, scan, scan artifacts",
             ),
             UcPrompt(
                 category="light",
                 name="light",
-                text="nsfw, lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"
+                text="nsfw, lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing",
             ),
-            UcPrompt(
-                category="none",
-                name="none",
-                text="lowres"
-            ),
+            UcPrompt(category="none", name="none", text="lowres"),
         ]
     elif model in [
         Model.NAI_DIFFUSION_3,
@@ -723,23 +848,19 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="heavy",
-                text="nsfw, lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]"
+                text="nsfw, lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract]",
             ),
             UcPrompt(
                 category="light",
                 name="light",
-                text="nsfw, lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing"
+                text="nsfw, lowres, jpeg artifacts, worst quality, watermark, blurry, very displeasing",
             ),
             UcPrompt(
                 category="human",
                 name="humanFocus",
-                text="nsfw, lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, glowing eyes"
+                text="nsfw, lowres, {bad}, error, fewer, extra, missing, worst quality, jpeg artifacts, bad quality, watermark, unfinished, displeasing, chromatic aberration, signature, extra digits, artistic error, username, scan, [abstract], bad anatomy, bad hands, @_@, mismatched pupils, heart-shaped pupils, glowing eyes",
             ),
-            UcPrompt(
-                category="none",
-                name="none",
-                text="lowres"
-            ),
+            UcPrompt(category="none", name="none", text="lowres"),
         ]
     elif model in [
         Model.NAI_DIFFUSION_FURRY_3,
@@ -749,18 +870,14 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="heavy",
-                text="nsfw, {{worst quality}}, [displeasing], {unusual pupils}, guide lines, {{unfinished}}, {bad}, url, artist name, {{tall image}}, mosaic, {sketch page}, comic panel, impact (font), [dated], {logo}, ych, {what}, {where is your god now}, {distorted text}, repeated text, {floating head}, {1994}, {widescreen}, absolutely everyone, sequence, {compression artifacts}, hard translated, {cropped}, {commissioner name}, unknown text, high contrast"
+                text="nsfw, {{worst quality}}, [displeasing], {unusual pupils}, guide lines, {{unfinished}}, {bad}, url, artist name, {{tall image}}, mosaic, {sketch page}, comic panel, impact (font), [dated], {logo}, ych, {what}, {where is your god now}, {distorted text}, repeated text, {floating head}, {1994}, {widescreen}, absolutely everyone, sequence, {compression artifacts}, hard translated, {cropped}, {commissioner name}, unknown text, high contrast",
             ),
             UcPrompt(
                 category="light",
                 name="light",
-                text="nsfw, {worst quality}, guide lines, unfinished, bad, url, tall image, widescreen, compression artifacts, unknown text"
+                text="nsfw, {worst quality}, guide lines, unfinished, bad, url, tall image, widescreen, compression artifacts, unknown text",
             ),
-            UcPrompt(
-                category="none",
-                name="none",
-                text="lowres"
-            ),
+            UcPrompt(category="none", name="none", text="lowres"),
         ]
     elif model in [
         Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
@@ -770,18 +887,14 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="heavy",
-                text="blurry, lowres, error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, logo, dated, signature, multiple views, gigantic breasts"
+                text="blurry, lowres, error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, logo, dated, signature, multiple views, gigantic breasts",
             ),
             UcPrompt(
                 category="light",
                 name="light",
-                text="blurry, lowres, error, worst quality, bad quality, jpeg artifacts, very displeasing, logo, dated, signature"
+                text="blurry, lowres, error, worst quality, bad quality, jpeg artifacts, very displeasing, logo, dated, signature",
             ),
-            UcPrompt(
-                category="none",
-                name="none",
-                text=""
-            ),
+            UcPrompt(category="none", name="none", text=""),
         ]
     elif model in [
         Model.NAI_DIFFUSION_4_FULL,
@@ -791,18 +904,14 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="heavy",
-                text="nsfw, blurry, lowres, error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, multiple views, logo, too many watermarks, white blank page, blank page"
+                text="nsfw, blurry, lowres, error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, multiple views, logo, too many watermarks, white blank page, blank page",
             ),
             UcPrompt(
                 category="light",
                 name="light",
-                text="nsfw, blurry, lowres, error, worst quality, bad quality, jpeg artifacts, very displeasing, white blank page, blank page"
+                text="nsfw, blurry, lowres, error, worst quality, bad quality, jpeg artifacts, very displeasing, white blank page, blank page",
             ),
-            UcPrompt(
-                category="none",
-                name="none",
-                text=""
-            ),
+            UcPrompt(category="none", name="none", text=""),
         ]
     elif model in [
         Model.CUSTOM,
@@ -813,23 +922,45 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="heavy",
-                text="blurry, lowres, upscaled, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, negative space, blank page"
+                text="blurry, lowres, upscaled, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, negative space, blank page",
             ),
             UcPrompt(
                 category="light",
                 name="light",
-                text="blurry, lowres, upscaled, artistic error, scan artifacts, jpeg artifacts, logo, too many watermarks, negative space, blank page"
+                text="blurry, lowres, upscaled, artistic error, scan artifacts, jpeg artifacts, logo, too many watermarks, negative space, blank page",
             ),
             UcPrompt(
                 category="human",
                 name="humanFocus",
-                text="blurry, lowres, upscaled, artistic error, film grain, scan artifacts, bad anatomy, bad hands, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, @_@, mismatched pupils, glowing eyes, negative space, blank page"
+                text="blurry, lowres, upscaled, artistic error, film grain, scan artifacts, bad anatomy, bad hands, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, halftone, multiple views, logo, too many watermarks, @_@, mismatched pupils, glowing eyes, negative space, blank page",
+            ),
+            UcPrompt(category="none", name="none", text=""),
+        ]
+    elif model in V5_MODEL_LIST:
+        # From the web client bundle. The client prepends "nsfw" to every preset except
+        # "none" unless the prompt already contains it; that prefix is reproduced here.
+        prompts = [
+            UcPrompt(
+                category="heavy",
+                name="heavy",
+                text="nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page",
             ),
             UcPrompt(
-                category="none",
-                name="none",
-                text=""
+                category="light",
+                name="light",
+                text="nsfw, lowres, bad hands, bad anatomy, artistic error, sepia, white haze, worst quality, very displeasing, jpeg artifacts, 0::ai-generated::",
             ),
+            UcPrompt(
+                category="furry",
+                name="furryFocus",
+                text="nsfw, {worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic",
+            ),
+            UcPrompt(
+                category="human",
+                name="humanFocus",
+                text="nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy",
+            ),
+            UcPrompt(category="none", name="none", text=""),
         ]
     elif model in [
         Model.NAI_DIFFUSION_4_5_FULL,
@@ -839,28 +970,24 @@ def get_uc_preset(model: ModelTypeAlias) -> List[UcPrompt]:
             UcPrompt(
                 category="heavy",
                 name="heavy",
-                text="nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page"
+                text="nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page",
             ),
             UcPrompt(
                 category="light",
                 name="light",
-                text="nsfw, lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page"
+                text="nsfw, lowres, artistic error, scan artifacts, worst quality, bad quality, jpeg artifacts, multiple views, very displeasing, too many watermarks, negative space, blank page",
             ),
             UcPrompt(
                 category="furry",
                 name="furryFocus",
-                text="nsfw, {worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic"
+                text="nsfw, {worst quality}, distracting watermark, unfinished, bad quality, {widescreen}, upscale, {sequence}, {{grandfathered content}}, blurred foreground, chromatic aberration, sketch, everyone, [sketch background], simple, [flat colors], ych (character), outline, multiple scenes, [[horror (theme)]], comic",
             ),
             UcPrompt(
                 category="human",
                 name="humanFocus",
-                text="nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy"
+                text="nsfw, lowres, artistic error, film grain, scan artifacts, worst quality, bad quality, jpeg artifacts, very displeasing, chromatic aberration, dithering, halftone, screentone, multiple views, logo, too many watermarks, negative space, blank page, @_@, mismatched pupils, glowing eyes, bad anatomy",
             ),
-            UcPrompt(
-                category="none",
-                name="none",
-                text=""
-            ),
+            UcPrompt(category="none", name="none", text=""),
         ]
     return prompts
 
@@ -871,3 +998,14 @@ def get_default_uc_preset(model: ModelTypeAlias, uc_preset: int) -> str:
         return prompts[uc_preset].text
     else:
         return "lowres"
+
+
+def get_uc_preset_id(model: ModelTypeAlias, uc_preset: int) -> str | None:
+    """
+    Category name ("heavy", "light", "human", "furry", "none") that the web client
+    sends as ``ucPresetId`` for params_version >= 4. None when the index is unknown.
+    """
+    prompts = get_uc_preset(model)
+    if 0 <= uc_preset < len(prompts):
+        return prompts[uc_preset].category
+    return None

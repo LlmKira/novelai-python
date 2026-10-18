@@ -4,14 +4,15 @@
 # @File    : information.py
 
 import asyncio
+import logging
 import os
 
 from dotenv import load_dotenv
-from loguru import logger
 from pydantic import SecretStr
 
-from novelai_python import APIError
-from novelai_python import Information, InformationResp, JwtCredential
+from novelai_python import APIError, Information, InformationResp, JwtCredential
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 

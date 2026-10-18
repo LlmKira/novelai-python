@@ -3,11 +3,14 @@
 # @Author  : sudoskys
 # @File    : enhance.py
 
-from loguru import logger
+import logging
 import random
 from typing import Tuple
-from novelai_python.sdk.ai.generate_image import Model, Params, UCPreset, Sampler
+
 from novelai_python.sdk.ai._enum import get_supported_params
+from novelai_python.sdk.ai.generate_image import Model, Params, Sampler, UCPreset
+
+logger = logging.getLogger(__name__)
 
 # NOTE About Enhance Mode
 # Enhance Mode = origin model name + img2img action + width *1.5(or 1) +height *1.5(or 1) + !!diff seed!!

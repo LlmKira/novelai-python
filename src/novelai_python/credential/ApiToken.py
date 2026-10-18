@@ -1,41 +1,31 @@
-# -*- coding: utf-8 -*-
 # @Time    : 2024/2/8 下午3:05
 # @Author  : sudoskys
 # @File    : ApiToken.py
 
 
-import arrow
-import shortuuid
-from curl_cffi.requests import AsyncSession
-from loguru import logger
-from pydantic import SecretStr, Field, field_validator
+import logging
 
-from ._base import CredentialBase
+from pydantic import Field, SecretStr, field_validator
+
+from ._base import BearerCredential
+
+logger = logging.getLogger(__name__)
 
 
-class ApiCredential(CredentialBase):
+class ApiCredential(BearerCredential):
     """
-    ApiCredential is the base class for all credential.
+    ApiCredential sends a persistent API token (pst-...) as the bearer token.
     """
-    api_token: SecretStr = Field(None, description="api token")
-    x_correlation_id: str = shortuuid.uuid()[0:6]
 
-    async def get_session(self, timeout: int = 180, update_headers: dict = None):
-        headers = {
-            "Authorization": f"Bearer {self.api_token.get_secret_value()}",
-            "Content-Type": "application/json",
-            "x-correlation-id": self.x_correlation_id,
-            "x-initiated-at": f"{arrow.utcnow().isoformat()}Z",
-        }
+    api_token: SecretStr | None = Field(default=None, description="api token")
 
-        if update_headers:
-            assert isinstance(update_headers, dict), "update_headers must be a dict"
-            headers.update(update_headers)
+    def _token(self) -> str:
+        if self.api_token is None:
+            raise ValueError("api_token is not set")
+        return self.api_token.get_secret_value()
 
-        return AsyncSession(timeout=timeout, headers=headers, impersonate="chrome136")
-
-    @field_validator('api_token')
-    def check_api_token(cls, v: SecretStr):
-        if not v.get_secret_value().startswith("pst"):
-            logger.warning("api token should start with `pst-`")
+    @field_validator("api_token")
+    def check_api_token(cls, v: SecretStr | None):
+        if v is not None and not v.get_secret_value().startswith("pst"):
+            logger.warning("api_token should start with `pst-`")
         return v
