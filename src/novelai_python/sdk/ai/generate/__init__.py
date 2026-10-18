@@ -68,14 +68,6 @@ class LLM(ApiBaseModel):
     model_config = ConfigDict(extra="ignore")
 
     @property
-    def endpoint(self):
-        return self._endpoint
-
-    @endpoint.setter
-    def endpoint(self, value) -> None:
-        self._endpoint = value
-
-    @property
     def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/generate"
 

@@ -64,14 +64,6 @@ class Upscale(ApiBaseModel):
     def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/upscale"
 
-    @property
-    def endpoint(self):
-        return self._endpoint
-
-    @endpoint.setter
-    def endpoint(self, value) -> None:
-        self._endpoint = value
-
     @retry_on_server_error()
     async def request(
         self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None

@@ -6,11 +6,12 @@ import io
 import logging
 import sys
 import zipfile
+from collections import OrderedDict
 from typing import Literal
 
 try:
     import uvicorn
-    from fastapi import Depends, FastAPI, Security
+    from fastapi import Depends, FastAPI, Request, Security
     from fastapi.security import APIKeyHeader
     from starlette.responses import JSONResponse, StreamingResponse
 except ImportError as e:  # pragma: no cover
@@ -19,6 +20,7 @@ except ImportError as e:  # pragma: no cover
 from novelai_python import LLMStream, LLMStreamResp
 from novelai_python.sdk.ai.augment_image import AugmentImageInfer, Moods, ReqType
 
+from ._exceptions import APIError, NovelAiError
 from .credential import JwtCredential, SecretStr
 from .sdk.ai.generate import LLM
 from .sdk.ai.generate_image import GenerateImageInfer, Model
@@ -36,17 +38,53 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 token_key = APIKeyHeader(name="Authorization")
-session = {}
+
+SESSION_CACHE_LIMIT = 128
+session: OrderedDict[str, JwtCredential] = OrderedDict()
 
 
-def get_session(token: str):
-    if token not in session:
-        session[token] = JwtCredential(jwt_token=SecretStr(token))
-    return session[token]
+def get_session(token: str) -> JwtCredential:
+    credential = session.get(token)
+    if credential is None:
+        credential = JwtCredential(jwt_token=SecretStr(token))
+        session[token] = credential
+        if len(session) > SESSION_CACHE_LIMIT:
+            session.popitem(last=False)
+    else:
+        session.move_to_end(token)
+    return credential
 
 
 def get_current_token(auth_key: str = Security(token_key)):
     return auth_key
+
+
+@app.exception_handler(APIError)
+async def api_error_handler(_request: Request, exc: APIError):
+    """Render SDK errors once, with the status the upstream reported."""
+    try:
+        status = int(exc.code) if exc.code is not None else 500
+    except (TypeError, ValueError):
+        status = 500
+    if not 400 <= status <= 599:
+        status = 500
+    if status >= 500:
+        logger.exception(exc)
+    else:
+        logger.warning("%s: %s", type(exc).__name__, exc.message)
+    return JSONResponse(status_code=status, content={"message": exc.message, "code": exc.code})
+
+
+@app.exception_handler(NovelAiError)
+async def novelai_error_handler(_request: Request, exc: NovelAiError):
+    logger.exception(exc)
+    return JSONResponse(status_code=500, content={"message": exc.message})
+
+
+@app.exception_handler(Exception)
+async def unexpected_error_handler(_request: Request, exc: Exception):
+    logger.exception(exc)
+    return JSONResponse(status_code=500, content={"message": "Internal server error"})
 
 
 @app.get("/health")
@@ -71,20 +109,16 @@ async def anlas(current_token: str = Depends(get_current_token)):
     :param current_token: Authorization
     :return:
     """
-    try:
-        result = await Subscription().request(session=get_session(current_token))
-        return {
-            "anlas_left": result.anlas_left,
-            "fixed": result.trainingStepsLeft.fixedTrainingStepsLeft,
-            "purchased": result.trainingStepsLeft.purchasedTrainingSteps,
-            "tier": result.tier_name,
-            "active": result.is_active,
-            "unlimited_image_generation": result.is_unlimited_image_generation,
-            "expires_at": result.expiresAt,
-        }
-    except Exception as e:
-        logger.exception(e)
-        return JSONResponse(status_code=500, content=e.__dict__)
+    result = await Subscription().request(session=get_session(current_token))
+    return {
+        "anlas_left": result.anlas_left,
+        "fixed": result.trainingStepsLeft.fixedTrainingStepsLeft,
+        "purchased": result.trainingStepsLeft.purchasedTrainingSteps,
+        "tier": result.tier_name,
+        "active": result.is_active,
+        "unlimited_image_generation": result.is_unlimited_image_generation,
+        "expires_at": result.expiresAt,
+    }
 
 
 @app.get("/user/trial-status")
@@ -94,12 +128,8 @@ async def trial_status(current_token: str = Depends(get_current_token)):
     :param current_token: Authorization
     :return:
     """
-    try:
-        result = await TrialStatus().request(session=get_session(current_token))
-        return result.model_dump()
-    except Exception as e:
-        logger.exception(e)
-        return JSONResponse(status_code=500, content=e.__dict__)
+    result = await TrialStatus().request(session=get_session(current_token))
+    return result.model_dump()
 
 
 @app.get("/user/data")
@@ -109,12 +139,8 @@ async def user_data(current_token: str = Depends(get_current_token)):
     :param current_token: Authorization
     :return:
     """
-    try:
-        result = await UserData().request(session=get_session(current_token))
-        return result.model_dump()
-    except Exception as e:
-        logger.exception(e)
-        return JSONResponse(status_code=500, content=e.__dict__)
+    result = await UserData().request(session=get_session(current_token))
+    return result.model_dump()
 
 
 @app.post("/user/login")
@@ -124,12 +150,8 @@ async def login(req: Login):
     :param req: Login
     :return:
     """
-    try:
-        result = await req.request()
-        return result.model_dump()
-    except Exception as e:
-        logger.exception(e)
-        return JSONResponse(status_code=500, content=e.__dict__)
+    result = await req.request()
+    return result.model_dump()
 
 
 @app.get("/user/information")
@@ -139,12 +161,8 @@ async def information(current_token: str = Depends(get_current_token)):
     :param current_token: Authorization
     :return:
     """
-    try:
-        result = await Information().request(session=get_session(current_token))
-        return result.model_dump()
-    except Exception as e:
-        logger.exception(e)
-        return JSONResponse(status_code=500, content=e.__dict__)
+    result = await Information().request(session=get_session(current_token))
+    return result.model_dump()
 
 
 @app.get("/user/subscription")
@@ -154,12 +172,8 @@ async def subscription(current_token: str = Depends(get_current_token)):
     :param current_token: Authorization
     :return:
     """
-    try:
-        result = await Subscription().request(session=get_session(current_token))
-        return result.model_dump()
-    except Exception as e:
-        logger.exception(e)
-        return JSONResponse(status_code=500, content=e.__dict__)
+    result = await Subscription().request(session=get_session(current_token))
+    return result.model_dump()
 
 
 @app.post("/ai/upscale")
@@ -170,24 +184,19 @@ async def upscale(req: Upscale, current_token: str = Depends(get_current_token))
     :param req: Upscale
     :return:
     """
-    try:
-        result = await req.request(session=get_session(current_token))
-        zip_file_bytes = io.BytesIO()
-        with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
-            file = result.files  # ONLY TUPLE
-            if file is None:
-                raise ValueError("The upscale response holds no image")
-            zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
-        # return the zip file
-        zip_file_bytes.seek(0)
-        return StreamingResponse(
-            zip_file_bytes,
-            media_type="application/zip",
-            headers={"Content-Disposition": "attachment;filename=image.zip"},
-        )
-    except Exception as e:
-        logger.exception(e)
-        return JSONResponse(status_code=500, content=e.__dict__)
+    result = await req.request(session=get_session(current_token))
+    file = result.files
+    if file is None:
+        raise ValueError("The upscale response holds no image")
+    zip_file_bytes = io.BytesIO()
+    with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+        zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
+    zip_file_bytes.seek(0)
+    return StreamingResponse(
+        zip_file_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment;filename=image.zip"},
+    )
 
 
 @app.get("/ai/generate-image/suggest_tags")
@@ -199,13 +208,8 @@ async def suggest_tags(model: Model, prompt: str, current_token: str = Depends(g
     :param prompt: str
     :return:
     """
-    try:
-        req = SuggestTags(model=model, prompt=prompt)
-        result = await req.request(session=get_session(current_token))
-        return result.model_dump()
-    except Exception as e:
-        logger.exception(e)
-        return JSONResponse(status_code=500, content=e.__dict__)
+    result = await SuggestTags(model=model, prompt=prompt).request(session=get_session(current_token))
+    return result.model_dump()
 
 
 @app.post("/ai/generate-image")
@@ -216,22 +220,17 @@ async def generate_image(req: GenerateImageInfer, current_token: str = Depends(g
     :param req: GenerateImageInfer
     :return:
     """
-    try:
-        result = await req.request(session=get_session(current_token))
-        zip_file_bytes = io.BytesIO()
-        with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
-            for file in result.files or []:
-                zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
-        # return the zip file
-        zip_file_bytes.seek(0)
-        return StreamingResponse(
-            zip_file_bytes,
-            media_type="application/zip",
-            headers={"Content-Disposition": "attachment;filename=image.zip"},
-        )
-    except Exception as e:
-        logger.exception(e)
-        return JSONResponse(status_code=500, content=e.__dict__)
+    result = await req.request(session=get_session(current_token))
+    zip_file_bytes = io.BytesIO()
+    with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+        for file in result.files or []:
+            zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
+    zip_file_bytes.seek(0)
+    return StreamingResponse(
+        zip_file_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment;filename=image.zip"},
+    )
 
 
 @app.post("/ai/generate-stream")
@@ -245,8 +244,8 @@ async def generate_stream(req: LLMStream, current_token: str = Depends(get_curre
 
     async def generator():
         agent = req
-        session = get_session(current_token)
-        generator = agent.request(session=session)
+        credential = get_session(current_token)
+        generator = agent.request(session=credential)
         async for data in generator:
             data: LLMStreamResp
             yield data.text or ""
@@ -262,12 +261,8 @@ async def generate(req: LLM, current_token: str = Depends(get_current_token)):
     :param req: LLM
     :return:
     """
-    try:
-        result = await req.request(session=get_session(current_token))
-        return result.model_dump()
-    except Exception as e:
-        logger.exception(e)
-        return JSONResponse(status_code=500, content=e.__dict__)
+    result = await req.request(session=get_session(current_token))
+    return result.model_dump()
 
 
 @app.get("/ai/generate-voice")
@@ -289,17 +284,13 @@ async def generate_voice(
     :param version: Union[Literal["v2", "v1"], str]
     :return:
     """
-    try:
-        req = VoiceGenerate(text=text, voice=voice, seed=seed, opus=opus, version=version)
-        result = await req.request(session=get_session(current_token))
-        return StreamingResponse(
-            io.BytesIO(result.audio),
-            media_type="audio/mpeg",
-            headers={"Content-Disposition": "attachment;filename=audio.mp3"},
-        )
-    except Exception as e:
-        logger.exception(e)
-        return JSONResponse(status_code=500, content=e.__dict__)
+    req = VoiceGenerate(text=text, voice=voice, seed=seed, opus=opus, version=version)
+    result = await req.request(session=get_session(current_token))
+    return StreamingResponse(
+        io.BytesIO(result.audio),
+        media_type="audio/mpeg",
+        headers={"Content-Disposition": "attachment;filename=audio.mp3"},
+    )
 
 
 @app.post("/ai/augment-image")
@@ -321,29 +312,24 @@ async def augment_image(
     :param defry: Optional[int]
     :return:
     """
-    try:
-        req = AugmentImageInfer.build(
-            req_type=req_type,
-            image=image,
-            mood=mood,
-            prompt=prompt,
-            defry=defry,
-        )
-        result = await req.request(session=get_session(current_token))
-        zip_file_bytes = io.BytesIO()
-        with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
-            for file in result.files or []:
-                zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
-        # return the zip file
-        zip_file_bytes.seek(0)
-        return StreamingResponse(
-            zip_file_bytes,
-            media_type="application/zip",
-            headers={"Content-Disposition": "attachment;filename=image.zip"},
-        )
-    except Exception as e:
-        logger.exception(e)
-        return JSONResponse(status_code=500, content=e.__dict__)
+    req = AugmentImageInfer.build(
+        req_type=req_type,
+        image=image,
+        mood=mood,
+        prompt=prompt,
+        defry=defry,
+    )
+    result = await req.request(session=get_session(current_token))
+    zip_file_bytes = io.BytesIO()
+    with zipfile.ZipFile(zip_file_bytes, mode="w", compression=zipfile.ZIP_DEFLATED) as zip_file:
+        for file in result.files or []:
+            zip_file.writestr(zinfo_or_arcname=file[0], data=file[1])
+    zip_file_bytes.seek(0)
+    return StreamingResponse(
+        zip_file_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment;filename=image.zip"},
+    )
 
 
 # 获取输入参数

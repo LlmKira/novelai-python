@@ -22,14 +22,6 @@ class UserData(ApiBaseModel):
     def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/user/data"
 
-    @property
-    def endpoint(self):
-        return self._endpoint
-
-    @endpoint.setter
-    def endpoint(self, value) -> None:
-        self._endpoint = value
-
     async def request(
         self, session: AsyncSession | CredentialBase, *, override_headers: dict | None = None
     ) -> UserDataResp:

@@ -99,3 +99,33 @@ async def test_request_method_unknown_error():
         await info.request(session)
     expected_message = "An unknown error occurred."
     assert expected_message == str(e.value)
+
+
+def test_information_keeps_extra_fields():
+    resp = InformationResp.model_validate(
+        {
+            "emailVerified": True,
+            "emailVerificationLetterSent": True,
+            "trialActivated": True,
+            "trialActionsLeft": 0,
+            "trialImagesLeft": 0,
+            "accountCreatedAt": 0,
+            "banStatus": "none",
+            "plainTextEmail": "a@b.c",
+            "loginMethod": "password",
+            "newField": 1,
+        }
+    )
+    assert resp.banStatus == "none"
+    assert resp.plainTextEmail == "a@b.c"
+    assert resp.loginMethod == "password"
+    assert resp.model_extra["newField"] == 1
+
+
+def test_user_data_priority_is_typed():
+    from novelai_python._response.user.data import UserDataResp
+    from novelai_python._response.user.priority import PriorityResp
+
+    data = UserDataResp.model_validate({"priority": {"maxPriorityActions": 4}})
+    assert isinstance(data.priority, PriorityResp)
+    assert data.priority.maxPriorityActions == 4

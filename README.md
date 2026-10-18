@@ -20,7 +20,7 @@
 ✨ NovelAI api python sdk with Pydantic, modern and user-friendly.
 
 The goal of this repository is to use Pydantic to build legitimate requests to access
-the [NovelAI API service](https://api.novelai.net/docs).
+the [NovelAI API service](https://image.novelai.net/docs).
 
 > Python >= 3.12 is required (tested on 3.12 – 3.14).
 
@@ -81,14 +81,12 @@ directory, read code as documentation.**
 import asyncio
 import os
 
-from dotenv import load_dotenv
 from pydantic import SecretStr
 
 from novelai_python import GenerateImageInfer, ImageGenerateResp, ApiCredential
 from novelai_python.sdk.ai.generate_image import Model, Character, Sampler, UCPreset
 from novelai_python.sdk.ai.generate_image.schema import PositionMap
 
-load_dotenv()
 session = ApiCredential(api_token=SecretStr(os.getenv("NOVELAI_JWT")))  # pst-***
 # For security reasons, storing user credentials in plaintext is strongly discouraged.
 
@@ -201,14 +199,12 @@ Environment:
 import asyncio
 import os
 
-from dotenv import load_dotenv
 from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
 from novelai_python.sdk.ai.generate import TextLLMModel, LLM, get_default_preset, AdvanceLLMSetting
 from novelai_python.sdk.ai.generate._enum import get_model_preset
 
-load_dotenv()
 username = os.getenv("NOVELAI_USER", None)
 assert username is not None
 # credential = JwtCredential(jwt_token=SecretStr(jwt))

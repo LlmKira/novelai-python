@@ -24,7 +24,9 @@ def forwarded(monkeypatch):
 
 
 def _post(body: str):
-    client = TestClient(app)
+    # The fake request raises to stop before the network; the app's exception handler
+    # turns that into a 500, and TestClient must not re-raise for the test to inspect it.
+    client = TestClient(app, raise_server_exceptions=False)
     return client.post(
         "/ai/generate-image",
         content=body,

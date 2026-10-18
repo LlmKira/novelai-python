@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 from curl_cffi.requests import AsyncSession
 
-from src.novelai_python.sdk.ai.generate_voice import VoiceGenerate, VoiceResponse
+from novelai_python.sdk.ai.generate_voice import VoiceGenerate, VoiceResponse
 
 
 @pytest.mark.asyncio

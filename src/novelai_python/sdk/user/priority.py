@@ -3,18 +3,11 @@
 from typing import ClassVar
 
 from curl_cffi.requests import AsyncSession
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import PrivateAttr
 
+from ..._response.user.priority import PriorityResp
 from ...credential import CredentialBase
 from ..schema import ApiBaseModel
-
-
-class PriorityResp(BaseModel):
-    """GET /user/priority: the account's task priority balance."""
-
-    maxPriorityActions: int | None = Field(default=None, description="Priority actions the balance refills to")
-    nextRefillAt: int | None = Field(default=None, description="Next priority refill (UNIX timestamp)")
-    taskPriority: float | None = Field(default=None, description="Current task priority")
 
 
 class Priority(ApiBaseModel):

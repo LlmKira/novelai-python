@@ -12,7 +12,7 @@ from pydantic import Field, PrivateAttr
 
 from novelai_python.sdk.ai._enum import Model
 
-from ...._exceptions import APIError, AuthError, SessionHttpError
+from ...._exceptions import APIError, SessionHttpError
 from ...._response.ai.generate_image import SuggestTagsResp
 from ....credential import CredentialBase
 from ....credential._base import IMPERSONATE, browser_headers
@@ -26,14 +26,6 @@ class SuggestTags(ApiBaseModel):
     model: Model | str = Field(default=Model.NAI_DIFFUSION_4_5_FULL, description="The image model")
     prompt: str = Field(..., description="The incomplete tag query")
     lang: Literal["en", "jp"] = Field(default="en", description="The language of the tag query")
-
-    @property
-    def endpoint(self):
-        return self._endpoint
-
-    @endpoint.setter
-    def endpoint(self, value) -> None:
-        self._endpoint = value
 
     @property
     def base_url(self) -> str:
@@ -83,16 +75,12 @@ class SuggestTags(ApiBaseModel):
             response = await sess.get(f"{self.base_url}?{query_params}")
 
             if response.status_code != 200:
-                error_message = await self.handle_error_response(response, request_data)
-                status_code = error_message.get("statusCode", response.status_code)
-                message = error_message.get("message", "Unknown error")
-
-                if status_code in [400, 401, 402]:
-                    raise AuthError(message, request=request_data, code=status_code, response=error_message)
-                elif status_code == 500:
-                    raise APIError(message, request=request_data, code=status_code, response=error_message)
-                else:
-                    raise APIError(message, request=request_data, code=status_code, response=error_message)
+                self._raise_for_status(
+                    response.status_code,
+                    response.content,
+                    request_data,
+                    self._legacy_400_as_auth,
+                )
 
             return SuggestTagsResp.model_validate_json(response.content)
 
