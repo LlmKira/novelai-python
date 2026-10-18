@@ -1,5 +1,7 @@
 # @File    : priority.py
 
+from typing import ClassVar
+
 from curl_cffi.requests import AsyncSession
 from pydantic import BaseModel, Field, PrivateAttr
 
@@ -17,6 +19,7 @@ class PriorityResp(BaseModel):
 
 class Priority(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://image.novelai.net")
+    _legacy_400_as_auth: ClassVar[bool] = False
 
     @property
     def base_url(self) -> str:

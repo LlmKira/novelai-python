@@ -80,6 +80,8 @@ def test_requirement_gated_rows_are_reachable():
         for _ in range(3000)
     ]
     assert any("foot focus" in p for p in prompts)
+    assert any("rabbit girl" in p for p in prompts)
+    assert any("breast focus" in p for p in prompts)
 
 
 def test_v2_generators_run_in_every_mode():

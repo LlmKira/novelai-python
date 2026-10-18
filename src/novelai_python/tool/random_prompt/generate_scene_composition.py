@@ -420,20 +420,33 @@ def generate_scene_composition():
     if framing_type:
         scene_tags.append(framing_type)
 
-    # 为女性生成外貌描述
+    # Gender is a condition the tag tables use (e.g. "rabbit girl" requires "female").
+    # Give each character its own copy so a male character does not inherit "female".
     for _ in range(female_count):
-        female_appearance = ["girl", *generate_appearance(condition_set, "f", framing_type, character_count)]
+        character_conditions = condition_set.copy()
+        character_conditions.add("female")
+        female_appearance = [
+            "girl",
+            *generate_appearance(character_conditions, "f", framing_type, character_count),
+        ]
         character_details.append(female_appearance)
 
-    # 为男性生成外貌描述
     for _ in range(male_count):
-        male_appearance = ["boy", *generate_appearance(condition_set, "m", framing_type, character_count)]
+        character_conditions = condition_set.copy()
+        character_conditions.add("male")
+        male_appearance = ["boy", *generate_appearance(character_conditions, "m", framing_type, character_count)]
         character_details.append(male_appearance)
 
-    # 为其他生成外貌描述
     for _ in range(other_count):
+        # No "other" row in the tables requires a gender tag.
         other_appearance = ["other", *generate_appearance(condition_set, "o", framing_type, character_count)]
         character_details.append(other_appearance)
+
+    # Scene-level rows such as "breast focus" require the scene to know its genders.
+    if female_count:
+        condition_set.add("female")
+    if male_count:
+        condition_set.add("male")
 
     # 添加场景元素
     if random.random() < 0.2:

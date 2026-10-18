@@ -2,6 +2,7 @@
 
 
 import logging
+from typing import ClassVar
 
 from curl_cffi.requests import AsyncSession
 from pydantic import PrivateAttr
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class TrialStatus(ApiBaseModel):
     _endpoint: str = PrivateAttr("https://text.novelai.net")
+    _legacy_400_as_auth: ClassVar[bool] = False
 
     @property
     def base_url(self) -> str:

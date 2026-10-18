@@ -330,10 +330,26 @@ def test_images_travel_as_form_parts():
 
 @pytest.mark.asyncio
 async def test_400_is_a_validation_error_on_the_newer_endpoints():
-    from novelai_python import APIError, AuthError, EncodeVibe, OAITokenCount
+    from novelai_python import (
+        APIError,
+        AuthError,
+        CreatePersistentToken,
+        EncodeVibe,
+        OAITokenCount,
+        Priority,
+        TrialStatus,
+        UserData,
+    )
 
     body = json.dumps({"statusCode": 400, "message": "bad input"}).encode()
-    for request in (OAITokenCount(model="glm-4-6", prompt="x"), EncodeVibe(image=_png(8, 8))):
+    for request in (
+        OAITokenCount(model="glm-4-6", prompt="x"),
+        EncodeVibe(image=_png(8, 8)),
+        UserData(),
+        Priority(),
+        TrialStatus(),
+        CreatePersistentToken(),
+    ):
         response = mock.Mock()
         response.status_code = 400
         response.headers = {"Content-Type": "application/json"}
