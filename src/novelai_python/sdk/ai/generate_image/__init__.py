@@ -47,6 +47,7 @@ from novelai_python.sdk.ai._enum import (
     get_supported_noise_schedule,
     get_supported_params,
     get_uc_preset_id,
+    get_uc_preset_index,
     is_v5_model,
     supports_character_reference,
 )
@@ -62,7 +63,7 @@ from ...._response.ai.generate_image import ImageGenerateResp, ImageStreamEvent,
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
 from ....utils.daily_limit import DailyImageLimiter, get_default_limiter
-from ...schema import ApiBaseModel, use_session
+from ...schema import ApiBaseModel, close_stream, use_session
 from .auto_text import apply_auto_text
 from .auto_text import strip_auto_text as strip_auto_text  # re-export
 from .params import Params, get_default_params
@@ -243,6 +244,14 @@ class GenerateImageInfer(ApiBaseModel):
         if self.parameters.negative_prompt is None:
             self.parameters.negative_prompt = ""
 
+        # ucPresetId (what params_version 4 sends) names the preset; the text below must be the same one
+        if self.model in V5_MEDIUM_MODEL_LIST:
+            self.parameters.ucPresetId = "heavy"  # fixedSettings in the web client
+        if self.parameters.ucPresetId is not None:
+            index = get_uc_preset_index(self.model, self.parameters.ucPresetId)
+            if index is not None:
+                self.parameters.ucPreset = index
+
         # Add negative prompt based on ucPreset
         if self.parameters.ucPreset is not None:
             uc_preset = self.parameters.ucPreset
@@ -372,6 +381,9 @@ class GenerateImageInfer(ApiBaseModel):
         if is_v5_model(self.model) and self.parameters.params_version < 4:
             logger.warning(f"{self.model} requires params_version 4, upgrading request shape.")
             self.parameters.params_version = 4
+        if self.parameters.tag_hint_transparent_background is not True or not is_v5_model(self.model):
+            # the web client deletes the key unless Transparent BG (a V5 feature) is on
+            self.parameters.tag_hint_transparent_background = None
         if self.parameters.params_version < 4:
             return self
         if self.model in V5_MEDIUM_MODEL_LIST:
@@ -388,9 +400,6 @@ class GenerateImageInfer(ApiBaseModel):
             self.parameters.qualityPresetId = (
                 QualityPreset.STANDARD if self.parameters.qualityToggle else QualityPreset.NONE
             )
-        if self.parameters.tag_hint_transparent_background is not True:
-            # the web client deletes the key unless Transparent BG is on
-            self.parameters.tag_hint_transparent_background = None
         return self
 
     @model_validator(mode="after")
@@ -1142,39 +1151,49 @@ class GenerateImageInfer(ApiBaseModel):
                     headers={"Content-Type": content_type},
                     stream=True,
                 )
-                if response.status_code >= 400:
-                    self._raise_for_status(
-                        response.status_code,
-                        await response.acontent(),
-                        request_data,
-                        self._legacy_400_as_auth,
-                    )
-
-                buffer = bytearray()
-                async for chunk in response.aiter_content():
-                    buffer.extend(chunk)
-                    for frame in self._iter_msgpack_frames(buffer):
-                        event = ImageStreamEvent(
-                            event_type=str(frame.get("event_type", "")),
-                            samp_ix=int(frame.get("samp_ix", 0) or 0),
-                            step_ix=frame.get("step_ix"),
-                            image=frame.get("image"),
-                            message=frame.get("message"),
+                try:
+                    if response.status_code >= 400:
+                        self._raise_for_status(
+                            response.status_code,
+                            await response.acontent(),
+                            request_data,
+                            self._legacy_400_as_auth,
                         )
-                        if event.event_type == "error":
-                            # NovelAI fails mid-stream with HTTP 200 and an error frame, e.g.
-                            # {event_type: error, code: 500, message: "Error generating image..."}
-                            code = frame.get("code") or 500
-                            raise APIError(
-                                event.message or "Error event in the image stream",
-                                request=request_data,
-                                code=code,
-                                response=frame,
+
+                    buffer = bytearray()
+                    async for chunk in response.aiter_content():
+                        buffer.extend(chunk)
+                        for frame in self._iter_msgpack_frames(buffer):
+                            event = ImageStreamEvent(
+                                event_type=str(frame.get("event_type", "")),
+                                samp_ix=int(frame.get("samp_ix", 0) or 0),
+                                step_ix=frame.get("step_ix"),
+                                image=frame.get("image"),
+                                message=frame.get("message"),
                             )
-                        if event.is_final and limiter is not None:
-                            # before the yield: a caller may stop iterating at the first final image
-                            limiter.consume(1)
-                        yield event
+                            if event.event_type == "error":
+                                # NovelAI fails mid-stream with HTTP 200 and an error frame, e.g.
+                                # {event_type: error, code: 500, message: "Error generating image..."}
+                                code = frame.get("code") or 500
+                                raise APIError(
+                                    event.message or "Error event in the image stream",
+                                    request=request_data,
+                                    code=code,
+                                    response=frame,
+                                )
+                            if event.is_final and limiter is not None:
+                                # before the yield: a caller may stop iterating at the first final image
+                                limiter.consume(1)
+                            yield event
+                    if buffer:
+                        raise APIError(
+                            f"The image stream ended inside a frame ({len(buffer)} bytes left)",
+                            request=request_data,
+                            code=response.status_code,
+                            response=None,
+                        )
+                finally:
+                    await close_stream(response)
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc

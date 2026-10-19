@@ -11,7 +11,7 @@ from ..._exceptions import APIError, SessionHttpError
 from ..._response.ai.generate_stream import LLMStreamResp
 from ...credential import CredentialBase
 from ...utils import try_jsonfy
-from ..schema import use_session
+from ..schema import close_stream, use_session
 from .generate import LLM, AdvanceLLMSetting, LLMGenerationParams, PenStyle, TextLLMModel
 
 logger = logging.getLogger(__name__)
@@ -95,55 +95,55 @@ class LLMStream(LLM):
                     json=request_data,
                     stream=True,  # 使用 stream=True 参数
                 )
-                header_type = response.headers.get("Content-Type")
-                if header_type not in ["text/event-stream"]:
-                    # a stream=True response has no .content yet; the error body has to be read
-                    response_data = try_jsonfy(await response.acontent(), default_when_error={})
-                    if not isinstance(response_data, dict):
-                        response_data = {}
-                else:
-                    response_data = {}
-                message = (
-                    response_data.get("error")
-                    or response_data.get("message")
-                    or f"Server error with status_code {response.status_code}"
-                )
-                status_code = response_data.get("statusCode", response.status_code)
-                # 检查 'Content-Type' 是否为 'text/event-stream'
-                if header_type not in ["text/event-stream"]:
-                    if status_code == 400:
-                        raise APIError(
-                            "A validation error occured.", request=request_data, code=status_code, response=message
-                        )
-                    elif status_code == 401:
-                        raise APIError(
-                            "Access Token is incorrect.", request=request_data, code=status_code, response=message
-                        )
-                    elif status_code == 402:
-                        raise APIError(
-                            "An active subscription is required to access this endpoint.",
-                            request=request_data,
-                            code=status_code,
-                            response=message,
-                        )
-                    elif status_code == 409:
-                        raise APIError(
-                            "A conflict error occured.", request=request_data, code=status_code, response=message
-                        )
+                try:
+                    media_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+                    is_event_stream = media_type == "text/event-stream"
+                    if not is_event_stream:
+                        # a stream=True response has no .content yet; the error body has to be read
+                        response_data = try_jsonfy(await response.acontent(), default_when_error={})
+                        if not isinstance(response_data, dict):
+                            response_data = {}
                     else:
-                        raise APIError(
-                            f"Server did not send text/event-stream, status code {status_code}",
-                            request=request_data,
-                            code=status_code,
-                            response=message,
-                        )
-                else:
+                        response_data = {}
+                    message = (
+                        response_data.get("error")
+                        or response_data.get("message")
+                        or f"Server error with status_code {response.status_code}"
+                    )
+                    status_code = response_data.get("statusCode", response.status_code)
+                    if not is_event_stream:
+                        if status_code == 400:
+                            raise APIError(
+                                "A validation error occured.", request=request_data, code=status_code, response=message
+                            )
+                        elif status_code == 401:
+                            raise APIError(
+                                "Access Token is incorrect.", request=request_data, code=status_code, response=message
+                            )
+                        elif status_code == 402:
+                            raise APIError(
+                                "An active subscription is required to access this endpoint.",
+                                request=request_data,
+                                code=status_code,
+                                response=message,
+                            )
+                        elif status_code == 409:
+                            raise APIError(
+                                "A conflict error occured.", request=request_data, code=status_code, response=message
+                            )
+                        else:
+                            raise APIError(
+                                f"Server did not send text/event-stream, status code {status_code}",
+                                request=request_data,
+                                code=status_code,
+                                response=message,
+                            )
                     if response.status_code not in [200, 201]:
                         raise APIError(
                             f"Server error with status code {response.status_code}",
                             request=request_data,
                             code=response.status_code,
-                            response=response.content,
+                            response=message,
                         )
                     # Streaming data processing
                     async for line in response.aiter_lines():
@@ -156,6 +156,8 @@ class LLMStream(LLM):
                                 yield llm_stream_resp
                                 if llm_stream_resp.final:  # Stop returning when final is True
                                     break
+                finally:
+                    await close_stream(response)
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError(

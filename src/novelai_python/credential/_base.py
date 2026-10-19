@@ -121,7 +121,7 @@ SEC_CH_UA_PLATFORM = '"Windows"'
 
 
 class CredentialBase(BaseModel):
-    proxy: str | None = None
+    proxy: str | None = Field(default=None, repr=False)  # may carry user:password
     """Outbound proxy for every request, e.g. ``http://user:pass@host:port``
     (curl_cffi ``proxies`` for http and https). None = direct."""
     accept_language: str | None = None
@@ -151,14 +151,14 @@ class BearerCredential(CredentialBase):
         raise NotImplementedError
 
     async def get_session(self, timeout: int = 180, update_headers: dict | None = None):
+        # update_headers goes through browser_headers too: its lowercased keys replace ours
         headers = browser_headers(
             {
                 "Authorization": f"Bearer {self._token()}",
                 "Content-Type": "application/json",
                 "x-correlation-id": self.x_correlation_id,
                 "x-initiated-at": _initiated_at(),
+                **(update_headers or {}),
             }
         )
-        if update_headers:
-            headers.update(update_headers)
         return AsyncSession(**self.session_kwargs(timeout, headers))

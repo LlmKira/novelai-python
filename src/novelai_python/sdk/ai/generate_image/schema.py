@@ -109,7 +109,7 @@ class V4Prompt(BaseModel):
         :return:
         """
         caption = Caption(base_caption=base_caption)
-        for character_prompt in character_prompts:
+        for character_prompt in (c for c in character_prompts if c.enabled):
             char_caption = CharCaption(char_caption=character_prompt.prompt, centers=[character_prompt.center])
             caption.char_captions.append(char_caption)
         return cls(caption=caption, use_coords=use_coords, use_order=use_order)
@@ -131,7 +131,7 @@ class V4NegativePrompt(BaseModel):
         :return:
         """
         caption = Caption(base_caption=negative_prompt)
-        for character_prompt in character_prompts:
+        for character_prompt in (c for c in character_prompts if c.enabled):
             char_caption = CharCaption(char_caption=character_prompt.uc, centers=[character_prompt.center])
             caption.char_captions.append(char_caption)
         return cls(caption=caption, legacy_uc=legacy_uc)

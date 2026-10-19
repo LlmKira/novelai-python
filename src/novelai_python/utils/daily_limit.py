@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import pathlib
+import tempfile
 import threading
 import time
 
@@ -68,11 +69,10 @@ class DailyImageLimiter:
             return
         try:
             self.state_file.parent.mkdir(parents=True, exist_ok=True)
-            tmp = self.state_file.with_suffix(self.state_file.suffix + ".tmp")
-            tmp.write_text(
-                json.dumps({"window_start": self._window_start, "used": self._used}),
-                encoding="utf-8",
-            )
+            # a temp file of its own: another process may be saving the same state file
+            fd, tmp = tempfile.mkstemp(dir=self.state_file.parent, prefix=f".{self.state_file.name}.", suffix=".tmp")
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump({"window_start": self._window_start, "used": self._used}, f)
             os.replace(tmp, self.state_file)
         except Exception as e:
             logger.warning(f"Failed to persist limiter state {self.state_file}: {e}")
@@ -80,7 +80,12 @@ class DailyImageLimiter:
     # endregion
 
     def _roll_window(self, now: float) -> None:
-        """Start a new window if there is none or the current one expired. Caller holds the lock."""
+        """Re-read the state file, then start a new window if there is none or the current one expired.
+
+        Caller holds the lock. The file is the count: other limiters on it (in this process or
+        another) may have consumed since, and a stale in-memory count would overwrite theirs.
+        """
+        self._load()
         if self._window_start is None or now - self._window_start >= self.window_seconds:
             self._window_start = now
             self._used = 0

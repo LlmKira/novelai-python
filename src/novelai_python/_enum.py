@@ -89,6 +89,21 @@ def get_tokenizer_model(model: TextLLMModel | str) -> str:
     return group
 
 
+def as_text_model(model: TextLLMModelTypeAlias) -> TextLLMModelTypeAlias:
+    """A model name that matches a known model becomes that TextLLMModel; anything else is returned as is."""
+    if isinstance(model, str):
+        try:
+            return TextLLMModel(model)
+        except ValueError:
+            return model
+    return model
+
+
+def get_token_dtype(model: TextLLMModelTypeAlias) -> str:
+    """Width of the base64 token array on the wire: the llama3 vocabulary does not fit in 16 bits."""
+    return "uint32" if get_tokenizer_model(model) == TextTokenizerGroup.LLAMA3 else "uint16"
+
+
 def get_tokenizer_model_url(model: TextLLMModel | str) -> str:
     model_name = get_tokenizer_model(model)
     if not model_name.endswith(".def"):

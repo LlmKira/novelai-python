@@ -67,3 +67,67 @@ def test_get_session_existing_token():
     get_session(token)
     session = get_session(token)
     assert session.jwt_token.get_secret_value() == token
+
+
+@patch("novelai_python.server.Subscription")
+def test_bearer_prefix_is_not_sent_twice(mock_subscription):
+    from novelai_python.server import session
+
+    seen = []
+
+    async def record(*args, session=None, **kwargs):
+        seen.append(session.jwt_token.get_secret_value())
+        raise RuntimeError("stop")
+
+    mock_subscription.return_value.request = record
+    TestClient(app, raise_server_exceptions=False).get("/user/subscription", headers={"Authorization": "Bearer pst-a"})
+    TestClient(app, raise_server_exceptions=False).get("/user/subscription", headers={"Authorization": "pst-b"})
+    assert seen == ["pst-a", "pst-b"]
+    session.clear()
+
+
+def test_stream_error_before_the_first_event_keeps_its_status(monkeypatch):
+    from novelai_python import AuthError, LLMStream
+    from novelai_python.sdk.ai import generate
+
+    class FakeTokenizer:
+        def encode(self, text):
+            return [1, 2]
+
+        def total_tokens(self):
+            return 128256
+
+    monkeypatch.setattr(generate, "get_tokenizer", lambda name: FakeTokenizer())
+
+    async def fail(self, session, **kwargs):
+        raise AuthError("bad token", request={}, response={}, code=401)
+        yield  # an async generator, like LLMStream.request
+
+    monkeypatch.setattr(LLMStream, "request", fail)
+    response = client.post(
+        "/ai/generate-stream",
+        json={"input": "hi", "model": "llama-3-erato-v1"},
+        headers={"Authorization": "Bearer x"},
+    )
+    assert response.status_code == 401
+    assert response.json()["message"] == "bad token"
+
+
+def test_voice_without_seed_is_a_validation_error():
+    response = client.get("/ai/generate-voice", params={"text": "hi"}, headers={"Authorization": "Bearer x"})
+    assert response.status_code == 422
+
+
+@patch("novelai_python.server.AugmentImageInfer")
+def test_augment_image_reads_the_image_from_the_body(mock_augment):
+    async def stop(*args, **kwargs):
+        raise RuntimeError("stop")
+
+    mock_augment.build.return_value.request = stop
+    TestClient(app, raise_server_exceptions=False).post(
+        "/ai/augment-image",
+        params={"req_type": "bg-removal"},
+        content=b"\x89PNG image bytes",
+        headers={"Authorization": "Bearer x", "Content-Type": "application/octet-stream"},
+    )
+    assert mock_augment.build.call_args.kwargs["image"] == b"\x89PNG image bytes"

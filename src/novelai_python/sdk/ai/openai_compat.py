@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from ..._exceptions import SessionHttpError
 from ...credential import CredentialBase
-from ..schema import ApiBaseModel, use_session
+from ..schema import ApiBaseModel, close_stream, use_session
 
 logger = logging.getLogger(__name__)
 
@@ -71,18 +71,21 @@ class _OAIGenerateBase(ApiBaseModel):
                 sess.headers.update(override_headers)
             try:
                 response = await sess.post(self.base_url, json=body, stream=True)
-                if response.status_code >= 400:
-                    self._raise_for_status(
-                        response.status_code, await response.acontent(), body, self._legacy_400_as_auth
-                    )
-                async for line in response.aiter_lines():
-                    text = line.decode("utf-8") if isinstance(line, bytes) else line
-                    if not text.startswith("data:"):
-                        continue
-                    data = text[len("data:") :].strip()
-                    if data == "[DONE]":
-                        return
-                    yield json.loads(data)
+                try:
+                    if response.status_code >= 400:
+                        self._raise_for_status(
+                            response.status_code, await response.acontent(), body, self._legacy_400_as_auth
+                        )
+                    async for line in response.aiter_lines():
+                        text = line.decode("utf-8") if isinstance(line, bytes) else line
+                        if not text.startswith("data:"):
+                            continue
+                        data = text[len("data:") :].strip()
+                        if data == "[DONE]":
+                            return
+                        yield json.loads(data)
+                finally:
+                    await close_stream(response)
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc

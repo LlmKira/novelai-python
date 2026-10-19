@@ -1000,6 +1000,14 @@ def get_default_uc_preset(model: ModelTypeAlias, uc_preset: int) -> str:
         return "lowres"
 
 
+def get_uc_preset_index(model: ModelTypeAlias, uc_preset_id: str) -> int | None:
+    """Index (``ucPreset``) of the preset category ``uc_preset_id`` for a model; None when it has none."""
+    for index, prompt in enumerate(get_uc_preset(model)):
+        if prompt.category == uc_preset_id:
+            return index
+    return None
+
+
 def get_uc_preset_id(model: ModelTypeAlias, uc_preset: int) -> str | None:
     """
     Category name ("heavy", "light", "human", "furry", "none") that the web client

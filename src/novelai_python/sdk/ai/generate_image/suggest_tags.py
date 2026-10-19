@@ -68,11 +68,9 @@ class SuggestTags(ApiBaseModel):
             sess.headers.clear()
             sess.headers.update(override_headers)
 
-        # Build query string
-        query_params = "&".join([f"{k}={v}" for k, v in request_data.items()])
-
         try:
-            response = await sess.get(f"{self.base_url}?{query_params}")
+            # params= percent-encodes: a prompt holds "&", "#", "+" and non-ASCII text
+            response = await sess.get(self.base_url, params=request_data)
 
             if response.status_code != 200:
                 self._raise_for_status(

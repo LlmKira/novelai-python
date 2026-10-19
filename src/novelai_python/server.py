@@ -7,15 +7,17 @@ import logging
 import sys
 import zipfile
 from collections import OrderedDict
-from typing import Literal
+from typing import Annotated, Literal
 
 try:
     import uvicorn
-    from fastapi import Depends, FastAPI, Request, Security
+    from fastapi import Body, Depends, FastAPI, Request, Security
     from fastapi.security import APIKeyHeader
     from starlette.responses import JSONResponse, StreamingResponse
 except ImportError as e:  # pragma: no cover
     raise ImportError('The server needs extra packages: pip install "novelai-python[server]"') from e
+
+from pydantic import ValidationError
 
 from novelai_python import LLMStream, LLMStreamResp
 from novelai_python.sdk.ai.augment_image import AugmentImageInfer, Moods, ReqType
@@ -56,7 +58,9 @@ def get_session(token: str) -> JwtCredential:
 
 
 def get_current_token(auth_key: str = Security(token_key)):
-    return auth_key
+    # "Bearer <token>" or the bare token; the credential adds "Bearer " itself
+    scheme, _, token = auth_key.partition(" ")
+    return token.strip() if scheme.lower() == "bearer" and token.strip() else auth_key
 
 
 @app.exception_handler(APIError)
@@ -79,6 +83,12 @@ async def api_error_handler(_request: Request, exc: APIError):
 async def novelai_error_handler(_request: Request, exc: NovelAiError):
     logger.exception(exc)
     return JSONResponse(status_code=500, content={"message": exc.message})
+
+
+@app.exception_handler(ValidationError)
+async def validation_error_handler(_request: Request, exc: ValidationError):
+    """A request model built inside a route (from query parameters) rejected its input."""
+    return JSONResponse(status_code=422, content={"detail": exc.errors(include_url=False, include_context=False)})
 
 
 @app.exception_handler(Exception)
@@ -242,15 +252,18 @@ async def generate_stream(req: LLMStream, current_token: str = Depends(get_curre
     :return:
     """
 
-    async def generator():
-        agent = req
-        credential = get_session(current_token)
-        generator = agent.request(session=credential)
-        async for data in generator:
-            data: LLMStreamResp
+    stream = req.request(session=get_session(current_token))
+    # read the first event before the 200 goes out, so an upstream error gets its own status
+    first: LLMStreamResp | None = await anext(aiter(stream), None)
+
+    async def body():
+        if first is None:
+            return
+        yield first.text or ""
+        async for data in stream:
             yield data.text or ""
 
-    return StreamingResponse(generator())
+    return StreamingResponse(body(), media_type="text/plain; charset=utf-8")
 
 
 @app.post("/ai/generate")
@@ -296,7 +309,7 @@ async def generate_voice(
 @app.post("/ai/augment-image")
 async def augment_image(
     req_type: ReqType,
-    image: bytes,
+    image: Annotated[bytes, Body(media_type="application/octet-stream")],
     mood: Moods | None = None,
     prompt: str | None = None,
     defry: int | None = None,
@@ -306,7 +319,7 @@ async def augment_image(
     生成图片
     :param current_token: Authorization
     :param req_type: ReqType
-    :param image: bytes
+    :param image: the image file as the request body
     :param mood: Optional[Moods]
     :param prompt: Optional[str]
     :param defry: Optional[int]
