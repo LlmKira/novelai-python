@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 from curl_cffi.requests import AsyncSession
 
-from novelai_python import AuthError, DailyLimitExceeded, GenerateImageInfer
+from novelai_python import APIError, AuthError, DailyLimitExceeded, GenerateImageInfer
 from novelai_python.credential._base import CHROME_MAJOR_VERSION, DEFAULT_USER_AGENT, browser_headers
 from novelai_python.sdk.ai._enum import Model, get_uc_preset_id, is_v5_model
 from novelai_python.sdk.ai.generate_image import build_multipart_request
@@ -159,6 +159,7 @@ def _zip_response(files, content_type="binary/octet-stream"):
 
 
 def _session(response):
+    response.aclose = mock.AsyncMock()
     session = mock.MagicMock(spec=AsyncSession)
     session.post = mock.AsyncMock(return_value=response)
     session.headers = {}
@@ -308,6 +309,46 @@ def test_save_writes_files(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_stream_aborts_when_the_caller_stops_early():
+    frames = _frame({"event_type": "final", "samp_ix": 0, "image": b"a"}) + _frame(
+        {"event_type": "final", "samp_ix": 1, "image": b"b"}
+    )
+
+    async def aiter_content():
+        yield frames
+
+    response = mock.Mock()
+    response.status_code = 200
+    response.headers = {"Content-Type": "application/octet-stream"}
+    response.aiter_content = aiter_content
+    session = _session(response)
+    gen = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL)
+    stream = gen.request_stream(session, limiter=False)
+    async for _ in stream:
+        break
+    await stream.aclose()
+    response.quit_now.set.assert_called_once()
+    response.aclose.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_stream_cut_inside_a_frame_raises():
+    frame = _frame({"event_type": "final", "samp_ix": 0, "image": b"abc"})
+
+    async def aiter_content():
+        yield frame[:-2]
+
+    response = mock.Mock()
+    response.status_code = 200
+    response.headers = {"Content-Type": "application/octet-stream"}
+    response.aiter_content = aiter_content
+    gen = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL)
+    with pytest.raises(APIError, match="ended inside a frame"):
+        async for _ in gen.request_stream(_session(response), limiter=False):
+            pass
+
+
+@pytest.mark.asyncio
 async def test_stream_error_keeps_the_server_message():
     body = b'{"statusCode": 402, "message": "Insufficient Anlas"}'
     response = mock.Mock()
@@ -322,6 +363,41 @@ async def test_stream_error_keeps_the_server_message():
             pass
     assert e.value.message == "Insufficient Anlas"
     assert e.value.code == 402
+
+
+def test_negative_text_follows_uc_preset_id():
+    from novelai_python.sdk.ai._enum import get_uc_preset
+
+    def preset_text(model, category):
+        return next(p.text for p in get_uc_preset(model) if p.category == category)
+
+    # Medium pins heavy: the text is the heavy preset whatever ucPreset says
+    medium = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL_MEDIUM, ucPreset=4)
+    assert medium.parameters.ucPresetId == "heavy"
+    assert medium.parameters.negative_prompt == preset_text(Model.NAI_DIFFUSION_5_FULL_MEDIUM, "heavy")
+    # an explicit ucPresetId picks the text
+    params = Params(ucPreset=0, ucPresetId="human", negative_prompt="")
+    full = GenerateImageInfer(input="1girl", model=Model.NAI_DIFFUSION_5_FULL, parameters=params)
+    assert full.parameters.negative_prompt == preset_text(Model.NAI_DIFFUSION_5_FULL, "human")
+
+
+def test_transparent_background_is_v5_only():
+    v45 = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_4_5_FULL, transparent_background=True)
+    assert "tag_hint_transparent_background" not in v45._build_body(stream=False)[0]["parameters"]
+    v5 = GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL, transparent_background=True)
+    assert v5._build_body(stream=False)[0]["parameters"]["tag_hint_transparent_background"] is True
+
+
+def test_disabled_characters_are_not_captioned():
+    from novelai_python.sdk.ai.generate_image import Character
+
+    gen = GenerateImageInfer.build_generate(
+        "1girl",
+        model=Model.NAI_DIFFUSION_5_FULL,
+        character_prompts=[Character(prompt="boy", uc="", enabled=False), Character(prompt="girl", uc="")],
+    )
+    assert [c.char_caption for c in gen.parameters.v4_prompt.caption.char_captions] == ["girl"]
+    assert len(gen.parameters.v4_negative_prompt.caption.char_captions) == 1
 
 
 def test_image_format_has_one_default():

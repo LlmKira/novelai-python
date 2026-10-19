@@ -31,6 +31,17 @@ async def use_session(session: AsyncSession | CredentialBase) -> AsyncGenerator[
         yield sess
 
 
+async def close_stream(response: Response) -> None:
+    """End a ``stream=True`` response, also when the caller stopped reading early.
+
+    curl_cffi's ``aclose`` only waits for the transfer to finish; with ``quit_now`` set the next
+    chunk aborts it, so the server stops generating and the handle goes back to the session pool.
+    """
+    if response.quit_now is not None:
+        response.quit_now.set()
+    await response.aclose()
+
+
 class ApiBaseModel(BaseModel, ABC):
     _endpoint: str = PrivateAttr("")
     _legacy_400_as_auth: ClassVar[bool] = True

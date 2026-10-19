@@ -6,7 +6,7 @@ from typing import Union
 
 import curl_cffi
 from curl_cffi.requests import AsyncSession
-from pydantic import ConfigDict, Field, PrivateAttr, model_validator
+from pydantic import ConfigDict, Field, PrivateAttr, field_validator, model_validator
 
 from novelai_python._retry import retry_on_server_error
 
@@ -15,13 +15,15 @@ from ...._enum import (
     TextLLMModel,
     TextLLMModelTypeAlias,
     TextTokenizerGroup,
+    as_text_model,
     get_llm_group,
+    get_token_dtype,
     get_tokenizer_model,
 )
 from ...._exceptions import APIError, SessionHttpError
 from ...._response.ai.generate import LLMResp
 from ....credential import CredentialBase
-from ....tokenizer import NaiTokenizer
+from ....tokenizer import get_tokenizer
 from ....utils import try_jsonfy
 from ....utils.encode import tokens_to_b64
 from ...schema import ApiBaseModel, use_session
@@ -71,8 +73,18 @@ class LLM(ApiBaseModel):
     def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/generate"
 
+    @field_validator("model", mode="after")
+    @classmethod
+    def _model_enum(cls, value: TextLLMModelTypeAlias) -> TextLLMModelTypeAlias:
+        # A JSON body brings the model as a string; the checks below compare with TextLLMModel
+        return as_text_model(value)
+
     @model_validator(mode="after")
     def normalize_model(self):
+        # The validator rewrites both in place: never touch a caller's object or a cached preset
+        self.advanced_setting = self.advanced_setting.model_copy(deep=True)
+        if self.parameters is not None:
+            self.parameters = self.parameters.model_copy(deep=True)
         if self.model in [
             TextLLMModel.NEO_2B,
             TextLLMModel.J_6B,
@@ -91,16 +103,14 @@ class LLM(ApiBaseModel):
             TextLLMModel.CLIO,
         ]:
             self.endpoint = "https://api.novelai.net"
-        tokenizer = NaiTokenizer(get_tokenizer_model(self.model))
+        tokenizer = get_tokenizer(get_tokenizer_model(self.model))
         model_group = get_llm_group(self.model)
         total_tokens = tokenizer.total_tokens()
         if isinstance(self.input, str):
             prompt = tokenizer.encode(self.input)
-            dtype = "uint32" if self.model in [TextLLMModel.ERATO] else "uint16"
-            self.input = tokens_to_b64(prompt, dtype=dtype)
+            self.input = tokens_to_b64(prompt, dtype=get_token_dtype(self.model))
         if not self.parameters:
-            default_preset = get_default_preset(self.model)
-            self.parameters = default_preset.parameters
+            self.parameters = get_default_preset(self.model).parameters.model_copy(deep=True)
 
         # repetition_penalty_default_whitelist
         if self.parameters.repetition_penalty_default_whitelist and self.model in [

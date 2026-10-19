@@ -29,6 +29,17 @@ def test_state_persists_across_instances(tmp_path):
     assert json.loads(state.read_text())["used"] == 4
 
 
+def test_limiters_sharing_a_file_add_up(tmp_path):
+    state = tmp_path / "s.json"
+    a = DailyImageLimiter(10, state_file=state)
+    b = DailyImageLimiter(10, state_file=state)
+    a.consume(9)
+    b.consume(1)
+    assert DailyImageLimiter(10, state_file=state).used == 10
+    with pytest.raises(DailyLimitExceeded):
+        a.check(1)
+
+
 def test_window_rolls_over_from_first_use(tmp_path):
     state = tmp_path / "state.json"
     limiter = DailyImageLimiter(1, window_seconds=60, state_file=state)

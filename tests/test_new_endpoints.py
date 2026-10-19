@@ -37,6 +37,7 @@ def _response(status=200, content=b"{}", content_type="application/json"):
 
 
 def _session(response):
+    response.aclose = mock.AsyncMock()
     session = mock.MagicMock(spec=AsyncSession)
     session.request = mock.AsyncMock(return_value=response)
     session.post = mock.AsyncMock(return_value=response)

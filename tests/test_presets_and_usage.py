@@ -116,7 +116,7 @@ def test_v5_uses_qwen35_prompt_tokenizer(monkeypatch):
     from novelai_python.sdk.ai.generate_image import tokenizer as tk
 
     seen = []
-    monkeypatch.setattr(tk, "NaiTokenizer", lambda name: seen.append(name) or name)
+    monkeypatch.setattr(tk, "get_tokenizer", lambda name: seen.append(name) or name)
     tk.get_prompt_tokenizer(Model.NAI_DIFFUSION_5_FULL)
     tk.get_prompt_tokenizer(Model.NAI_DIFFUSION_5_FULL_MEDIUM)
     tk.get_prompt_tokenizer(Model.NAI_DIFFUSION_4_5_FULL)

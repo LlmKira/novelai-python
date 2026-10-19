@@ -26,6 +26,7 @@ from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
 from ...schema import ApiBaseModel, use_session
+from ..generate_image import ZIP_CONTENT_TYPES
 from ._enum import Moods, ReqType
 
 logger = logging.getLogger(__name__)
@@ -170,10 +171,8 @@ class AugmentImageInfer(ApiBaseModel):
             # Perform request and handle response
             try:
                 response = await sess.post(self.base_url, data=json.dumps(request_data).encode("utf-8"))
-                if (
-                    response.headers.get("Content-Type") not in ["binary/octet-stream", "application/x-zip-compressed"]
-                    or response.status_code >= 400
-                ):
+                response_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+                if response_type not in ZIP_CONTENT_TYPES or response.status_code >= 400:
                     self._raise_for_status(
                         response.status_code,
                         response.content,

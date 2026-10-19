@@ -39,6 +39,8 @@ def test_opus_free_generation_and_usage_bar():
     # the bar below zero ends the free generation on V5 Full, Medium and Curated
     assert _price(Model.NAI_DIFFUSION_5_FULL, opus=True, negative=True) == 30
     assert _price(Model.NAI_DIFFUSION_5_FULL_MEDIUM, opus=True, negative=True) == 29
+    for inpainting in (Model.NAI_DIFFUSION_5_FULL_INPAINTING, Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING):
+        assert _price(inpainting, opus=True, negative=True) > 0
     assert _price(Model.NAI_DIFFUSION_5_FULL, opus=True, n=4) == 90  # one of four is free
     assert _price(Model.NAI_DIFFUSION_5_FULL, opus=True, w=1216, h=1216) == 44
 

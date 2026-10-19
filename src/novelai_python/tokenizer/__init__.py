@@ -1,3 +1,4 @@
+import functools
 import gzip
 import io
 import json
@@ -47,6 +48,8 @@ def download_file(url, destination_path, session) -> None:
     try:
         with os.fdopen(fd, "wb") as temp_file:
             temp_file.write(response.content)
+        # mkstemp creates 0600; a cache dir shared between users must stay readable
+        os.chmod(temp_name, 0o644)
         os.replace(temp_name, destination)
     except BaseException:
         pathlib.Path(temp_name).unlink(missing_ok=True)
@@ -182,9 +185,10 @@ class NaiTokenizer:
             raise LookupError(f"Failed to download model {self.model_full_name} from {url}: {e}") from e
         try:
             decoded_str = self._read_compressed_def(model_path.read_bytes())
-        except RuntimeError:
-            # A cached file can be truncated or stored in the wrong encoding:
-            # fetch it again once instead of failing for good.
+            data = json.loads(decoded_str)
+        except (RuntimeError, ValueError):
+            # A cached file can be truncated (it then decompresses to cut-off JSON) or stored
+            # in the wrong encoding: fetch it again once instead of failing for good.
             logger.warning(f"Tokenizer {self.model_full_name} is corrupt, downloading it again.")
             model_path.unlink(missing_ok=True)
             try:
@@ -193,7 +197,7 @@ class NaiTokenizer:
                 model_path.unlink(missing_ok=True)
                 raise LookupError(f"Failed to download model {self.model_full_name} from {url}: {e}") from e
             decoded_str = self._read_compressed_def(model_path.read_bytes())
-        data = json.loads(decoded_str)
+            data = json.loads(decoded_str)
         try:
             if is_clip_model(self.model_full_name):
                 self.tokenizer_setting = ClipTokenizerSetting.model_validate(data)
@@ -259,6 +263,12 @@ class NaiTokenizer:
         if self._is_clip:
             return clip_tokenizer.decode(self.tokenizer, token_ids)
         return self.tokenizer.decode(token_ids)
+
+
+@functools.cache
+def get_tokenizer(model: str) -> NaiTokenizer:
+    """The process-wide tokenizer for ``model``: building one parses a multi-megabyte file."""
+    return NaiTokenizer(model)
 
 
 # Example usage:

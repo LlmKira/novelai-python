@@ -4,7 +4,6 @@ from enum import Enum
 from typing import ClassVar, Literal, Union
 
 import curl_cffi
-import pydantic
 from curl_cffi.requests import AsyncSession
 from pydantic import ConfigDict, Field, PrivateAttr, model_validator
 
@@ -44,7 +43,7 @@ class VoiceGenerate(ApiBaseModel):
     def validate_model(self):
         # Validate seed
         if self.voice == -1 and self.seed is None:
-            raise pydantic.ValidationError("Seed must be set when voice is -1")
+            raise ValueError("Seed must be set when voice is -1")  # pydantic reports it as a ValidationError
         return self
 
     @property

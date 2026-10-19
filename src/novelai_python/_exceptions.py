@@ -36,7 +36,13 @@ class SessionHttpError(NovelAiError):
     HTTPError is raised when a request to the API fails.
     """
 
-    pass
+    # raised `from` the transport error: name it (proxy 407, DNS failure, timeout...)
+    def __str__(self) -> str:
+        return f"{self.message} ({self.__cause__})" if self.__cause__ else self.message
+
+    @property
+    def __dict__(self) -> dict[str, Any]:  # pyright: ignore[reportIncompatibleVariableOverride]
+        return {"message": str(self)}
 
 
 class APIError(NovelAiError):
@@ -55,6 +61,10 @@ class APIError(NovelAiError):
         self.request = request
         self.response = response
         self.code = code
+
+    def __reduce__(self):
+        # pickle (multiprocessing, task queues) rebuilds from args, which hold only the message
+        return self.__class__, (self.message, self.request, self.response, self.code)
 
     @property
     def __dict__(self) -> dict[str, Any]:

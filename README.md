@@ -58,8 +58,10 @@ Some changes do not raise an error, so check these when you upgrade:
   `ApiCredential(..., accept_language="en-sg")` (see `ACCEPT_LANGUAGES`) or a full header value.
 - **The image budget is off by default.** Pass `limiter=True` to `request()` / `request_stream()` for the
   process-wide budget (`NOVELAI_DAILY_IMAGE_LIMIT`, default 2500 per 24h, saved to
-  `~/.novelai_python/image_limit.json`), or a `DailyImageLimiter` of your own. The budget is per process and
-  shared by all tokens it uses.
+  `~/.novelai_python/image_limit.json`), or a `DailyImageLimiter` of your own. The budget is shared by all
+  tokens and by every limiter, in any process, that uses the same state file.
+- **Server: `POST /ai/augment-image` takes the image as the request body** (`application/octet-stream`); the
+  other fields stay query parameters. Send `Authorization: Bearer <token>` or the bare token.
 
 - [New Model. No Restrictions. V4.5 Full Is Here.](https://blog.novelai.net/novelai-diffusion-v4-5-full-release-678318c86205)
 - [NovelAI Diffusion V4.5 Curated is Here!](https://blog.novelai.net/novelai-diffusion-v4-5-curated-is-here-9e5ba1f628f3)
