@@ -71,7 +71,7 @@ Some changes do not raise an error, so check these when you upgrade:
 ### 📦 Usage
 
 ```shell
-pip -U install novelai-python
+pip install -U novelai-python
 ```
 
 All API users must adhere to the NovelAI Terms of Service: https://novelai.net/terms.

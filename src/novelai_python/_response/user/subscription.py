@@ -63,7 +63,7 @@ class SubscriptionResp(RespBase):
     active: bool = Field(..., description="Subscription status")
     expiresAt: int = Field(..., description="Subscription expiration time")
     perks: Perks = Field(..., description="Subscription perks")
-    paymentProcessorData: dict[Any, Any] | None
+    paymentProcessorData: dict[Any, Any] | None = None  # absent or null on some accounts
     trainingStepsLeft: TrainingSteps = Field(..., description="Training steps left")
     accountType: int = Field(..., description="Account type")
     usage: SubscriptionUsage | None = Field(default=None, description="Opus V5 usage bar (absent on non-Opus)")

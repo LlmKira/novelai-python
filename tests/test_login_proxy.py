@@ -97,3 +97,33 @@ def test_a_request_body_cannot_set_the_login_proxy():
     login = Login.model_validate({"key": "x", "proxy": "http://attacker:1"})
     assert login.session.proxies in (None, {})
     assert "proxy" not in login.model_dump()
+
+
+@pytest.mark.asyncio
+async def test_a_401_drops_the_cached_login_token():
+    import asyncio
+    import time
+
+    from novelai_python import LoginCredential
+
+    async def handle(reader, writer):
+        await reader.readuntil(b"\r\n\r\n")
+        writer.write(b"HTTP/1.1 401 Unauthorized\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
+        await writer.drain()
+        writer.close()
+
+    server = await asyncio.start_server(handle, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    credential = LoginCredential(
+        username="a@b.c", password="pw", session_headers={"authorization": "Bearer old"}, update_at=int(time.time())
+    )
+    stale = await credential.get_session()
+    credential.session_headers = {"authorization": "Bearer newer"}  # a newer login happened meanwhile
+    async with stale as sess:
+        await sess.get(f"http://127.0.0.1:{port}/")
+    assert credential.session_headers == {"authorization": "Bearer newer"}
+
+    async with await credential.get_session() as sess:
+        await sess.get(f"http://127.0.0.1:{port}/")
+    assert credential.session_headers == {} and credential.update_at is None
+    server.close()

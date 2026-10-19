@@ -94,6 +94,21 @@ def test_img2img_needs_the_source_image():
     assert (p.strength, p.noise, p.extra_noise_seed, p.color_correct) == (0.8, 0.1, 41, False)
 
 
+@pytest.mark.parametrize(
+    ("source", "model"),
+    [
+        ("NovelAI Diffusion V5 0ADF9AB7", Model.NAI_DIFFUSION_5_FULL),
+        ("NovelAI Diffusion V5 93F4BD30", Model.NAI_DIFFUSION_5_FULL_MEDIUM),
+        ("NovelAI Diffusion V5 DB276663", Model.NAI_DIFFUSION_5_CURATED),
+        ("NovelAI Diffusion V5 00000000", Model.NAI_DIFFUSION_5_CURATED),  # the web client's default
+    ],
+)
+def test_v5_model_from_source_hash(source, model):
+    from novelai_python.sdk.ai._enum import find_model_by_hashcode
+
+    assert find_model_by_hashcode(source) == model
+
+
 def test_unknown_model_and_missing_comment():
     with pytest.raises(ValueError):
         GenerateImageInfer.from_metadata(ImageMetadata(Comment=CommentModel(prompt="x"), Source="Stable Diffusion"))
