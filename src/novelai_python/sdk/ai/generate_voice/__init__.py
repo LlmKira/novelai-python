@@ -91,9 +91,10 @@ class VoiceGenerate(ApiBaseModel):
             # Request
             try:
                 response = await sess.post(url=self.base_url, json=request_data)
-                header_type = response.headers.get("Content-Type")
+                # opus=true answers WebM/Opus, maybe as 'audio/webm;codecs="opus"'
+                media_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                 if (
-                    header_type not in ["audio/mpeg", "audio/ogg", "audio/opus", "audio/wav", "audio/webm"]
+                    media_type not in ["audio/mpeg", "audio/ogg", "audio/opus", "audio/wav", "audio/webm"]
                     or response.status_code >= 400
                 ):
                     self._raise_for_status(

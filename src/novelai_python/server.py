@@ -299,10 +299,12 @@ async def generate_voice(
     """
     req = VoiceGenerate(text=text, voice=voice, seed=seed, opus=opus, version=version)
     result = await req.request(session=get_session(current_token))
+    # opus=true is WebM/Opus, as the web client plays it; otherwise MP3
+    media_type, filename = ("audio/webm", "audio.webm") if opus else ("audio/mpeg", "audio.mp3")
     return StreamingResponse(
         io.BytesIO(result.audio),
-        media_type="audio/mpeg",
-        headers={"Content-Disposition": "attachment;filename=audio.mp3"},
+        media_type=media_type,
+        headers={"Content-Disposition": f"attachment;filename={filename}"},
     )
 
 
