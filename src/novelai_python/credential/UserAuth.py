@@ -10,6 +10,20 @@ from pydantic import Field, PrivateAttr, SecretStr
 from ._base import CredentialBase, _correlation_id, _initiated_at, browser_headers
 
 
+class _LoginSession(AsyncSession):
+    """A session that drops the credential's cached token when NovelAI answers 401 to it."""
+
+    def __init__(self, credential: "LoginCredential", **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._credential = credential
+
+    async def request(self, *args, **kwargs):  # pyright: ignore[reportIncompatibleMethodOverride]
+        response = await super().request(*args, **kwargs)
+        if response.status_code == 401:
+            self._credential.forget_token(self.headers.get("authorization"))
+        return response
+
+
 class LoginCredential(CredentialBase):
     """
     JwtCredential is the base class for all credential.
@@ -30,6 +44,13 @@ class LoginCredential(CredentialBase):
         return (
             not self.session_headers or self.update_at is None or int(time.time()) - self.update_at > 29 * 24 * 60 * 60
         )
+
+    def forget_token(self, authorization: str | None = None) -> None:
+        """Log in again on the next request. With ``authorization``, only if that is still the cached token
+        (a session made before a newer login must not drop the newer token)."""
+        if authorization is None or self.session_headers.get("authorization") == authorization:
+            self.session_headers = {}
+            self.update_at = None
 
     def _lock(self) -> asyncio.Lock:
         # an asyncio.Lock belongs to one event loop; a credential can outlive it (several asyncio.run)
@@ -66,4 +87,4 @@ class LoginCredential(CredentialBase):
                 **(update_headers or {}),
             }
         )
-        return AsyncSession(**self.session_kwargs(timeout, headers))
+        return _LoginSession(self, **self.session_kwargs(timeout, headers))

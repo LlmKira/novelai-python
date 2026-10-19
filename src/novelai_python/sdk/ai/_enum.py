@@ -263,6 +263,12 @@ PROMOTION = {
     "NovelAI Diffusion V4 7ABFFA2A": Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
     "NovelAI Diffusion V4 C1CCBA86": Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
     "NovelAI Diffusion V4 770A9E12": Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
+    # the web client's metadata import (rQ): the V5 Source names no variant, only the hash
+    "NovelAI Diffusion V5 657484A5": Model.NAI_DIFFUSION_5_FULL,
+    "NovelAI Diffusion V5 0ADF9AB7": Model.NAI_DIFFUSION_5_FULL,
+    "NovelAI Diffusion V5 93F4BD30": Model.NAI_DIFFUSION_5_FULL_MEDIUM,
+    "NovelAI Diffusion V5 70AB5786": Model.NAI_DIFFUSION_5_FULL_MEDIUM,
+    "NovelAI Diffusion V5 DB276663": Model.NAI_DIFFUSION_5_CURATED,
 }
 
 ModelTypeAlias = Model | str | None
@@ -604,9 +610,8 @@ def get_quality_suffix(model: ModelTypeAlias, preset_id: str | QualityPreset | N
 
 def find_model_by_hashcode(hashcode: str) -> ModelTypeAlias:
     if "NovelAI Diffusion V5" in hashcode:
-        if "Curated" in hashcode:
-            return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_5_CURATED)
-        return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_5_FULL)
+        # an unknown V5 hash is Curated, as in the web client
+        return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_5_CURATED)
     if "NovelAI Diffusion V4.5" in hashcode:
         return PROMOTION.get(hashcode, Model.NAI_DIFFUSION_4_5_FULL)
     if "NovelAI Diffusion V4" in hashcode:

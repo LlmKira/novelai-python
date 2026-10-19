@@ -19,7 +19,7 @@ jobs:
         os: [ ubuntu-latest ] #, windows-latest, macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up PDM
         uses: pdm-project/setup-pdm@v4
         with:
@@ -36,7 +36,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Set up PDM
         uses: pdm-project/setup-pdm@v4
         with:

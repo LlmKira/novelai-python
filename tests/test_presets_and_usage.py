@@ -33,8 +33,7 @@ def test_subscription_usage_is_optional_and_derived():
         "tier": 3,
         "active": True,
         "expiresAt": 1,
-        "paymentProcessorData": None,
-        "accountType": 0,
+        "accountType": 0,  # no paymentProcessorData: some accounts omit it
         "trainingStepsLeft": {"fixedTrainingStepsLeft": 10000, "purchasedTrainingSteps": 0},
         "perks": {
             "maxPriorityActions": 1,
