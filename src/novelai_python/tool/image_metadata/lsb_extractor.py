@@ -6,8 +6,8 @@ import numpy as np
 from PIL import Image
 
 
-class LSBExtractor(object):
-    def __init__(self, data):
+class LSBExtractor:
+    def __init__(self, data) -> None:
         self.data = data
         self.rows, self.cols, self.dim = data.shape
         self.bits = 0
@@ -15,7 +15,7 @@ class LSBExtractor(object):
         self.row = 0
         self.col = 0
 
-    def _extract_next_bit(self):
+    def _extract_next_bit(self) -> bool:
         """
         Extract the next bit from the pixel's least significant bit (LSB).
         Returns `True` if a bit was successfully extracted, `False`
@@ -45,7 +45,7 @@ class LSBExtractor(object):
                     return None
 
                 # If we have partial bits, pad remaining bits with 0s and return
-                self.byte <<= (8 - self.bits)
+                self.byte <<= 8 - self.bits
                 padded_byte = bytearray([self.byte])
                 self.bits = 0
                 self.byte = 0
@@ -77,14 +77,14 @@ class LSBExtractor(object):
         """
         bytes_list = self.get_next_n_bytes(4)
         if len(bytes_list) == 4:
-            integer_value = int.from_bytes(bytes_list, byteorder='big')
+            integer_value = int.from_bytes(bytes_list, byteorder="big")
             return integer_value
         else:
             return None
 
 
-class ImageLsbDataExtractor(object):
-    def __init__(self):
+class ImageLsbDataExtractor:
+    def __init__(self) -> None:
         self.magic = "stealth_pngcomp"
 
     def extract_data(self, image: Image.Image, get_fec: bool = False) -> tuple:
@@ -94,15 +94,18 @@ class ImageLsbDataExtractor(object):
         :param get_fec: bool
         :return: json_data, fec_data
         """
-        image = np.array(image.copy().convert("RGBA"))
+        pixels = np.array(image.copy().convert("RGBA"))
         try:
-            if not (image.shape[-1] == 4 and len(image.shape) == 3):
-                raise AssertionError('image format error, maybe image already be modified')
-            reader = LSBExtractor(image)
+            if not (pixels.shape[-1] == 4 and len(pixels.shape) == 3):
+                raise AssertionError("image format error, maybe image already be modified")
+            reader = LSBExtractor(pixels)
             read_magic = reader.get_next_n_bytes(len(self.magic)).decode("utf-8")
             if not (self.magic == read_magic):
-                raise AssertionError('magic number mismatch')
-            read_len = reader.read_32bit_integer() // 8
+                raise AssertionError("magic number mismatch")
+            read_len_bits = reader.read_32bit_integer()
+            if read_len_bits is None:
+                raise AssertionError("metadata length is missing")
+            read_len = read_len_bits // 8
             json_data = reader.get_next_n_bytes(read_len)
             json_data = json.loads(gzip.decompress(json_data).decode("utf-8"))
             if "Comment" in json_data:
@@ -113,19 +116,19 @@ class ImageLsbDataExtractor(object):
 
             fec_len = reader.read_32bit_integer()
             fec_data = None
-            if fec_len != 0xffffffff:
+            if fec_len is not None and fec_len != 0xFFFFFFFF:
                 fec_data = reader.get_next_n_bytes(fec_len // 8)
 
             return json_data, fec_data
-        except FileNotFoundError:
+        except FileNotFoundError as exc:
             # 无法找到文件
-            raise Exception(f"The file {image} does not exist.")
+            raise Exception(f"The file {image} does not exist.") from exc
         except json.JSONDecodeError as e:
             # 无法解析JSON数据
-            raise Exception(f"Failed to decode JSON data from image: {image}. Error: {str(e)}")
+            raise Exception(f"Failed to decode JSON data from image: {image}. Error: {e!s}") from e
         except AssertionError as err:
             # 魔数不匹配
-            raise Exception(f"Failed to extract data from image: {image}. Error: {str(err)}")
+            raise Exception(f"Failed to extract data from image: {image}. Error: {err!s}") from err
         except Exception as e:
             # 从图像中提取数据时发生意外错误
-            raise Exception(f"Unexpected error happened when extracting data from image: {image}. Error: {str(e)}")
+            raise Exception(f"Unexpected error happened when extracting data from image: {image}. Error: {e!s}") from e

@@ -1,14 +1,15 @@
 import asyncio
+import logging
 import os
 
 from dotenv import load_dotenv
-from loguru import logger
 from pydantic import SecretStr
 
-from novelai_python import APIError, LoginCredential
-from novelai_python import JwtCredential
-from novelai_python.sdk.ai.generate import TextLLMModel, LLM, AdvanceLLMSetting
+from novelai_python import APIError, JwtCredential, LoginCredential
+from novelai_python.sdk.ai.generate import LLM, AdvanceLLMSetting, TextLLMModel
 from novelai_python.sdk.ai.generate._enum import get_model_preset
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 jwt = os.getenv("NOVELAI_JWT", None)

@@ -20,11 +20,48 @@
 ✨ NovelAI api python sdk with Pydantic, modern and user-friendly.
 
 The goal of this repository is to use Pydantic to build legitimate requests to access
-the [NovelAI API service](https://api.novelai.net/docs).
+the [NovelAI API service](https://image.novelai.net/docs).
 
-> Python >= 3.9 <3.13 is required.
+> Python >= 3.12 is required (tested on 3.12 – 3.14).
 
 ### 📰 News
+
+- **NovelAI Diffusion V5** family: `nai-diffusion-5-full`, `-full-medium` (fast, 14 steps), `-curated` and their
+  `-inpainting` variants, with the web client's quality presets (`standard` / `light` / `none`) and negative
+  presets. Every model uses `params_version` 4 (`ucPresetId` / `qualityPresetId`) and the
+  `multipart/form-data` body the web client sends.
+- **Streaming**: `async for event in gen.request_stream(session)` on `/ai/generate-image-stream` yields
+  intermediate previews and the final image per sample.
+- New: character reference (V4.5), `EncodeVibe`, transparent background (V5), `Upscale` on the image host,
+  `UserData`, `TrialStatus`, `Priority`, `CreatePersistentToken`, the OpenAI-compatible text API (`/oa/v1`),
+  and `GenerateImageInfer.from_metadata()` to rebuild a request from an image's metadata.
+- Fewer dependencies: pydantic, curl_cffi, msgpack, Pillow, numpy, pynacl and tokenizers. httpx, opencv,
+  argon2-cffi, ftfy/regex and `bchlib` are gone (`bchlib` has no Python 3.14 wheel; a NumPy BCH codec
+  replaces it).
+- Optional local image budget (`limiter=True`, see below).
+
+### ⬆️ Upgrading from 0.7
+
+Some changes do not raise an error, so check these when you upgrade:
+
+- **`HTTP(S)_PROXY` is ignored.** Sessions use `trust_env=False`, so a system proxy no longer routes NovelAI
+  traffic by accident. Pass `proxy="http://user:pass@host:port"` to the credential (`ApiCredential`,
+  `LoginCredential`, ...) or to `Login`; tokenizer downloads and tag suggestions read `NOVELAI_PROXY`.
+- **The default model is V5** (`nai-diffusion-5-full`) in `GenerateImageInfer` and `build_generate`.
+- **Images come back as PNG** by default (`image_format`), with the metadata in text chunks; set `parameters.image_format = ImageFormat.WEBP` for smaller files.
+- **`auto_text`** (V5 only, on by default): quoted text in the prompt is appended as a `, teXt: ...` block, as
+  novelai.net does. Pass `auto_text=False` to send the prompt untouched.
+- **Image and user endpoints moved to `image.novelai.net`**; `api.novelai.net` rejects third-party clients
+  there.
+- **Browser identity**: requests carry the headers of Chrome 155 on Windows, as the web client sends them.
+  Accept-Language is English (`en-US,en;q=0.9`) unless the credential says otherwise:
+  `ApiCredential(..., accept_language="en-sg")` (see `ACCEPT_LANGUAGES`) or a full header value.
+- **The image budget is off by default.** Pass `limiter=True` to `request()` / `request_stream()` for the
+  process-wide budget (`NOVELAI_DAILY_IMAGE_LIMIT`, default 2500 per 24h, saved to
+  `~/.novelai_python/image_limit.json`), or a `DailyImageLimiter` of your own. The budget is shared by all
+  tokens and by every limiter, in any process, that uses the same state file.
+- **Server: `POST /ai/augment-image` takes the image as the request body** (`application/octet-stream`); the
+  other fields stay query parameters. Send `Authorization: Bearer <token>` or the bare token.
 
 - [New Model. No Restrictions. V4.5 Full Is Here.](https://blog.novelai.net/novelai-diffusion-v4-5-full-release-678318c86205)
 - [NovelAI Diffusion V4.5 Curated is Here!](https://blog.novelai.net/novelai-diffusion-v4-5-curated-is-here-9e5ba1f628f3)
@@ -46,14 +83,12 @@ directory, read code as documentation.**
 import asyncio
 import os
 
-from dotenv import load_dotenv
 from pydantic import SecretStr
 
 from novelai_python import GenerateImageInfer, ImageGenerateResp, ApiCredential
 from novelai_python.sdk.ai.generate_image import Model, Character, Sampler, UCPreset
 from novelai_python.sdk.ai.generate_image.schema import PositionMap
 
-load_dotenv()
 session = ApiCredential(api_token=SecretStr(os.getenv("NOVELAI_JWT")))  # pst-***
 # For security reasons, storing user credentials in plaintext is strongly discouraged.
 
@@ -63,7 +98,7 @@ prompt = "2girls, fisheye, closeup, from above"
 async def main():
     gen = GenerateImageInfer.build_generate(
         prompt=prompt,
-        model=Model.NAI_DIFFUSION_4_5_FULL,
+        model=Model.NAI_DIFFUSION_5_FULL,  # or NAI_DIFFUSION_4_5_FULL
         character_prompts=[
             Character(
                 prompt="1girl, head tilt, short hair, black hair, grey eyes, small breasts, looking at viewer",
@@ -87,12 +122,17 @@ async def main():
     )
     cost = gen.calculate_cost(is_opus=True)
     print(f"charge: {cost} if you are vip3")
-    resp = await gen.request(session=session)
+    resp = await gen.request(session=session)  # raises DailyLimitExceeded once the local budget is spent
     resp: ImageGenerateResp
     print(resp.meta)
-    file = resp.files[0]
-    with open(file[0], "wb") as f:
-        f.write(file[1])
+    print(resp.save("./output"))  # auto-download every returned image
+
+    # streaming previews (V5 family)
+    async for event in gen.request_stream(session=session):
+        if event.is_final:
+            open(f"./output/sample_{event.samp_ix}.webp", "wb").write(event.image)
+        elif event.event_type == "intermediate":
+            print("preview", event.samp_ix, "step", event.step_ix, len(event.image), "bytes")
 
 
 loop = asyncio.get_event_loop()
@@ -100,20 +140,73 @@ loop.run_until_complete(main())
 
 ```
 
+#### 🔋 Anlas / limit monitoring
+
+```python
+from novelai_python import Subscription, UserData, TrialStatus, get_default_limiter
+
+sub = await Subscription().request(session=session)
+print(sub.anlas_left, sub.tier_name, sub.is_unlimited_image_generation)
+
+data = await UserData().request(session=session)  # subscription + information in one call
+print(data.anlas_left)
+
+trial = await TrialStatus().request(session=session)
+print(trial.trialImagesLeft)
+
+# only when requests opt in with limiter=True
+print(get_default_limiter().status())  # {'limit': 2500, 'used': ..., 'remaining': ..., 'reset_at': ...}
+```
+
+`sub.usage` is the Opus V5 usage bar: `percent`, `purchasedPercent` (bought extra, 0-300),
+`isNegative`, `timeUntilNextPercent`. `Priority().request(session)` returns the task priority balance;
+`CreatePersistentToken(overwrite=True).request(jwt_session)` creates a `pst-...` API key.
+
+#### 🖼️ Transparent background, character reference, vibes
+
+```python
+from novelai_python import CharacterReference, EncodeVibe, GenerateImageInfer
+from novelai_python.sdk.ai._enum import Model
+
+# V5: "Transparent BG" of the web client (tag before the quality suffix + straight alpha)
+gen = GenerateImageInfer.build_generate("1girl, standing", transparent_background=True)
+
+# V4.5: Precise Reference (character / style / costume / character&style / delta)
+gen = GenerateImageInfer.build_generate(
+    "1girl", model=Model.NAI_DIFFUSION_4_5_FULL,
+    character_references=[CharacterReference(image=open("ref.png", "rb").read(), fidelity=0.8)],
+)
+
+# V4 / V4.5 vibe transfer takes encoded vibes: encode once, reuse the result
+vibe = await EncodeVibe(image=open("vibe.png", "rb").read(), information_extracted=0.7).request(session)
+gen = GenerateImageInfer.build_generate(
+    "1girl", model=Model.NAI_DIFFUSION_4_5_FULL,
+    reference_image_multiple=[vibe.vibe_b64], reference_strength_multiple=[0.6],
+    reference_information_extracted_multiple=[0.7],
+)
+```
+
+V5 has no vibe transfer and no character reference; it takes up to 32 characters (V4/V4.5: 6).
+
+Environment:
+
+| variable | default | meaning |
+|---|---|---|
+| `NOVELAI_DAILY_IMAGE_LIMIT` | `2500` | images per 24h window, `0` disables |
+| `NOVELAI_LIMIT_STATE_FILE` | `~/.novelai_python/image_limit.json` | where the counter is persisted |
+
 #### 📦 LLM
 
 ```python
 import asyncio
 import os
 
-from dotenv import load_dotenv
 from pydantic import SecretStr
 
 from novelai_python import APIError, LoginCredential
 from novelai_python.sdk.ai.generate import TextLLMModel, LLM, get_default_preset, AdvanceLLMSetting
 from novelai_python.sdk.ai.generate._enum import get_model_preset
 
-load_dotenv()
 username = os.getenv("NOVELAI_USER", None)
 assert username is not None
 # credential = JwtCredential(jwt_token=SecretStr(jwt))
@@ -151,6 +244,18 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(chat("Hello"))
 ```
 
+OpenAI-compatible text API (`text.novelai.net/oa/v1`), responses in OpenAI format:
+
+```python
+from novelai_python import OAIChatCompletion, OAIChatMessage, OAIModels
+
+models = await OAIModels().request(session)
+req = OAIChatCompletion(model=models.data[0].id, messages=[OAIChatMessage(role="user", content="Hello")])
+print((await req.request(session))["choices"][0]["message"]["content"])
+async for chunk in req.stream(session):
+    print(chunk["choices"][0]["delta"].get("content", ""), end="")
+```
+
 #### 📦 Random Prompt
 
 ```python
@@ -167,7 +272,7 @@ for i in range(10):
 #### 📦 Run A Server
 
 ```shell
-pip install novelai_python
+pip install "novelai-python[server]"
 python3 -m novelai_python.server -h '127.0.0.1' -p 7888
 ```
 

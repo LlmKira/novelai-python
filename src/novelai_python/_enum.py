@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional, Union
 
 
 class TextLLMModel(Enum):
@@ -30,7 +29,7 @@ class TextLLMModel(Enum):
     ERATO = "llama-3-erato-v1"
 
 
-class TextTokenizerGroup(object):
+class TextTokenizerGroup:
     GENJI = "genji_tokenizer.def"
     PILE = "pile_tokenizer.def"
     PILE_NAI = "pile_tokenizer.def"
@@ -41,9 +40,11 @@ class TextTokenizerGroup(object):
     GPT2 = "gpt2_tokenizer.def"
     CLIP = "clip_tokenizer.def"
     T5 = "t5_tokenizer.def"
+    # NovelAI Diffusion V5 prompt tokenizer (the /image page loads it; prompt budget ~1471 tokens)
+    QWEN35 = "qwen35_tokenizer.def"
 
 
-TextLLMModelTypeAlias = Union[TextLLMModel, str]
+TextLLMModelTypeAlias = TextLLMModel | str
 
 TOKENIZER_MODEL_MAP = {
     TextLLMModel.GENJI_JP_6B_V2: TextTokenizerGroup.GENJI,
@@ -75,20 +76,35 @@ COLORS_LLM = [
 ]
 
 
-def get_llm_group(model: TextLLMModel) -> Optional[TextTokenizerGroup]:
+def get_llm_group(model: TextLLMModel | str) -> str | None:
     if isinstance(model, str):
         model = TextLLMModel(model)
-    return TOKENIZER_MODEL_MAP.get(model, None)
+    return TOKENIZER_MODEL_MAP.get(model)
 
 
-def get_tokenizer_model(model: TextLLMModel) -> str:
+def get_tokenizer_model(model: TextLLMModel | str) -> str:
     if isinstance(model, str):
         model = TextLLMModel(model)
     group = TOKENIZER_MODEL_MAP.get(model, TextTokenizerGroup.GPT2)
     return group
 
 
-def get_tokenizer_model_url(model: TextLLMModel) -> str:
+def as_text_model(model: TextLLMModelTypeAlias) -> TextLLMModelTypeAlias:
+    """A model name that matches a known model becomes that TextLLMModel; anything else is returned as is."""
+    if isinstance(model, str):
+        try:
+            return TextLLMModel(model)
+        except ValueError:
+            return model
+    return model
+
+
+def get_token_dtype(model: TextLLMModelTypeAlias) -> str:
+    """Width of the base64 token array on the wire: the llama3 vocabulary does not fit in 16 bits."""
+    return "uint32" if get_tokenizer_model(model) == TextTokenizerGroup.LLAMA3 else "uint16"
+
+
+def get_tokenizer_model_url(model: TextLLMModel | str) -> str:
     model_name = get_tokenizer_model(model)
     if not model_name.endswith(".def"):
         model_name = f"{model_name}.def"

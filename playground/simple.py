@@ -5,6 +5,7 @@ from novelai_python.sdk.ai.generate_image import Model
 
 async def main():
     from pydantic import SecretStr
+
     from novelai_python import GenerateImageInfer, LoginCredential
     credential = LoginCredential(
         username="NOVELAI_USERNAME",

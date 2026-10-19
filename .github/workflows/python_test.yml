@@ -2,6 +2,7 @@ name: Run tests
 
 on:
   workflow_dispatch:
+  pull_request:
   push:
     branches:
       - main
@@ -14,19 +15,33 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [ '3.9', '3.10', '3.11','3.12' ]
+        python-version: [ '3.12', '3.13', '3.14' ]
         os: [ ubuntu-latest ] #, windows-latest, macos-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up PDM
-        uses: pdm-project/setup-pdm@v3
+        uses: pdm-project/setup-pdm@v4
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
           pdm install --no-lock -G testing
-      - name: Run Tests
+      - name: Run Tests (offline)
         run: |
-          pdm run -v pytest tests
+          pdm run -v pytest tests -m "not network"
+
+  Network:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PDM
+        uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pdm install --no-lock -G testing
+      - name: Run network tests
+        run: pdm run -v pytest tests -m "network"

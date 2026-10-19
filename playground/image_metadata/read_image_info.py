@@ -1,8 +1,10 @@
 import json
+import logging
 from pathlib import Path
 
 from PIL import Image
-from loguru import logger
+
+logger = logging.getLogger(__name__)
 
 """
    Read the metadata from the image using raw PIL

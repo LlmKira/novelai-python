@@ -3,8 +3,9 @@ from enum import Enum
 
 class ReqType(Enum):
     """
-    typing.Literal["bg-removal", "colorize", "lineart", "sketch", "emotion", "declutter", "declutter-keep-bubbles"]
+    typing.Literal["bg-removal", "colorize", "lineart", "sketch", "emotion", "declutter", "declutter-keep-bubbles", "pixel-snap"]
     """
+
     BG_REMOVAL = "bg-removal"
     COLORIZE = "colorize"
     LINEART = "lineart"
@@ -12,12 +13,14 @@ class ReqType(Enum):
     EMOTION = "emotion"
     DECLUTTER = "declutter"
     DECLUTTER_KEEP_BUBBLES = "declutter-keep-bubbles"
+    PIXEL_SNAP = "pixel-snap"
 
 
 class Moods(Enum):
     """
     The mood of the character in the image
     """
+
     Neutral = "neutral"
     Happy = "happy"
     Saf = "sad"

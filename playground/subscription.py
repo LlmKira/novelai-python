@@ -4,14 +4,15 @@
 # @File    : subscription.py
 
 import asyncio
+import logging
 import os
 
 from dotenv import load_dotenv
-from loguru import logger
 from pydantic import SecretStr
 
-from novelai_python import APIError, SubscriptionResp, LoginCredential
-from novelai_python import Subscription, JwtCredential
+from novelai_python import APIError, JwtCredential, LoginCredential, Subscription, SubscriptionResp
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 

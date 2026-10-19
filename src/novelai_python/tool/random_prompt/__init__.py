@@ -1,19 +1,30 @@
-# -*- coding: utf-8 -*-
-from typing import List, Literal
+from typing import Literal
 
-from novelai_python.tool.random_prompt.generate_scene_composition import generate_scene_composition, \
-    generate_appearance, Conditions
-from novelai_python.tool.random_prompt.generate_scene_tags import generate_scene_tags, generate_character_traits
+from novelai_python.tool.random_prompt.generate_scene_composition import (
+    Conditions,
+    generate_appearance,
+    generate_scene_composition,
+)
+from novelai_python.tool.random_prompt.generate_scene_tags import generate_character_traits, generate_scene_tags
 from novelai_python.tool.random_prompt.generate_tags import generate_tags, get_holiday_themed_tags
 
+from .generators.anime_v3 import generate_anime_v3_prompt
+from .generators.anime_v4 import generate_anime_v4_prompt
+from .generators.furry import generate_furry_prompt
+from .generators.holiday import inject_holiday_spirit
 
-class RandomPromptGenerator(object):
 
-    def __init__(self, **kwargs):
+class RandomPromptGenerator:
+    """
+    Legacy generator (V1). Based on older logic.
+    Kept for backward compatibility.
+    """
+
+    def __init__(self, **kwargs) -> None:
         pass
 
     @staticmethod
-    def generate_scene_composition() -> List[str]:
+    def generate_scene_composition() -> list[str]:
         return generate_scene_composition()
 
     @staticmethod
@@ -30,35 +41,29 @@ class RandomPromptGenerator(object):
 
     @staticmethod
     def generate_character(
-            tags: List[str],
-            gender: Literal['m', 'f', 'o'],
-            additional_tags: str = None,
-            character_limit: int = 1
-    ) -> str:
+        tags: list[str], gender: Literal["m", "f", "o"], additional_tags: str | None = None, character_limit: int = 1
+    ) -> list[str | int]:
         """
         Generate a character based on the given tags
         :param tags: given tags
         :param gender: the gender of the character
         :param additional_tags: nothing
         :param character_limit: num of characters
-        :return: random character prompt
+        :return: random character tags
         """
         return generate_appearance(
-            tags=Conditions(tags=tags),
-            gender=gender,
-            additional_tags=additional_tags,
-            character_limit=character_limit
+            tags=Conditions(tags=tags), gender=gender, additional_tags=additional_tags, character_limit=character_limit
         )
 
     @staticmethod
     def generate_character_traits(
-            gender: Literal['m', 'f', 'o'],
-            portrait_type: Literal[
-                "half-length portrait",
-                "three-quarter length portrait",
-                "full-length portrait",
-            ],
-            level: int
+        gender: Literal["m", "f", "o"],
+        portrait_type: Literal[
+            "half-length portrait",
+            "three-quarter length portrait",
+            "full-length portrait",
+        ],
+        level: int,
     ) -> tuple:
         """
         Generate character traits
@@ -67,29 +72,59 @@ class RandomPromptGenerator(object):
         :param level: level of generate depth
         :return: tags(generated tags), flags(removed categories)
         """
-        return generate_character_traits(
-            gender=gender,
-            portrait_type=portrait_type,
-            level=level
-        )
+        return generate_character_traits(gender=gender, portrait_type=portrait_type, level=level)
 
 
-if __name__ == '__main__':
-    gen = RandomPromptGenerator()
-    for i in range(1):
-        s = RandomPromptGenerator()
-        print(s.generate_common_tags(nsfw=False))
-        print(s.generate_scene_tags())
-        print(s.generate_scene_composition())
-        print(s.get_holiday_themed_tags())
-        print(s.generate_character(
-            tags=["vampire", "werewolf"],
-            gender="f",
-            additional_tags="",
-            character_limit=1,
-        ))
-        print(s.generate_character_traits(
-            gender="f",
-            portrait_type="half-length portrait",
-            level=1
-        ))
+class RandomPromptGeneratorV2:
+    """
+    New generator (V2). Based on NovelAI 'Magic Dice' logic.
+    Supports Anime V3, V4 and Furry modes with advanced tag compatibility logic.
+
+    V1 (``RandomPromptGenerator``) follows the older scene-composition tables; V2 follows
+    Magic Dice. Both use the same ``PromptOption`` selector, but their tag probabilities
+    differ, so equal seeds are not expected to produce equal prompts.
+    """
+
+    @staticmethod
+    def generate(
+        model: Literal["anime_v3", "anime_v4", "furry"] = "anime_v4", holiday: bool = False, nsfw: bool = False
+    ) -> str:
+        """
+        Generates a random prompt using the logic of the web UI.
+
+        :param model: Model type.
+                      'anime_v3' (Curated/Full V3) - The most varied generator (Magic Dice style).
+                      'anime_v4' (Curated/Full V4) - Newer tags, stricter compatibility logic.
+                      'furry' (Furry V3) - Specialized for furry species and attributes.
+        :param holiday: Adds Christmas/Winter tags.
+        :param nsfw: Enables NSFW logic (mostly affects 'furry' mode and some V4 logic).
+        :return: A string of comma-separated tags.
+        """
+        if model == "anime_v3":
+            # V3 logic in JS doesn't have explicit NSFW toggle, tags are mixed in lists
+            return generate_anime_v3_prompt(use_holiday=holiday, is_nsfw=nsfw)
+        elif model == "anime_v4":
+            return generate_anime_v4_prompt(use_holiday=holiday, is_nsfw=nsfw)
+        elif model == "furry":
+            return generate_furry_prompt(use_holiday=holiday, is_nsfw=nsfw)
+        else:
+            raise ValueError(f"Unknown random prompt model: {model}. Available: anime_v3, anime_v4, furry")
+
+    @staticmethod
+    def apply_holiday(prompt: str) -> str:
+        """Applies holiday tags injection to an existing prompt."""
+        return inject_holiday_spirit(prompt)
+
+
+generate_random_prompt = RandomPromptGeneratorV2.generate
+
+apply_holiday_spirit = RandomPromptGeneratorV2.apply_holiday
+
+if __name__ == "__main__":
+    print("--- Legacy Generator ---")
+    print(RandomPromptGenerator().generate_common_tags(nsfw=False))
+
+    print("\n--- V2 Generator (Magic Dice) ---")
+    print("Anime V3:", RandomPromptGeneratorV2.generate(model="anime_v3"))
+    print("Anime V4:", RandomPromptGeneratorV2.generate(model="anime_v4"))
+    print("Furry (NSFW):", RandomPromptGeneratorV2.generate(model="furry", nsfw=True))
