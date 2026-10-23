@@ -174,14 +174,14 @@ class AugmentImageInfer(ApiBaseModel):
                 response = await sess.post(self.base_url, data=json.dumps(request_data).encode("utf-8"))
                 response_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                 if response_type not in ZIP_CONTENT_TYPES or response.status_code >= 400:
-                    observed.failed(response.status_code)
+                    observed.report(response.status_code)
                     self._raise_for_status(
                         response.status_code,
                         response.content,
                         request_data,
                         self._legacy_400_as_auth,
                     )
-                observed.ok(response.status_code)
+                observed.report(response.status_code)
 
                 # Unpack the ZIP response
                 try:

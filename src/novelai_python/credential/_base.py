@@ -132,18 +132,18 @@ class CredentialBase(BaseModel):
     None = the first 8 hex digits of a SHA-256 of the username or token: stable, and not the email."""
 
     def metrics_account(self) -> str:
+        """``metrics_label``, else a short hash of what identifies the account (``_metrics_seed``)."""
         if self.metrics_label:
             return self.metrics_label
+        seed = self._metrics_seed()
+        if not seed:
+            return "unknown"
         from ..metrics import short_hash
 
-        seed = getattr(self, "username", None)
-        if not seed:
-            token = getattr(self, "_token", None)
-            try:
-                seed = token() if callable(token) else None
-            except Exception:
-                seed = None
-        return short_hash(str(seed)) if seed else "unknown"
+        return short_hash(seed)
+
+    def _metrics_seed(self) -> str | None:
+        return None
 
     def session_kwargs(self, timeout: int, headers: dict) -> dict:
         # trust_env=False: never pick up HTTP(S)_PROXY from the environment. A
@@ -166,6 +166,9 @@ class BearerCredential(CredentialBase):
 
     def _token(self) -> str:
         raise NotImplementedError
+
+    def _metrics_seed(self) -> str | None:
+        return self._token()
 
     async def get_session(self, timeout: int = 180, update_headers: dict | None = None):
         # update_headers goes through browser_headers too: its lowercased keys replace ours

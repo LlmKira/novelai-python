@@ -110,7 +110,7 @@ class Login(ApiBaseModel):
                 response = await sess.post(
                     self.base_url, data=json.dumps(request_data).encode("utf-8"), headers=headers
                 )
-                (observed.ok if response.status_code < 400 else observed.failed)(response.status_code)
+                observed.report(response.status_code)
                 content_type = response.headers.get("Content-Type") or ""
                 if "application/json" not in content_type or response.status_code != 201:
                     error_message = await self.handle_error_response(response=response, request_data=logged_request)

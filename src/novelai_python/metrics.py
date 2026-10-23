@@ -93,8 +93,8 @@ def short_hash(value: str) -> str:
 class _Observation:
     """One timed request. Works with ``with`` and ``async with``; see :meth:`NovelAIMetrics.observe`.
 
-    Call :meth:`ok` or :meth:`failed` inside the block. An exception that leaves the block before
-    either was called counts as ``'transport'``.
+    Call :meth:`report` inside the block with the HTTP status (or a marker). An exception that leaves
+    the block before that counts as ``'transport'``.
     """
 
     __slots__ = ("_endpoint", "_metrics", "_model", "_started", "status")
@@ -106,10 +106,8 @@ class _Observation:
         self._started = 0.0
         self.status: str | int | None = None
 
-    def ok(self, status: int = 200) -> None:
-        self.status = status
-
-    def failed(self, status: str | int) -> None:
+    def report(self, status: int | str) -> None:
+        """The outcome: the HTTP status, or a marker such as :data:`STATUS_STREAM_ERROR`."""
         self.status = status
 
     def __enter__(self) -> _Observation:
@@ -285,8 +283,8 @@ class NovelAIMetrics:
 
     def observe(self, url: str, model: Any = None) -> _Observation:
         """Time one request: ``with metrics.observe(url, model) as obs:`` or ``async with``.
-        Call ``obs.ok(status)`` or ``obs.failed(status)`` inside; an exception that leaves the
-        block counts as ``'transport'`` unless a status was set."""
+        Call ``obs.report(status)`` inside; an exception that leaves the block before that counts
+        as ``'transport'``."""
         if not self.enabled:
             return _Observation(None, "", "")
         return _Observation(self, endpoint_label(url), model_label(model))

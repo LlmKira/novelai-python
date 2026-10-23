@@ -133,9 +133,9 @@ class ApiBaseModel(BaseModel, ABC):
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
             if response.status_code >= 400:
-                observed.failed(response.status_code)
+                observed.report(response.status_code)
                 self._raise_for_status(response.status_code, response.content, request_data, self._legacy_400_as_auth)
-            observed.ok(response.status_code)
+            observed.report(response.status_code)
         return response
 
     @staticmethod

@@ -92,7 +92,7 @@ class Upscale(ApiBaseModel):
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
-            (observed.ok if response.status_code < 400 else observed.failed)(response.status_code)
+            observed.report(response.status_code)
         if response.status_code >= 400:
             self._raise_for_status(response.status_code, response.content, request_data)
         content = response.content

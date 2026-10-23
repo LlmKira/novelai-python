@@ -1162,7 +1162,7 @@ class GenerateImageInfer(ApiBaseModel):
                 )
                 try:
                     if response.status_code >= 400:
-                        observed.failed(response.status_code)
+                        observed.report(response.status_code)
                         self._raise_for_status(
                             response.status_code,
                             await response.acontent(),
@@ -1170,7 +1170,7 @@ class GenerateImageInfer(ApiBaseModel):
                             self._legacy_400_as_auth,
                         )
 
-                    observed.ok(response.status_code)
+                    observed.report(response.status_code)
                     buffer = bytearray()
                     async for chunk in response.aiter_content():
                         buffer.extend(chunk)
@@ -1187,7 +1187,7 @@ class GenerateImageInfer(ApiBaseModel):
                                 # NovelAI fails mid-stream with HTTP 200 and an error frame, e.g.
                                 # {event_type: error, code: 500, message: "Error generating image..."}
                                 code = frame.get("code") or 500
-                                observed.failed(STATUS_STREAM_ERROR)
+                                observed.report(STATUS_STREAM_ERROR)
                                 raise APIError(
                                     event.message or "Error event in the image stream",
                                     request=request_data,
@@ -1202,7 +1202,7 @@ class GenerateImageInfer(ApiBaseModel):
                                     metrics.observe_limiter(limiter)
                             yield event
                     if buffer:
-                        observed.failed(STATUS_STREAM_ERROR)
+                        observed.report(STATUS_STREAM_ERROR)
                         raise APIError(
                             f"The image stream ended inside a frame ({len(buffer)} bytes left)",
                             request=request_data,
@@ -1284,14 +1284,14 @@ class GenerateImageInfer(ApiBaseModel):
                 # Validate response content type and status code
                 response_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                 if response_type not in ZIP_CONTENT_TYPES + IMAGE_CONTENT_TYPES or response.status_code >= 400:
-                    observed.failed(response.status_code)
+                    observed.report(response.status_code)
                     self._raise_for_status(
                         response.status_code,
                         response.content,
                         request_data,
                         self._legacy_400_as_auth,
                     )
-                observed.ok(response.status_code)
+                observed.report(response.status_code)
 
                 # Unpack the ZIP response (or accept a bare image, which V5 may return for webp)
                 try:

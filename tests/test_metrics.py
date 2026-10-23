@@ -112,7 +112,7 @@ def test_account_label_never_exposes_the_email():
 
 def test_observe_counts_status_and_duration(metrics):
     with metrics.observe("https://image.novelai.net/ai/generate-image", "nai-diffusion-5-full") as obs:
-        obs.ok(200)
+        obs.report(200)
     labels = {"endpoint": "/ai/generate-image", "model": "nai-diffusion-5-full"}
     assert _value(metrics, "novelai_requests_total", status="200", **labels) == 1
     assert _value(metrics, "novelai_request_seconds_count", **labels) == 1
@@ -122,7 +122,7 @@ def test_observe_counts_status_and_duration(metrics):
 
 def test_observe_failed_and_transport(metrics):
     with metrics.observe("https://api.novelai.net/user/subscription") as obs:
-        obs.failed(401)
+        obs.report(401)
     with pytest.raises(RuntimeError), metrics.observe("https://api.novelai.net/user/subscription"):
         raise RuntimeError("ssl")
     labels = {"endpoint": "/user/subscription", "model": ""}
@@ -226,7 +226,7 @@ def test_disabled_by_env(monkeypatch):
     off = NovelAIMetrics(registry=CollectorRegistry())
     assert off.enabled is False
     with off.observe("https://api.novelai.net/user/subscription") as obs:
-        obs.ok()
+        obs.report(200)
     off.observe_subscription(SubscriptionResp.model_validate(SUBSCRIPTION), "x")
     assert off.generate_latest() == b""
     with pytest.raises(RuntimeError):

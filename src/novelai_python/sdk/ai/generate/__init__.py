@@ -378,7 +378,7 @@ class LLM(ApiBaseModel):
             # Request
             try:
                 response = await sess.post(self.base_url, json=request_data, stream=False)
-                (observed.ok if response.status_code < 400 else observed.failed)(response.status_code)
+                observed.report(response.status_code)
                 response_data = try_jsonfy(response.content, default_when_error={})
                 if not isinstance(response_data, dict):
                     response_data = {}

@@ -39,6 +39,9 @@ class LoginCredential(CredentialBase):
     _login_lock: asyncio.Lock | None = PrivateAttr(default=None)
     _login_lock_loop: asyncio.AbstractEventLoop | None = PrivateAttr(default=None)
 
+    def _metrics_seed(self) -> str | None:
+        return self.username
+
     def _token_expired(self) -> bool:
         # 30 天有效期
         return (

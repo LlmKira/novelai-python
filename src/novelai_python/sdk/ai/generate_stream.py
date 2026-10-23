@@ -96,7 +96,7 @@ class LLMStream(LLM):
                     json=request_data,
                     stream=True,  # 使用 stream=True 参数
                 )
-                (observed.ok if response.status_code < 400 else observed.failed)(response.status_code)
+                observed.report(response.status_code)
                 try:
                     media_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                     is_event_stream = media_type == "text/event-stream"
