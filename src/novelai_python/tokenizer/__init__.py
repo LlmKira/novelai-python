@@ -7,14 +7,15 @@ import os
 import pathlib
 import tempfile
 import zlib
+from typing import Any
 
 from curl_cffi import requests as curl_requests
+from kitoken import Kitoken
 from pydantic import BaseModel, model_validator
-from tokenizers import Regex, Tokenizer, decoders, pre_tokenizers
-from tokenizers.models import BPE
 
 from ..credential._base import DEFAULT_USER_AGENT
 from . import clip_tokenizer
+from ._definition import added_token, bpe_model
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,12 @@ class NaiTokenizer:
             tokenizer_model_path = default_tokenizer_dir()
         self.tokenizer_model_path = tokenizer_model_path
         self._load_tokenizer_settings()
-        self.tokenizer: Tokenizer = self._create_tokenizer()
+        # Ids the tokenizers post-processor wrapped every sequence with (T5: </s> at the end);
+        # kitoken does not insert sequence templates itself.
+        self._prefix_ids: list[int] = []
+        self._suffix_ids: list[int] = []
+        self._vocab: list[str] = []
+        self.tokenizer: Kitoken = self._create_tokenizer()
 
     @staticmethod
     def get_model_download_url(model_full_name) -> str:
@@ -211,58 +217,107 @@ class NaiTokenizer:
                 "report this issue to https://github.com/LlmKira/novelai-python/issues",
             ) from e
 
-    def _create_tokenizer(self) -> Tokenizer:
+    def _create_tokenizer(self) -> Kitoken:
         setting = self.tokenizer_setting
         if isinstance(setting, ClipTokenizerSetting):
-            return clip_tokenizer.build_clip_tokenizer(setting.text)
-        if isinstance(setting, str):
-            return Tokenizer.from_str(setting)
-        if isinstance(setting, LLMTokenizerSetting):
-            return self._create_bpe_tokenizer(setting)
-        raise ValueError(f"Invalid tokenizer setting: {setting}")
+            definition, self._vocab = clip_tokenizer.clip_definition(setting.text)
+        elif isinstance(setting, str):
+            definition = self._t5_definition(setting)
+        elif isinstance(setting, LLMTokenizerSetting):
+            definition = self._bpe_definition(setting)
+        else:
+            raise ValueError(f"Invalid tokenizer setting: {setting}")
+        return Kitoken.from_tokenizers(json.dumps(definition).encode("utf-8"))
 
-    @staticmethod
-    def _create_bpe_tokenizer(setting: LLMTokenizerSetting) -> Tokenizer:
-        tokenizer = Tokenizer(
-            BPE(vocab=setting.vocab, merges=setting.merges, ignore_merges=setting.config.ignoreMerges)
-        )
-
-        tokenizer.add_special_tokens(setting.specialTokens)
-        if setting.config.maxEncodeChars:
-            tokenizer.enable_truncation(max_length=setting.config.maxEncodeChars)
-
-        pre_zus: list[pre_tokenizers.PreTokenizer] = [
-            pre_tokenizers.Split(behavior="merged_with_next", pattern=Regex(setting.config.splitRegex)),
+    def _bpe_definition(self, setting: LLMTokenizerSetting) -> dict[str, Any]:
+        """Byte-level BPE when the vocabulary has no plain space, as GPT-2 does; special tokens that are
+        not in the vocabulary get the next free ids, the way ``tokenizers`` numbers added tokens."""
+        vocab = setting.vocab
+        for token, token_id in vocab.items():
+            self._name_token(token_id, token)
+        added = []
+        next_id = len(vocab)
+        for token in setting.specialTokens:
+            if token in vocab:
+                token_id = vocab[token]
+            else:
+                token_id, next_id = next_id, next_id + 1
+                self._name_token(token_id, token)
+            added.append(added_token(token_id, token))
+        byte_level = " " not in vocab
+        pre_tokenizers: list[dict[str, Any]] = [
+            {
+                "type": "Split",
+                "pattern": {"Regex": setting.config.splitRegex},
+                "behavior": "MergedWithNext",
+                "invert": False,
+            }
         ]
+        if byte_level:
+            pre_tokenizers.append(
+                {"type": "ByteLevel", "add_prefix_space": False, "trim_offsets": True, "use_regex": False}
+            )
+        definition = {
+            "added_tokens": added,
+            "pre_tokenizer": {"type": "Sequence", "pretokenizers": pre_tokenizers},
+            # kitoken turns the byte characters back into bytes only for a byte-level vocabulary; the
+            # tokenizers ByteLevel decoder on a vocabulary without them garbled non-ASCII text (café).
+            "decoder": {"type": "ByteLevel"} if byte_level else None,
+            "model": bpe_model(vocab, setting.merges, ignore_merges=bool(setting.config.ignoreMerges)),
+        }
+        if setting.config.maxEncodeChars:
+            definition["truncation"] = {
+                "direction": "Right",
+                "max_length": setting.config.maxEncodeChars,
+                "strategy": "LongestFirst",
+                "stride": 0,
+            }
+        return definition
 
-        if tokenizer.token_to_id(" ") is None:
-            pre_zus.append(pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=False))
+    def _t5_definition(self, raw: str) -> dict[str, Any]:
+        """The file is a ``tokenizer.json`` already; only the template's special ids are taken out."""
+        definition = json.loads(raw)
+        post = definition.get("post_processor") or {}
+        if post.get("type") == "TemplateProcessing":
+            target = self._prefix_ids
+            for piece in post["single"]:
+                if "Sequence" in piece:
+                    target = self._suffix_ids
+                else:
+                    target.extend(post["special_tokens"][piece["SpecialToken"]["id"]]["ids"])
+        self._vocab = [token for token, _score in definition["model"]["vocab"]]
+        for added in definition.get("added_tokens") or []:
+            self._name_token(added["id"], added["content"])
+        return definition
 
-        tokenizer.pre_tokenizer = pre_tokenizers.Sequence(pre_zus)
-        tokenizer.decoder = decoders.ByteLevel()
-        return tokenizer
+    def _name_token(self, token_id: int, token: str) -> None:
+        if token_id >= len(self._vocab):
+            self._vocab.extend([""] * (token_id + 1 - len(self._vocab)))
+        self._vocab[token_id] = token
 
     @property
     def _is_clip(self) -> bool:
         return is_clip_model(self.model_full_name)
 
     def tokenize_text(self, text: str) -> list[str]:
+        tokens = [self._vocab[i] for i in self.encode(text)]
         if self._is_clip:
-            return [t.replace("</w>", " ") for t in self.tokenizer.encode(clip_tokenizer.clean_text(text)).tokens]
-        return [token.replace("Ġ", " ") for token in self.tokenizer.encode(text).tokens]
+            return [t.replace("</w>", " ") for t in tokens]
+        return [token.replace("Ġ", " ") for token in tokens]
 
     def total_tokens(self) -> int:
-        return self.tokenizer.get_vocab_size()
+        return len(self._vocab)
 
     def encode(self, sentence: str) -> list[int]:
         if self._is_clip:
-            return self.tokenizer.encode(clip_tokenizer.clean_text(sentence)).ids
-        return self.tokenizer.encode(sentence, add_special_tokens=True).ids
+            return self.tokenizer.encode(clip_tokenizer.clean_text(sentence))
+        # True: special tokens in the text map to their ids, as with tokenizers' added tokens
+        return self._prefix_ids + self.tokenizer.encode(sentence, True) + self._suffix_ids
 
     def decode(self, token_ids: list[int]) -> str:
         if self._is_clip:
             return clip_tokenizer.decode(self.tokenizer, token_ids)
-        return self.tokenizer.decode(token_ids)
+        return self.tokenizer.decode(token_ids).decode("utf-8", errors="replace")
 
 
 @functools.cache
