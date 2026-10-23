@@ -23,6 +23,7 @@ from ...._enum import (
 from ...._exceptions import APIError, SessionHttpError
 from ...._response.ai.generate import LLMResp
 from ....credential import CredentialBase
+from ....metrics import get_metrics
 from ....tokenizer import get_tokenizer
 from ....utils import try_jsonfy
 from ....utils.encode import tokens_to_b64
@@ -367,7 +368,7 @@ class LLM(ApiBaseModel):
             **self.model_dump(mode="json", include={"input", "model"}),
             "parameters": parameters,
         }
-        async with use_session(session) as sess:
+        async with get_metrics().observe(self.base_url, self.model) as observed, use_session(session) as sess:
             # Header
             if override_headers:
                 sess.headers.clear()
@@ -377,6 +378,7 @@ class LLM(ApiBaseModel):
             # Request
             try:
                 response = await sess.post(self.base_url, json=request_data, stream=False)
+                (observed.ok if response.status_code < 400 else observed.failed)(response.status_code)
                 response_data = try_jsonfy(response.content, default_when_error={})
                 if not isinstance(response_data, dict):
                     response_data = {}

@@ -17,6 +17,7 @@ from novelai_python._retry import retry_on_server_error
 from ..._exceptions import DataSerializationError, SessionHttpError
 from ..._response.ai.upscale import UpscaleResp
 from ...credential import CredentialBase
+from ...metrics import get_metrics
 from ...utils import try_jsonfy
 from ..schema import ApiBaseModel, use_session
 
@@ -81,7 +82,7 @@ class Upscale(ApiBaseModel):
         body, content_type = build_multipart_request(
             json.dumps(request_data).encode("utf-8"), [("image", base64.b64decode(self.image))]
         )
-        async with use_session(session) as sess:
+        async with get_metrics().observe(self.base_url, self.model) as observed, use_session(session) as sess:
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
@@ -91,6 +92,7 @@ class Upscale(ApiBaseModel):
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
+            (observed.ok if response.status_code < 400 else observed.failed)(response.status_code)
         if response.status_code >= 400:
             self._raise_for_status(response.status_code, response.content, request_data)
         content = response.content

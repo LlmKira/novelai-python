@@ -10,6 +10,7 @@ from ._exceptions import (
     SessionHttpError,
 )
 from .credential import ApiCredential, JwtCredential, LoginCredential
+from .metrics import NovelAIMetrics, get_metrics, set_metrics
 from .sdk import (
     LLM,
     AugmentImageInfer,
@@ -50,6 +51,7 @@ from .sdk import (
     VoiceResponse,
 )
 from .utils.daily_limit import DailyImageLimiter, get_default_limiter, set_default_limiter
+from .utils.pacing import RequestPacer, get_default_pacer, set_default_pacer
 
 __all__ = [
     "LLM",
@@ -75,6 +77,7 @@ __all__ = [
     "Login",
     "LoginCredential",
     "LoginResp",
+    "NovelAIMetrics",
     "NovelAiError",
     "OAIChatCompletion",
     "OAIChatMessage",
@@ -86,6 +89,7 @@ __all__ = [
     "PersistentTokenResp",
     "Priority",
     "PriorityResp",
+    "RequestPacer",
     "SessionHttpError",
     "Subscription",
     "SubscriptionResp",
@@ -100,5 +104,9 @@ __all__ = [
     "VoiceGenerate",
     "VoiceResponse",
     "get_default_limiter",
+    "get_default_pacer",
+    "get_metrics",
     "set_default_limiter",
+    "set_default_pacer",
+    "set_metrics",
 ]

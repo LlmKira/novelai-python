@@ -35,8 +35,12 @@ server = [
     "fastapi>=0.143",
     "uvicorn[standard]>=0.54",
 ]
+# Prometheus / VictoriaMetrics metrics (novelai_python.metrics)
+metrics = [
+    "prometheus-client>=0.21",
+]
 testing = [
-    "novelai-python[server]",
+    "novelai-python[server,metrics]",
     "httpx>=0.28",  # fastapi.testclient
     "pytest>=9.1",
     "pytest-asyncio>=1.4",

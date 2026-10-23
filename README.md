@@ -39,6 +39,9 @@ the [NovelAI API service](https://image.novelai.net/docs).
   argon2-cffi, ftfy/regex and `bchlib` are gone (`bchlib` has no Python 3.14 wheel; a NumPy BCH codec
   replaces it).
 - Optional local image budget (`limiter=True`, see below).
+- Optional metrics (`pip install "novelai-python[metrics]"`): every request counted and timed, Anlas and the
+  Opus usage bar as gauges, `GET /metrics` on the bundled server. `RequestPacer` keeps a random gap between
+  requests counted from the end of the previous one; retries after HTTP 500 back off with jitter.
 
 ### ⬆️ Upgrading from 0.7
 
@@ -162,6 +165,84 @@ print(get_default_limiter().status())  # {'limit': 2500, 'used': ..., 'remaining
 `isNegative`, `timeUntilNextPercent`. `Priority().request(session)` returns the task priority balance;
 `CreatePersistentToken(overwrite=True).request(jwt_session)` creates a `pst-...` API key.
 
+#### 📈 Metrics (Prometheus / VictoriaMetrics)
+
+```shell
+pip install "novelai-python[metrics]"
+```
+
+Every request the SDK sends is counted and timed; `/user/subscription` and `/user/data` responses also refresh
+per-account gauges (Anlas, tier, the Opus usage bar). Nothing is collected without the extra, and
+`NOVELAI_METRICS=0` turns it off with the extra installed.
+
+| Metric | Type | Labels | Meaning |
+|---|---|---|---|
+| `novelai_requests_total` | counter | `endpoint`, `model`, `status` | requests by endpoint path, model and outcome: the HTTP status, `transport` (no answer: SSL, DNS, timeout) or `stream_error` |
+| `novelai_request_seconds` | histogram | `endpoint`, `model` | wall time of one request, proxy included |
+| `novelai_inflight_requests` | gauge | `endpoint` | requests waiting for NovelAI right now |
+| `novelai_images_total` | counter | `model` | images received |
+| `novelai_stream_frames_total` | counter | `model` | frames of `/ai/generate-image-stream`, previews included |
+| `novelai_retries_total` / `novelai_retry_wait_seconds` | counter / histogram | `endpoint` / - | retries after HTTP 500 and the backoff slept before them |
+| `novelai_pacing_wait_seconds` | histogram | - | time a request waited for the gap after the previous one (`RequestPacer`) |
+| `novelai_last_success_timestamp_seconds` | gauge | `endpoint` | when the endpoint last answered 2xx |
+| `novelai_local_limit_remaining_images` | gauge | - | images left in the local `DailyImageLimiter` |
+| `novelai_anlas_available` / `_fixed` / `_purchased` | gauge | `account` | Anlas balance |
+| `novelai_subscription_tier` / `_active` / `_expires_timestamp_seconds` | gauge | `account` | subscription state |
+| `novelai_opus_usage_percent` / `_negative` / `_refill_percent_per_day`, `novelai_opus_images_left` | gauge | `account` | the Opus V5 usage bar |
+| `novelai_account_updated_timestamp_seconds` | gauge | `account` | when the account gauges were last refreshed |
+| `novelai_sdk_info` | info | `version`, `impersonate` | SDK version and the Chrome profile it impersonates |
+
+Names follow the Prometheus conventions VictoriaMetrics recommends: counters end in `_total`, durations and
+timestamps are in seconds, and every label has a small fixed set of values (an endpoint path, a model name, a
+status, a short account id). Prompts, seeds, job ids and emails never become label values. The `account` label
+is `credential.metrics_label` when set, otherwise the first 8 hex digits of a SHA-256 of the username or token.
+
+Expose the registry for a scrape (pull is the better default), or push from a short-lived script:
+
+```python
+from novelai_python import get_metrics
+
+metrics = get_metrics()
+metrics.start_http_server(9108)  # http://127.0.0.1:9108/metrics for vmagent / Prometheus
+app.mount("/metrics", metrics.asgi_app())  # inside your own FastAPI / Starlette app
+metrics.push_to_victoriametrics("http://victoria:8428", extra_labels={"job": "nai", "instance": "worker-1"})
+metrics.write_textfile("/var/lib/node_exporter/novelai.prom")  # textfile collector
+```
+
+The bundled server (`python -m novelai_python.server`) serves `GET /metrics` too; set `NOVELAI_METRICS_TOKEN`
+to require `Authorization: Bearer <token>` on it. Your own registry: `set_metrics(NovelAIMetrics(registry=r))`.
+
+MetricsQL / PromQL that pays off:
+
+```promql
+sum(rate(novelai_requests_total{status!~"2.."}[5m])) by (endpoint, status)              # errors per second
+histogram_quantile(0.95, sum(rate(novelai_request_seconds_bucket[5m])) by (le, model))  # p95 generation time
+novelai_anlas_available < 500                                                           # Anlas running out
+novelai_opus_usage_negative == 1                                                        # V5 now costs Anlas
+time() - novelai_last_success_timestamp_seconds{endpoint="/ai/generate-image"} > 1800   # nothing worked for 30 min
+```
+
+#### ⏱️ Pacing: a gap between requests
+
+NovelAI answers `429 Concurrent generation is locked` when a request follows the previous one too closely, and
+back-to-back requests do not look like a person at a keyboard. A `RequestPacer` keeps a random gap between
+requests, counted **from the end of the previous request**: the first request goes out at once, a request after
+a long pause goes out at once, and only a request that follows another one closely waits for what is left of
+the gap. Requests through one pacer run one at a time, like one account generates one image at a time.
+
+```python
+from novelai_python import RequestPacer, Subscription
+
+pacer = RequestPacer(min_gap=2, max_gap=8)  # seconds; one pacer per account
+await gen.request(session, pacer=pacer)  # waits only if the previous request ended < 2-8 s ago
+await gen.request(session, pacer=True)  # the process-wide pacer: NOVELAI_REQUEST_GAP="1,10" (default), "0" = off
+
+async with pacer.slot():  # any other request
+    await Subscription().request(session)
+```
+
+Pacing is off unless asked for. Retries after HTTP 500 are jittered as well: `random(1..3 s) * 2 ** (retry - 1)`.
+
 #### 🖼️ Transparent background, character reference, vibes
 
 ```python
@@ -275,6 +356,9 @@ for i in range(10):
 pip install "novelai-python[server]"
 python3 -m novelai_python.server -h '127.0.0.1' -p 7888
 ```
+
+Routes: `/health`, `/limit`, `/user/*`, `/ai/*` (docs at `/docs`) and `GET /metrics` when the `metrics` extra is
+installed (`NOVELAI_METRICS_TOKEN` protects it with a bearer token).
 
 #### 📦 Tokenizer
 

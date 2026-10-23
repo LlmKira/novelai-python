@@ -61,8 +61,10 @@ from novelai_python.sdk.ai._enum import (
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, DataSerializationError, SessionHttpError
 from ...._response.ai.generate_image import ImageGenerateResp, ImageStreamEvent, RequestParams
 from ....credential import CredentialBase
+from ....metrics import STATUS_STREAM_ERROR, get_metrics
 from ....utils import try_jsonfy
 from ....utils.daily_limit import DailyImageLimiter, get_default_limiter
+from ....utils.pacing import RequestPacer, paced
 from ...schema import ApiBaseModel, close_stream, use_session
 from .auto_text import apply_auto_text
 from .auto_text import strip_auto_text as strip_auto_text  # re-export
@@ -1125,6 +1127,7 @@ class GenerateImageInfer(ApiBaseModel):
         *,
         override_headers: dict | None = None,
         limiter: DailyImageLimiter | bool | None = None,
+        pacer: RequestPacer | bool | None = None,
     ) -> AsyncIterator[ImageStreamEvent]:
         """
         **Stream a generation**: intermediate previews and the final image per sample,
@@ -1135,12 +1138,18 @@ class GenerateImageInfer(ApiBaseModel):
         :param session: Async session object or credential-based session.
         :param override_headers: Headers to override the default headers.
         :param limiter: see :meth:`request`.
+        :param pacer: see :meth:`request`.
         :raises DailyLimitExceeded: If the local image budget is used up (no request is sent).
         :raises APIError / AuthError / ConcurrentGenerationError / SessionHttpError: as :meth:`request`.
         """
         limiter = self._resolve_limiter(limiter)
         request_data, body, content_type = self._build_body(stream=True)
-        async with use_session(session) as sess:
+        metrics = get_metrics()
+        async with (
+            paced(pacer),
+            metrics.observe(self.stream_url, self.model) as observed,
+            use_session(session) as sess,
+        ):
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
@@ -1153,6 +1162,7 @@ class GenerateImageInfer(ApiBaseModel):
                 )
                 try:
                     if response.status_code >= 400:
+                        observed.failed(response.status_code)
                         self._raise_for_status(
                             response.status_code,
                             await response.acontent(),
@@ -1160,6 +1170,7 @@ class GenerateImageInfer(ApiBaseModel):
                             self._legacy_400_as_auth,
                         )
 
+                    observed.ok(response.status_code)
                     buffer = bytearray()
                     async for chunk in response.aiter_content():
                         buffer.extend(chunk)
@@ -1171,21 +1182,27 @@ class GenerateImageInfer(ApiBaseModel):
                                 image=frame.get("image"),
                                 message=frame.get("message"),
                             )
+                            metrics.observe_stream_frame(self.model)
                             if event.event_type == "error":
                                 # NovelAI fails mid-stream with HTTP 200 and an error frame, e.g.
                                 # {event_type: error, code: 500, message: "Error generating image..."}
                                 code = frame.get("code") or 500
+                                observed.failed(STATUS_STREAM_ERROR)
                                 raise APIError(
                                     event.message or "Error event in the image stream",
                                     request=request_data,
                                     code=code,
                                     response=frame,
                                 )
-                            if event.is_final and limiter is not None:
-                                # before the yield: a caller may stop iterating at the first final image
-                                limiter.consume(1)
+                            if event.is_final:
+                                metrics.observe_images(self.model, 1)
+                                if limiter is not None:
+                                    # before the yield: a caller may stop iterating at the first final image
+                                    limiter.consume(1)
+                                    metrics.observe_limiter(limiter)
                             yield event
                     if buffer:
+                        observed.failed(STATUS_STREAM_ERROR)
                         raise APIError(
                             f"The image stream ended inside a frame ({len(buffer)} bytes left)",
                             request=request_data,
@@ -1205,6 +1222,7 @@ class GenerateImageInfer(ApiBaseModel):
         *,
         override_headers: dict | None = None,
         limiter: DailyImageLimiter | bool | None = None,
+        pacer: RequestPacer | bool | None = None,
     ) -> ImageGenerateResp:
         """
         **Generate images using NovelAI's diffusion models.**
@@ -1217,6 +1235,10 @@ class GenerateImageInfer(ApiBaseModel):
         :param limiter: Optional local image budget, off by default. ``True`` uses the process-wide
                         limiter (``NOVELAI_DAILY_IMAGE_LIMIT``, default 2500 per 24h window), a
                         ``DailyImageLimiter`` instance uses that one.
+        :param pacer: Optional gap between requests, off by default. ``True`` uses the process-wide
+                      ``RequestPacer`` (``NOVELAI_REQUEST_GAP``, default a random 1-10 s **after** the
+                      previous request; a request after a longer pause goes out at once), a
+                      ``RequestPacer`` instance uses that one.
         :return: ImageGenerateResp containing the response data and metadata.
         :raises DailyLimitExceeded: If the local image budget is used up (no request is sent).
         :raises AuthError: If the request is unauthorized.
@@ -1227,7 +1249,12 @@ class GenerateImageInfer(ApiBaseModel):
         """
         limiter = self._resolve_limiter(limiter)
         request_data, body, content_type = self._build_body(stream=False)
-        async with use_session(session) as sess:
+        metrics = get_metrics()
+        async with (
+            paced(pacer),
+            metrics.observe(self.base_url, self.model) as observed,
+            use_session(session) as sess,
+        ):
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
@@ -1257,12 +1284,14 @@ class GenerateImageInfer(ApiBaseModel):
                 # Validate response content type and status code
                 response_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                 if response_type not in ZIP_CONTENT_TYPES + IMAGE_CONTENT_TYPES or response.status_code >= 400:
+                    observed.failed(response.status_code)
                     self._raise_for_status(
                         response.status_code,
                         response.content,
                         request_data,
                         self._legacy_400_as_auth,
                     )
+                observed.ok(response.status_code)
 
                 # Unpack the ZIP response (or accept a bare image, which V5 may return for webp)
                 try:
@@ -1284,8 +1313,10 @@ class GenerateImageInfer(ApiBaseModel):
                             for filename in file_list:
                                 data = zip_file.read(filename)
                                 unzip_content.append((filename, data))
+                    metrics.observe_images(self.model, len(unzip_content))
                     if limiter is not None:
                         limiter.consume(max(len(unzip_content), 1))
+                        metrics.observe_limiter(limiter)
                     return ImageGenerateResp(
                         meta=RequestParams(
                             endpoint=self.base_url,

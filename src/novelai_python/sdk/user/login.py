@@ -13,6 +13,7 @@ from ..._exceptions import APIError, SessionHttpError
 from ..._response.user.login import LoginResp
 from ...credential import CredentialBase
 from ...credential._base import IMPERSONATE, _correlation_id, _initiated_at, browser_headers
+from ...metrics import get_metrics
 from ...utils import encode_access_key
 from ..schema import ApiBaseModel, use_session
 
@@ -95,7 +96,7 @@ class Login(ApiBaseModel):
             context = AsyncSession(**session.session_kwargs(180, browser_headers({"Content-Type": "application/json"})))
         else:
             context = self.session
-        async with context as sess:
+        async with get_metrics().observe(self.base_url) as observed, context as sess:
             # Header
             if override_headers:
                 sess.headers.clear()
@@ -109,6 +110,7 @@ class Login(ApiBaseModel):
                 response = await sess.post(
                     self.base_url, data=json.dumps(request_data).encode("utf-8"), headers=headers
                 )
+                (observed.ok if response.status_code < 400 else observed.failed)(response.status_code)
                 content_type = response.headers.get("Content-Type") or ""
                 if "application/json" not in content_type or response.status_code != 201:
                     error_message = await self.handle_error_response(response=response, request_data=logged_request)

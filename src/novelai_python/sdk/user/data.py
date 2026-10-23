@@ -9,6 +9,7 @@ from pydantic import PrivateAttr
 
 from ..._response.user.data import UserDataResp
 from ...credential import CredentialBase
+from ...metrics import account_label, get_metrics
 from ..schema import ApiBaseModel
 
 logger = logging.getLogger(__name__)
@@ -33,4 +34,6 @@ class UserData(ApiBaseModel):
         :return:
         """
         response = await self._send(session, "GET", override_headers=override_headers)
-        return UserDataResp.model_validate_json(response.content)
+        result = UserDataResp.model_validate_json(response.content)
+        get_metrics().observe_subscription(result.subscription, account_label(session))
+        return result
