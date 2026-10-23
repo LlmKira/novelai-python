@@ -1147,8 +1147,8 @@ class GenerateImageInfer(ApiBaseModel):
         metrics = get_metrics()
         async with (
             paced(pacer),
-            metrics.observe(self.stream_url, self.model) as observed,
             use_session(session) as sess,
+            metrics.observe(self.stream_url, self.model) as observed,
         ):
             if override_headers:
                 sess.headers.clear()
@@ -1252,8 +1252,8 @@ class GenerateImageInfer(ApiBaseModel):
         metrics = get_metrics()
         async with (
             paced(pacer),
-            metrics.observe(self.base_url, self.model) as observed,
             use_session(session) as sess,
+            metrics.observe(self.base_url, self.model) as observed,
         ):
             if override_headers:
                 sess.headers.clear()

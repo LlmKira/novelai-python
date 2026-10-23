@@ -155,7 +155,7 @@ class AugmentImageInfer(ApiBaseModel):
         """
         # Prepare request data
         request_data = self.model_dump(mode="json", exclude_none=True)
-        async with get_metrics().observe(self.base_url) as observed, use_session(session) as sess:
+        async with use_session(session) as sess, get_metrics().observe(self.base_url) as observed:
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)

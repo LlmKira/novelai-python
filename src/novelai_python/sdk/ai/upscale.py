@@ -82,7 +82,7 @@ class Upscale(ApiBaseModel):
         body, content_type = build_multipart_request(
             json.dumps(request_data).encode("utf-8"), [("image", base64.b64decode(self.image))]
         )
-        async with get_metrics().observe(self.base_url, self.model) as observed, use_session(session) as sess:
+        async with use_session(session) as sess, get_metrics().observe(self.base_url, self.model) as observed:
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)

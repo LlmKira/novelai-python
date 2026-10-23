@@ -96,7 +96,7 @@ class Login(ApiBaseModel):
             context = AsyncSession(**session.session_kwargs(180, browser_headers({"Content-Type": "application/json"})))
         else:
             context = self.session
-        async with get_metrics().observe(self.base_url) as observed, context as sess:
+        async with context as sess, get_metrics().observe(self.base_url) as observed:
             # Header
             if override_headers:
                 sess.headers.clear()

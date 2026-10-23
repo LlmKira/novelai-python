@@ -172,54 +172,88 @@ pip install "novelai-python[metrics]"
 ```
 
 Every request the SDK sends is counted and timed; `/user/subscription` and `/user/data` responses also refresh
-per-account gauges (Anlas, tier, the Opus usage bar). Nothing is collected without the extra, and
+per-account gauges (Anlas, subscription, the Opus usage bar). Nothing is collected without the extra, and
 `NOVELAI_METRICS=0` turns it off with the extra installed.
 
 | Metric | Type | Labels | Meaning |
 |---|---|---|---|
-| `novelai_requests_total` | counter | `endpoint`, `model`, `status` | requests by endpoint path, model and outcome: the HTTP status, `transport` (no answer: SSL, DNS, timeout) or `stream_error` |
-| `novelai_request_seconds` | histogram | `endpoint`, `model` | wall time of one request, proxy included |
-| `novelai_inflight_requests` | gauge | `endpoint` | requests waiting for NovelAI right now |
+| `novelai_requests_total` | counter | `endpoint`, `model`, `status` | requests by outcome: the HTTP status; `timeout`, `dns`, `proxy`, `connect`, `ssl`, `reset`, `cancelled` or `transport` for a request without an HTTP answer (from the curl error code); `stream_error` for an error frame inside a 200 stream |
+| `novelai_request_duration_seconds` | histogram | `endpoint`, `model` | wall time of one request, the proxy included, until the response or the whole stream is read |
+| `novelai_requests_in_flight` | gauge | `endpoint` | requests sent and not answered yet |
+| `novelai_last_success_timestamp_seconds` | gauge | `endpoint` | when the endpoint last answered with a status below 400 |
 | `novelai_images_total` | counter | `model` | images received |
 | `novelai_stream_frames_total` | counter | `model` | frames of `/ai/generate-image-stream`, previews included |
-| `novelai_retries_total` / `novelai_retry_wait_seconds` | counter / histogram | `endpoint` / - | retries after HTTP 500 and the backoff slept before them |
-| `novelai_pacing_wait_seconds` | histogram | - | time a request waited for the gap after the previous one (`RequestPacer`) |
-| `novelai_last_success_timestamp_seconds` | gauge | `endpoint` | when the endpoint last answered 2xx |
-| `novelai_local_limit_remaining_images` | gauge | - | images left in the local `DailyImageLimiter` |
-| `novelai_anlas_available` / `_fixed` / `_purchased` | gauge | `account` | Anlas balance |
-| `novelai_subscription_tier` / `_active` / `_expires_timestamp_seconds` | gauge | `account` | subscription state |
-| `novelai_opus_usage_percent` / `_negative` / `_refill_percent_per_day`, `novelai_opus_images_left` | gauge | `account` | the Opus V5 usage bar |
+| `novelai_retries_total`, `novelai_retry_wait_seconds` | counter, histogram | `endpoint`, none | retries after HTTP 500 and the backoff slept before them |
+| `novelai_pacing_wait_seconds` | histogram | none | time a request waited for the gap after the previous one (`RequestPacer`) |
+| `novelai_local_limit_remaining_images` | gauge | none | images left in the local `DailyImageLimiter`, read at scrape time; -1 before one is used |
+| `novelai_account_anlas` | gauge | `account`, `kind` | Anlas left: `kind="fixed"` (monthly, reset at renewal) and `kind="purchased"`; their sum is what can be spent |
+| `novelai_subscription_tier`, `_active`, `_expires_timestamp_seconds` | gauge | `account` | tier (0 Paper, 1 Tablet, 2 Scroll, 3 Opus), 1 while active, when it expires |
+| `novelai_opus_usage_ratio`, `_negative`, `_refill_ratio_per_second` | gauge | `account` | the Opus V5 usage bar (0.42 = 42 %), 1 while it is below zero and V5 costs Anlas, how fast it refills |
+| `novelai_opus_images_left` | gauge | `account` | estimated free V5 images the usage bar still covers |
 | `novelai_account_updated_timestamp_seconds` | gauge | `account` | when the account gauges were last refreshed |
-| `novelai_sdk_info` | info | `version`, `impersonate` | SDK version and the Chrome profile it impersonates |
+| `novelai_sdk_info` | info | `version`, `impersonate` | SDK version and the browser whose TLS fingerprint it uses |
 
-Names follow the Prometheus conventions VictoriaMetrics recommends: counters end in `_total`, durations and
-timestamps are in seconds, and every label has a small fixed set of values (an endpoint path, a model name, a
-status, a short account id). Prompts, seeds, job ids and emails never become label values. The `account` label
-is `credential.metrics_label` when set, otherwise the first 8 hex digits of a SHA-256 of the username or token.
+The names follow the Prometheus naming conventions that VictoriaMetrics recommends: base units (seconds, ratios),
+`_total` on counters, `_timestamp_seconds` on timestamps, and one metric with a label where the sum means
+something (`sum by (account) (novelai_account_anlas)`). Every label has a small fixed set of values; prompts,
+seeds, job ids and emails never become label values. The `account` label is `credential.metrics_label` when set,
+otherwise the first 8 hex digits of a SHA-256 of the username or token (a bare `AsyncSession` is `session`), and
+at most 50 accounts are tracked per process (`NovelAIMetrics(max_accounts=...)`). A request that never went out,
+because the login or the local image budget refused it, is not counted.
 
-Expose the registry for a scrape (pull is the better default), or push from a short-lived script:
+The metrics live in a registry of the SDK's own, so nothing changes on your application's `/metrics` unless you
+ask. That registry leaves out the `*_created` series client_python adds to every counter and histogram:
+they double the series count and VictoriaMetrics does not use them (`NovelAIMetrics(created_series=True)` keeps
+them). Expose it for a scrape, which is the better default, or push from a short-lived script:
 
 ```python
-from novelai_python import get_metrics
+import prometheus_client
+from novelai_python import NovelAIMetrics, get_metrics, set_metrics
 
 metrics = get_metrics()
-metrics.start_http_server(9108)  # http://127.0.0.1:9108/metrics for vmagent / Prometheus
-app.mount("/metrics", metrics.asgi_app())  # inside your own FastAPI / Starlette app
+app.add_route("/metrics", metrics.asgi_app())  # FastAPI / Starlette: gzip, OpenMetrics, ?name[]= filters
+metrics.start_http_server(9108, addr="10.0.0.5")  # a port of its own; certfile= / keyfile= for HTTPS
+metrics.write_textfile("/var/lib/node_exporter/novelai.prom")  # the textfile collector
 metrics.push_to_victoriametrics("http://victoria:8428", extra_labels={"job": "nai", "instance": "worker-1"})
-metrics.write_textfile("/var/lib/node_exporter/novelai.prom")  # textfile collector
+
+# or show them on the /metrics your application already has (before the first request):
+set_metrics(NovelAIMetrics(registry=prometheus_client.REGISTRY))
 ```
 
-The bundled server (`python -m novelai_python.server`) serves `GET /metrics` too; set `NOVELAI_METRICS_TOKEN`
-to require `Authorization: Bearer <token>` on it. Your own registry: `set_metrics(NovelAIMetrics(registry=r))`.
+A push is gzip-compressed and goes to `/api/v1/import/prometheus`; VictoriaMetrics does not report a bad line in
+the response, it counts it in its own `vm_rows_invalid_total`. With several worker processes (gunicorn), use
+client_python's multiprocess mode (`PROMETHEUS_MULTIPROC_DIR`): the SDK's gauges say how processes combine
+(`livesum` for requests in flight, `max` for timestamps, `mostrecent` for account state).
+
+The bundled server (`python -m novelai_python.server`) serves `GET /metrics` with the process metrics
+(`process_*`, `python_info`, `python_gc_*`) included. Set `NOVELAI_METRICS_TOKEN` to require
+`Authorization: Bearer <token>`, or keep it on a private network. A vmagent / Prometheus scrape job for it:
+
+```yaml
+scrape_configs:
+  - job_name: novelai-sdk
+    scrape_interval: 15s
+    static_configs:
+      - targets: ["127.0.0.1:7888"]
+    authorization:            # only with NOVELAI_METRICS_TOKEN
+      type: Bearer
+      credentials_file: /etc/vmagent/novelai-sdk.token
+```
+
+A labelled series appears with its first event. Prometheus' `rate()` misses that first increment (MetricsQL's
+`increase()` counts it), so pre-create the label sets you alert on:
+`get_metrics().requests.labels("/ai/generate-image", "nai-diffusion-5-full", "timeout")`.
 
 MetricsQL / PromQL that pays off:
 
 ```promql
-sum(rate(novelai_requests_total{status!~"2.."}[5m])) by (endpoint, status)              # errors per second
-histogram_quantile(0.95, sum(rate(novelai_request_seconds_bucket[5m])) by (le, model))  # p95 generation time
-novelai_anlas_available < 500                                                           # Anlas running out
-novelai_opus_usage_negative == 1                                                        # V5 now costs Anlas
-time() - novelai_last_success_timestamp_seconds{endpoint="/ai/generate-image"} > 1800   # nothing worked for 30 min
+sum(rate(novelai_requests_total{status!~"2.."}[5m])) by (endpoint, status)          # errors per second, by kind
+sum(rate(novelai_requests_total{status=~"timeout|proxy|dns|connect"}[5m]))           # the network, not NovelAI
+histogram_quantile(0.95, sum(rate(novelai_request_duration_seconds_bucket[5m])) by (le, model))  # p95 by model
+sum by (account) (novelai_account_anlas) < 500                                        # Anlas running out
+novelai_opus_usage_negative == 1                                                      # V5 now costs Anlas
+time() - novelai_last_success_timestamp_seconds{endpoint="/ai/generate-image"} > 1800 # nothing worked for 30 min
+time() - novelai_account_updated_timestamp_seconds > 3600                             # the balance is not polled
 ```
 
 #### ⏱️ Pacing: a gap between requests

@@ -368,7 +368,7 @@ class LLM(ApiBaseModel):
             **self.model_dump(mode="json", include={"input", "model"}),
             "parameters": parameters,
         }
-        async with get_metrics().observe(self.base_url, self.model) as observed, use_session(session) as sess:
+        async with use_session(session) as sess, get_metrics().observe(self.base_url, self.model) as observed:
             # Header
             if override_headers:
                 sess.headers.clear()
