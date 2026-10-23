@@ -297,8 +297,9 @@ print(tokenizer_package.decode(tokenizer_package.encode(t_text)))
 
 ```
 
-`NaiTokenizer.tokenizer` is a `kitoken.Kitoken` (a `tokenizers.Tokenizer` up to 0.8.1); the methods above
-give the same ids as before.
+`NaiTokenizer.tokenizer` is a `kitoken.Kitoken` (a `tokenizers.Tokenizer` up to 0.8.1). For the text models
+the methods above give what the tokenizer in the novelai.net web client gives; `decode()` leaves out control
+tokens such as `<|endoftext|>`.
 
 ### 🔨 Roadmap
 
