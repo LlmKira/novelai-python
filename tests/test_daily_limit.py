@@ -91,3 +91,19 @@ def test_state_file_with_a_string_window_start(tmp_path):
     assert limiter.status()["used"] == 0  # unreadable state starts fresh
     state.write_text('{"window_start": "1792000000.5", "used": "2"}', encoding="utf-8")
     assert DailyImageLimiter(5, state_file=state)._window_start == 1792000000.5
+
+
+def test_reading_the_budget_never_starts_or_moves_a_window():
+    limiter = DailyImageLimiter(5, window_seconds=60)  # in memory: nothing re-reads a file
+    assert (limiter.remaining, limiter.used, limiter.reset_at) == (5, 0, None)
+    assert limiter.status()["reset_at"] is None  # a monitor polled it: still no window
+    limiter.consume(2)
+    started = limiter.reset_at
+    assert started is not None and limiter.remaining == 3
+
+    # the window expired: reads see a fresh budget but do not anchor a new window
+    limiter._window_start -= 120
+    assert (limiter.remaining, limiter.reset_at) == (5, None)
+    time.sleep(0.01)
+    limiter.consume(1)  # the next image starts the next window
+    assert limiter.reset_at > started and limiter.remaining == 4

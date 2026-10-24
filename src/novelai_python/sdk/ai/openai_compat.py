@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from ..._exceptions import SessionHttpError
 from ...credential import CredentialBase
-from ..schema import ApiBaseModel, close_stream, use_session
+from ..schema import ApiBaseModel, close_stream, observed_session
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +65,12 @@ class _OAIGenerateBase(ApiBaseModel):
     ) -> AsyncIterator[dict[str, Any]]:
         """Streaming call (server-sent events); yields each OpenAI-format chunk until ``[DONE]``."""
         body = self._body(True)
-        async with use_session(session) as sess:
+        async with observed_session(session, self.base_url, self.model) as (sess, observed):
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
             try:
-                response = await sess.post(self.base_url, json=body, stream=True)
+                response = await observed.send(sess, "POST", self.base_url, json=body, stream=True)
                 try:
                     if response.status_code >= 400:
                         self._raise_for_status(

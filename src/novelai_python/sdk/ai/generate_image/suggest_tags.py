@@ -16,7 +16,7 @@ from ...._exceptions import APIError, SessionHttpError
 from ...._response.ai.generate_image import SuggestTagsResp
 from ....credential import CredentialBase
 from ....credential._base import IMPERSONATE, browser_headers
-from ...schema import ApiBaseModel, use_session
+from ...schema import ApiBaseModel, observed_session
 
 logger = logging.getLogger(__name__)
 
@@ -52,25 +52,28 @@ class SuggestTags(ApiBaseModel):
             # Anonymous call: same Chrome fingerprint as the credentials, never the
             # environment's system proxy; only an explicit NOVELAI_PROXY is used.
             px = os.environ.get("NOVELAI_PROXY")
-            async with AsyncSession(
-                impersonate=IMPERSONATE,
-                trust_env=False,
-                headers=browser_headers(),
-                proxies={"http": px, "https": px} if px else None,
-            ) as sess:
-                return await self._make_request(sess, request_data, override_headers)
+            async with (
+                AsyncSession(
+                    impersonate=IMPERSONATE,
+                    trust_env=False,
+                    headers=browser_headers(),
+                    proxies={"http": px, "https": px} if px else None,
+                ) as sess,
+                observed_session(sess, self.base_url, self.model) as (inner_sess, observed),
+            ):
+                return await self._make_request(inner_sess, observed, request_data, override_headers)
         else:
-            async with use_session(session) as sess:
-                return await self._make_request(sess, request_data, override_headers)
+            async with observed_session(session, self.base_url, self.model) as (sess, observed):
+                return await self._make_request(sess, observed, request_data, override_headers)
 
-    async def _make_request(self, sess, request_data, override_headers):
+    async def _make_request(self, sess, observed, request_data, override_headers):
         if override_headers:
             sess.headers.clear()
             sess.headers.update(override_headers)
 
         try:
             # params= percent-encodes: a prompt holds "&", "#", "+" and non-ASCII text
-            response = await sess.get(self.base_url, params=request_data)
+            response = await observed.send(sess, "GET", self.base_url, params=request_data)
 
             if response.status_code != 200:
                 self._raise_for_status(

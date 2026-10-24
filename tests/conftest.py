@@ -25,6 +25,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "network: needs novelai.net; skipped when it cannot be reached")
 
 
+@pytest.hookimpl(trylast=True)  # after -m deselection: an offline run must not probe novelai.net
 def pytest_collection_modifyitems(config, items):
     network_items = [item for item in items if "network" in item.keywords]
     if network_items and not _novelai_reachable():

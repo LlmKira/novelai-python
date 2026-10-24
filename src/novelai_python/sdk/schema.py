@@ -15,6 +15,7 @@ from pydantic import BaseModel, PrivateAttr
 
 from .._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ..credential import CredentialBase
+from ..metrics import _Observation, get_metrics
 from ..utils import try_jsonfy
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,19 @@ async def use_session(session: AsyncSession | CredentialBase) -> AsyncGenerator[
         return
     async with await session.get_session() as sess:
         yield sess
+
+
+@asynccontextmanager
+async def observed_session(
+    session: AsyncSession | CredentialBase, url: str, model: object | None = None
+) -> AsyncGenerator[tuple[AsyncSession, _Observation]]:
+    """The session for one request and its metrics observation, in one seam.
+
+    The caller performs the request through ``observed.send(...)``, which reports the HTTP status;
+    the observation then covers the response, and the whole stream for a ``stream=True`` call.
+    """
+    async with use_session(session) as sess, get_metrics().observe(url, model) as observed:
+        yield sess, observed
 
 
 async def close_stream(response: Response) -> None:
@@ -60,6 +74,11 @@ class ApiBaseModel(BaseModel, ABC):
     @endpoint.setter
     def endpoint(self, value) -> None:
         self._endpoint = value
+
+    @property
+    def metrics_model(self) -> Any:
+        """Model label for the metrics; subclasses with a ``model`` field inherit it from here."""
+        return getattr(self, "model", None)
 
     async def handle_error_response(
         self,
@@ -122,17 +141,17 @@ class ApiBaseModel(BaseModel, ABC):
         :raises SessionHttpError: transport error (SSL, timeout...).
         """
         request_data = json_body or {}
-        async with use_session(session) as sess:
+        async with observed_session(session, self.base_url, self.metrics_model) as (sess, observed):
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
             try:
-                response = await sess.request(method, self.base_url, json=json_body)
+                response = await observed.send(sess, method, self.base_url, json=json_body)
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
-        if response.status_code >= 400:
-            self._raise_for_status(response.status_code, response.content, request_data, self._legacy_400_as_auth)
+            if response.status_code >= 400:
+                self._raise_for_status(response.status_code, response.content, request_data, self._legacy_400_as_auth)
         return response
 
     @staticmethod

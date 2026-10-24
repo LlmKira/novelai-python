@@ -9,6 +9,7 @@ from curl_cffi.requests import AsyncSession
 from pydantic import ConfigDict, Field, PrivateAttr, field_validator, model_validator
 
 from novelai_python._retry import retry_on_server_error
+from novelai_python.metrics import observe_retry
 
 from ...._enum import (
     COLORS_LLM,
@@ -26,7 +27,7 @@ from ....credential import CredentialBase
 from ....tokenizer import get_tokenizer
 from ....utils import try_jsonfy
 from ....utils.encode import tokens_to_b64
-from ...schema import ApiBaseModel, use_session
+from ...schema import ApiBaseModel, observed_session
 from ._enum import (
     get_bad_words_ids,
     get_default_preset,
@@ -342,7 +343,7 @@ class LLM(ApiBaseModel):
         )
         return created
 
-    @retry_on_server_error()
+    @retry_on_server_error(on_retry=observe_retry)
     async def request(
         self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None
     ) -> LLMResp:
@@ -367,7 +368,7 @@ class LLM(ApiBaseModel):
             **self.model_dump(mode="json", include={"input", "model"}),
             "parameters": parameters,
         }
-        async with use_session(session) as sess:
+        async with observed_session(session, self.base_url, self.model) as (sess, observed):
             # Header
             if override_headers:
                 sess.headers.clear()
@@ -376,7 +377,7 @@ class LLM(ApiBaseModel):
             logger.debug(f"LLM request data: {json.dumps(request_data)}")
             # Request
             try:
-                response = await sess.post(self.base_url, json=request_data, stream=False)
+                response = await observed.send(sess, "POST", self.base_url, json=request_data, stream=False)
                 response_data = try_jsonfy(response.content, default_when_error={})
                 if not isinstance(response_data, dict):
                     response_data = {}

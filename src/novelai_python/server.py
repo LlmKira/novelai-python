@@ -2,8 +2,10 @@
 # @Author  : sudoskys
 # @File    : server.py
 
+import hmac
 import io
 import logging
+import os
 import sys
 import zipfile
 from collections import OrderedDict
@@ -13,7 +15,9 @@ try:
     import uvicorn
     from fastapi import Body, Depends, FastAPI, Request, Security
     from fastapi.security import APIKeyHeader
+    from starlette.datastructures import Headers
     from starlette.responses import JSONResponse, StreamingResponse
+    from starlette.routing import Route
 except ImportError as e:  # pragma: no cover
     raise ImportError('The server needs extra packages: pip install "novelai-python[server]"') from e
 
@@ -24,6 +28,7 @@ from novelai_python.sdk.ai.augment_image import AugmentImageInfer, Moods, ReqTyp
 
 from ._exceptions import APIError, NovelAiError
 from .credential import JwtCredential, SecretStr
+from .metrics import NovelAIMetrics, get_metrics, set_metrics
 from .sdk.ai.generate import LLM
 from .sdk.ai.generate_image import GenerateImageInfer, Model
 from .sdk.ai.generate_image.suggest_tags import SuggestTags
@@ -100,6 +105,42 @@ async def unexpected_error_handler(_request: Request, exc: Exception):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+METRICS_TOKEN_ENV = "NOVELAI_METRICS_TOKEN"
+
+
+class MetricsEndpoint:
+    """``GET /metrics``: the SDK metrics through client_python's ASGI app, which gzips for scrapers
+    that accept it, answers OpenMetrics when asked and honours ``?name[]=`` filters.
+
+    Open by default, for a scrape from the monitoring host. With ``NOVELAI_METRICS_TOKEN`` set, the
+    scraper must send ``Authorization: Bearer <token>``.
+    """
+
+    async def __call__(self, scope, receive, send) -> None:
+        metrics = get_metrics()
+        if not metrics.enabled:
+            refusal = JSONResponse(
+                status_code=404,
+                content={"message": 'metrics are off: install "novelai-python[metrics]", unset NOVELAI_METRICS=0'},
+            )
+            return await refusal(scope, receive, send)
+        token = os.environ.get(METRICS_TOKEN_ENV)
+        if token:
+            sent = Headers(scope=scope).get("authorization", "").encode()
+            if not hmac.compare_digest(sent, f"Bearer {token}".encode()):
+                refusal = JSONResponse(
+                    status_code=401,
+                    content={"message": "metrics token mismatch"},
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+                return await refusal(scope, receive, send)
+        await metrics.asgi_app()(scope, receive, send)
+
+
+# an object, not a function: Starlette serves it as an ASGI app at exactly /metrics
+app.router.routes.append(Route("/metrics", MetricsEndpoint(), include_in_schema=False))
 
 
 @app.get("/limit")
@@ -365,4 +406,5 @@ if __name__ == "__main__":
     server_host = opts.get("-h", "127.0.0.1")
     server_port = int(opts.get("-p", 10087))
     print(f"Docs: http://{server_host}:{server_port}/docs")
+    set_metrics(NovelAIMetrics(process_metrics=True))  # this process serves only the SDK
     uvicorn.run(app, host=server_host, port=server_port)

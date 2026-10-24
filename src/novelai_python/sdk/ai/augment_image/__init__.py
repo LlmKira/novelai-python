@@ -18,6 +18,7 @@ from PIL import Image
 from pydantic import ConfigDict, Field, PrivateAttr, model_validator
 
 from novelai_python._retry import retry_on_server_error
+from novelai_python.metrics import observe_retry
 from novelai_python.sdk.ai._cost import CostCalculator
 from novelai_python.sdk.ai._enum import Model
 
@@ -25,7 +26,7 @@ from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, Data
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
 from ....credential import CredentialBase
 from ....utils import try_jsonfy
-from ...schema import ApiBaseModel, use_session
+from ...schema import ApiBaseModel, observed_session
 from ..generate_image import ZIP_CONTENT_TYPES
 from ._enum import Moods, ReqType
 
@@ -139,7 +140,7 @@ class AugmentImageInfer(ApiBaseModel):
             prompt=prompt,
         )
 
-    @retry_on_server_error()
+    @retry_on_server_error(on_retry=observe_retry)
     async def request(
         self,
         session: Union[AsyncSession, "CredentialBase"],
@@ -154,7 +155,7 @@ class AugmentImageInfer(ApiBaseModel):
         """
         # Prepare request data
         request_data = self.model_dump(mode="json", exclude_none=True)
-        async with use_session(session) as sess:
+        async with observed_session(session, self.base_url) as (sess, observed):
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
@@ -170,7 +171,9 @@ class AugmentImageInfer(ApiBaseModel):
 
             # Perform request and handle response
             try:
-                response = await sess.post(self.base_url, data=json.dumps(request_data).encode("utf-8"))
+                response = await observed.send(
+                    sess, "POST", self.base_url, data=json.dumps(request_data).encode("utf-8")
+                )
                 response_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                 if response_type not in ZIP_CONTENT_TYPES or response.status_code >= 400:
                     self._raise_for_status(
@@ -196,6 +199,7 @@ class AugmentImageInfer(ApiBaseModel):
                         for filename in file_list:
                             data = zip_file.read(filename)
                             unzip_content.append((filename, data))
+                    observed.observe_images(len(unzip_content))
                     return ImageGenerateResp(
                         meta=RequestParams(
                             endpoint=self.base_url,

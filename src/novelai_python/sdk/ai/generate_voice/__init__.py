@@ -8,11 +8,12 @@ from curl_cffi.requests import AsyncSession
 from pydantic import ConfigDict, Field, PrivateAttr, model_validator
 
 from novelai_python._retry import retry_on_server_error
+from novelai_python.metrics import observe_retry
 
 from ...._exceptions import APIError, SessionHttpError
 from ...._response.ai.generate_voice import VoiceResponse
 from ....credential import CredentialBase
-from ...schema import ApiBaseModel, use_session
+from ...schema import ApiBaseModel, observed_session
 from ._enum import Speaker, VoiceSpeakerV1, VoiceSpeakerV2
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,7 @@ class VoiceGenerate(ApiBaseModel):
             return cls(text=text, voice=-1, seed=speaker, opus=opus, version="v2")
         return cls(text=text, seed=speaker.seed, voice=speaker.sid, opus=opus, version=speaker.version)
 
-    @retry_on_server_error()
+    @retry_on_server_error(on_retry=observe_retry)
     async def request(
         self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None
     ) -> VoiceResponse:
@@ -81,7 +82,7 @@ class VoiceGenerate(ApiBaseModel):
         """
         # Data Build
         request_data = self.model_dump(mode="json", exclude_none=True)
-        async with use_session(session) as sess:
+        async with observed_session(session, self.base_url) as (sess, observed):
             # Header
             if override_headers:
                 sess.headers.clear()
@@ -90,7 +91,7 @@ class VoiceGenerate(ApiBaseModel):
             logger.debug(f"Voice request data: {request_data}")
             # Request
             try:
-                response = await sess.post(url=self.base_url, json=request_data)
+                response = await observed.send(sess, "POST", self.base_url, json=request_data)
                 # opus=true answers WebM/Opus, maybe as 'audio/webm;codecs="opus"'
                 media_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                 if (

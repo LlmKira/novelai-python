@@ -7,6 +7,7 @@ from curl_cffi.requests import AsyncSession
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator, model_validator
 
 from novelai_python._retry import retry_on_server_error
+from novelai_python.metrics import observe_retry
 
 from ...credential import CredentialBase
 from ..schema import ApiBaseModel
@@ -60,7 +61,7 @@ class EncodeVibe(ApiBaseModel):
     def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/encode-vibe"
 
-    @retry_on_server_error()
+    @retry_on_server_error(on_retry=observe_retry)
     async def request(
         self, session: AsyncSession | CredentialBase, *, override_headers: dict | None = None
     ) -> EncodeVibeResp:

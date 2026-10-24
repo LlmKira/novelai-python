@@ -127,6 +127,13 @@ class CredentialBase(BaseModel):
     accept_language: str | None = None
     """Browser language: a key of ``ACCEPT_LANGUAGES`` (``"en-sg"``, ``"ja"``, ...) or a full
     Accept-Language value. None = English (``en-US,en;q=0.9``). Match it to the proxy's country."""
+    metrics_label: str | None = Field(default=None, description="account label of this credential in the metrics")
+    """Value of the ``account`` label on the Anlas / usage gauges (``novelai_python.metrics``).
+    None = the first 8 hex digits of a SHA-256 of the username or token: stable, and not the email."""
+
+    def metrics_seed(self) -> str | None:
+        """What identifies the account for the metrics hash; ``None`` when the credential has no identity."""
+        return None
 
     def session_kwargs(self, timeout: int, headers: dict) -> dict:
         # trust_env=False: never pick up HTTP(S)_PROXY from the environment. A
@@ -149,6 +156,9 @@ class BearerCredential(CredentialBase):
 
     def _token(self) -> str:
         raise NotImplementedError
+
+    def metrics_seed(self) -> str | None:
+        return self._token()
 
     async def get_session(self, timeout: int = 180, update_headers: dict | None = None):
         # update_headers goes through browser_headers too: its lowercased keys replace ours

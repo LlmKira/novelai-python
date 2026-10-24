@@ -5,18 +5,47 @@ import json
 import logging
 import os
 import pathlib
+import re
 import tempfile
+import unicodedata
 import zlib
+from dataclasses import dataclass
+from typing import Any, Literal
 
 from curl_cffi import requests as curl_requests
+from kitoken import Kitoken
 from pydantic import BaseModel, model_validator
-from tokenizers import Regex, Tokenizer, decoders, pre_tokenizers
-from tokenizers.models import BPE
 
 from ..credential._base import DEFAULT_USER_AGENT
 from . import clip_tokenizer
+from ._definition import added_token, bpe_model, js_regex
 
 logger = logging.getLogger(__name__)
+
+NormalizationForm = Literal["NFC", "NFD", "NFKC", "NFKD"]
+_BYTE_TOKEN = re.compile(r"0x[0-9a-fA-F]{2}")
+_CONTROL_TOKEN = re.compile(r"<\|.*\|>")  # <|endoftext|>, <|pad|>: dropped from decode() output
+
+
+@dataclass(frozen=True)
+class _TokenizerSpec:
+    """Everything a ``NaiTokenizer`` needs, built without mutating the tokenizer object."""
+
+    tokenizer: Kitoken
+    vocab: tuple[str, ...]
+    size: int
+    prefix_ids: tuple[int, ...] = ()
+    suffix_ids: tuple[int, ...] = ()
+    control_ids: frozenset[int] = frozenset()
+    decode_specials: bool = False
+    max_chars: int = 0
+    normalization: NormalizationForm | None = None
+
+
+def _name_token(vocab: list[str], token_id: int, token: str) -> None:
+    if token_id >= len(vocab):
+        vocab.extend([""] * (token_id + 1 - len(vocab)))
+    vocab[token_id] = token
 
 
 def download_file(url, destination_path, session) -> None:
@@ -70,6 +99,8 @@ class LLMTokenizerSetting(TokenizerSetting):
         maxEncodeChars: int | None = None
         maxNoWhitespaceChars: int | None = None
         ignoreMerges: bool | None = False
+        # the site runs String.prototype.normalize on the text first; it takes these four forms only
+        normalization: NormalizationForm | None = None
 
     config: TokenizerConfig
     specialTokens: list[str]
@@ -132,7 +163,8 @@ class NaiTokenizer:
             tokenizer_model_path = default_tokenizer_dir()
         self.tokenizer_model_path = tokenizer_model_path
         self._load_tokenizer_settings()
-        self.tokenizer: Tokenizer = self._create_tokenizer()
+        self._spec = self._create_spec()
+        self.tokenizer: Kitoken = self._spec.tokenizer
 
     @staticmethod
     def get_model_download_url(model_full_name) -> str:
@@ -211,58 +243,142 @@ class NaiTokenizer:
                 "report this issue to https://github.com/LlmKira/novelai-python/issues",
             ) from e
 
-    def _create_tokenizer(self) -> Tokenizer:
+    def _create_spec(self) -> _TokenizerSpec:
         setting = self.tokenizer_setting
         if isinstance(setting, ClipTokenizerSetting):
-            return clip_tokenizer.build_clip_tokenizer(setting.text)
+            definition, vocab = clip_tokenizer.clip_definition(setting.text)
+            return _TokenizerSpec(tokenizer=self._load(definition), vocab=tuple(vocab), size=len(vocab))
         if isinstance(setting, str):
-            return Tokenizer.from_str(setting)
+            return self._t5_spec(setting)
         if isinstance(setting, LLMTokenizerSetting):
-            return self._create_bpe_tokenizer(setting)
+            return self._bpe_spec(setting)
         raise ValueError(f"Invalid tokenizer setting: {setting}")
 
     @staticmethod
-    def _create_bpe_tokenizer(setting: LLMTokenizerSetting) -> Tokenizer:
-        tokenizer = Tokenizer(
-            BPE(vocab=setting.vocab, merges=setting.merges, ignore_merges=setting.config.ignoreMerges)
+    def _load(definition: dict[str, Any]) -> Kitoken:
+        return Kitoken.from_tokenizers(json.dumps(definition).encode("utf-8"))
+
+    def _bpe_spec(self, setting: LLMTokenizerSetting) -> _TokenizerSpec:
+        """Built to give what the site's own BPE tokenizer gives (the class in the novelai.net bundle):
+
+        - a vocabulary with byte tokens ``0x00``..``0xff`` (nerdstash) is character-level and encodes
+          anything it has no token for, a newline or a digit, through those bytes; any other is
+          byte-level, as GPT-2;
+        - special tokens are the ones the vocabulary has; the site ignores the rest;
+        - without ``ignoreMerges`` the site builds tokens from the merge list alone, so the tokens no
+          merge produces (genji has 4277) are kept from kitoken, which works from the vocabulary.
+        """
+        vocab = setting.vocab
+        tokens: list[str] = []
+        for token, token_id in vocab.items():
+            _name_token(tokens, token_id, token)
+        specials = [token for token in setting.specialTokens if token in vocab]
+        control_ids = frozenset(vocab[token] for token in specials if _CONTROL_TOKEN.fullmatch(token))
+        byte_tokens = {token for token in vocab if _BYTE_TOKEN.fullmatch(token)}
+        model_vocab = vocab
+        if not setting.config.ignoreMerges:
+            produced = {left + right for left, right in setting.merges}
+            keep = produced | byte_tokens | set(specials)
+            model_vocab = {token: i for token, i in vocab.items() if len(token) == 1 or token in keep}
+        split = {
+            "type": "Split",
+            "pattern": {"Regex": js_regex(setting.config.splitRegex)},
+            "behavior": "MergedWithNext",
+            "invert": False,
+        }
+        if byte_tokens:
+            # kitoken takes byte tokens as <0xNN>
+            model_vocab = {(f"<{token}>" if token in byte_tokens else token): i for token, i in model_vocab.items()}
+            pre_tokenizer, decoder = split, None
+        else:
+            byte_level = {"type": "ByteLevel", "add_prefix_space": False, "trim_offsets": True, "use_regex": False}
+            pre_tokenizer = {"type": "Sequence", "pretokenizers": [split, byte_level]}
+            decoder = {"type": "ByteLevel"}
+        definition = {
+            # longest first, as the site matches them: eight spaces are one special token, not four of two
+            "added_tokens": [added_token(vocab[token], token) for token in sorted(specials, key=len, reverse=True)],
+            "pre_tokenizer": pre_tokenizer,
+            "decoder": decoder,
+            "model": bpe_model(
+                model_vocab,
+                setting.merges,
+                ignore_merges=bool(setting.config.ignoreMerges),
+                byte_fallback=bool(byte_tokens),
+            ),
+        }
+        return _TokenizerSpec(
+            tokenizer=self._load(definition),
+            vocab=tuple(tokens),
+            size=len(vocab),
+            control_ids=control_ids,
+            decode_specials=True,
+            max_chars=setting.config.maxEncodeChars or 0,
+            normalization=setting.config.normalization,
         )
 
-        tokenizer.add_special_tokens(setting.specialTokens)
-        if setting.config.maxEncodeChars:
-            tokenizer.enable_truncation(max_length=setting.config.maxEncodeChars)
+    def _t5_spec(self, raw: str) -> _TokenizerSpec:
+        definition, prefix_ids, suffix_ids, vocab = self._t5_definition(raw)
+        return _TokenizerSpec(
+            tokenizer=self._load(definition),
+            vocab=tuple(vocab),
+            size=len(vocab),
+            prefix_ids=tuple(prefix_ids),
+            suffix_ids=tuple(suffix_ids),
+        )
 
-        pre_zus: list[pre_tokenizers.PreTokenizer] = [
-            pre_tokenizers.Split(behavior="merged_with_next", pattern=Regex(setting.config.splitRegex)),
-        ]
-
-        if tokenizer.token_to_id(" ") is None:
-            pre_zus.append(pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=False))
-
-        tokenizer.pre_tokenizer = pre_tokenizers.Sequence(pre_zus)
-        tokenizer.decoder = decoders.ByteLevel()
-        return tokenizer
+    @staticmethod
+    def _t5_definition(raw: str) -> tuple[dict[str, Any], list[int], list[int], list[str]]:
+        """The file is a ``tokenizer.json`` already; only the template's special ids are taken out."""
+        definition = json.loads(raw)
+        prefix_ids: list[int] = []
+        suffix_ids: list[int] = []
+        post = definition.get("post_processor") or {}
+        if post.get("type") == "TemplateProcessing":
+            target = prefix_ids
+            for piece in post["single"]:
+                if "Sequence" in piece:
+                    target = suffix_ids
+                else:
+                    target.extend(post["special_tokens"][piece["SpecialToken"]["id"]]["ids"])
+        vocab = [token for token, _score in definition["model"]["vocab"]]
+        for added in definition.get("added_tokens") or []:
+            _name_token(vocab, added["id"], added["content"])
+        return definition, prefix_ids, suffix_ids, vocab
 
     @property
     def _is_clip(self) -> bool:
         return is_clip_model(self.model_full_name)
 
     def tokenize_text(self, text: str) -> list[str]:
+        tokens = [self._spec.vocab[i] for i in self.encode(text)]
         if self._is_clip:
-            return [t.replace("</w>", " ") for t in self.tokenizer.encode(clip_tokenizer.clean_text(text)).tokens]
-        return [token.replace("Ġ", " ") for token in self.tokenizer.encode(text).tokens]
+            return [t.replace("</w>", " ") for t in tokens]
+        return [token.replace("Ġ", " ") for token in tokens]
 
     def total_tokens(self) -> int:
-        return self.tokenizer.get_vocab_size()
+        return self._spec.size
 
     def encode(self, sentence: str) -> list[int]:
         if self._is_clip:
-            return self.tokenizer.encode(clip_tokenizer.clean_text(sentence)).ids
-        return self.tokenizer.encode(sentence, add_special_tokens=True).ids
+            return self.tokenizer.encode(clip_tokenizer.clean_text(sentence))
+        spec = self._spec
+        if spec.normalization:
+            sentence = unicodedata.normalize(spec.normalization, sentence)
+        # Like the site, a text longer than maxEncodeChars is encoded in pieces of that many characters.
+        step = spec.max_chars or len(sentence) or 1
+        ids = list(spec.prefix_ids)
+        for start in range(0, len(sentence), step):
+            # True: special tokens in the text map to their ids, as with tokenizers' added tokens
+            ids += self.tokenizer.encode(sentence[start : start + step], True)
+        return ids + list(spec.suffix_ids)
 
     def decode(self, token_ids: list[int]) -> str:
         if self._is_clip:
             return clip_tokenizer.decode(self.tokenizer, token_ids)
-        return self.tokenizer.decode(token_ids)
+        spec = self._spec
+        if spec.control_ids:
+            token_ids = [token_id for token_id in token_ids if token_id not in spec.control_ids]
+        return self.tokenizer.decode(token_ids, spec.decode_specials).decode("utf-8", errors="replace")
 
 
 @functools.cache
