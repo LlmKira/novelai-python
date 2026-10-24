@@ -716,11 +716,12 @@ def set_metrics(metrics: NovelAIMetrics | None) -> None:
 
 def observe_retry(args: tuple[Any, ...], wait_seconds: float) -> None:
     """``RetryObserver`` for ``retry_on_server_error``: ``args[0]`` is the request model."""
-    if not args:
-        return
-    url = getattr(args[0], "base_url", None)
-    if url is not None:
-        get_metrics().observe_retry(str(url), wait_seconds)
+    try:
+        url = getattr(args[0], "base_url", None) if args else None
+        if url is not None:
+            get_metrics().observe_retry(str(url), wait_seconds)
+    except Exception as exc:  # metrics are optional and never break a retry
+        logger.debug(f"retry metric not recorded: {exc!r}")
 
 
 __all__ = [
