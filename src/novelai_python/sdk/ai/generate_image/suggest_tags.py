@@ -16,6 +16,7 @@ from ...._exceptions import APIError, SessionHttpError
 from ...._response.ai.generate_image import SuggestTagsResp
 from ....credential import CredentialBase
 from ....credential._base import IMPERSONATE, browser_headers
+from ....metrics import get_metrics
 from ...schema import ApiBaseModel, use_session
 
 logger = logging.getLogger(__name__)
@@ -68,25 +69,27 @@ class SuggestTags(ApiBaseModel):
             sess.headers.clear()
             sess.headers.update(override_headers)
 
-        try:
-            # params= percent-encodes: a prompt holds "&", "#", "+" and non-ASCII text
-            response = await sess.get(self.base_url, params=request_data)
+        async with get_metrics().observe(self.base_url, self.model) as observed:
+            try:
+                # params= percent-encodes: a prompt holds "&", "#", "+" and non-ASCII text
+                response = await sess.get(self.base_url, params=request_data)
+                observed.report(response.status_code)
 
-            if response.status_code != 200:
-                self._raise_for_status(
-                    response.status_code,
-                    response.content,
-                    request_data,
-                    self._legacy_400_as_auth,
-                )
+                if response.status_code != 200:
+                    self._raise_for_status(
+                        response.status_code,
+                        response.content,
+                        request_data,
+                        self._legacy_400_as_auth,
+                    )
 
-            return SuggestTagsResp.model_validate_json(response.content)
+                return SuggestTagsResp.model_validate_json(response.content)
 
-        except curl_cffi.requests.errors.RequestsError as exc:
-            logger.exception(exc)
-            raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
-        except APIError:
-            raise  # not an unexpected error: keep it out of the handler below
-        except Exception as e:
-            logger.exception("Unexpected error occurred during the request.")
-            raise Exception("An unexpected error occurred.") from e
+            except curl_cffi.requests.errors.RequestsError as exc:
+                logger.exception(exc)
+                raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
+            except APIError:
+                raise  # not an unexpected error: keep it out of the handler below
+            except Exception as e:
+                logger.exception("Unexpected error occurred during the request.")
+                raise Exception("An unexpected error occurred.") from e

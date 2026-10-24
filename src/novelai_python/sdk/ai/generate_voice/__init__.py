@@ -12,6 +12,7 @@ from novelai_python._retry import retry_on_server_error
 from ...._exceptions import APIError, SessionHttpError
 from ...._response.ai.generate_voice import VoiceResponse
 from ....credential import CredentialBase
+from ....metrics import get_metrics
 from ...schema import ApiBaseModel, use_session
 from ._enum import Speaker, VoiceSpeakerV1, VoiceSpeakerV2
 
@@ -81,7 +82,7 @@ class VoiceGenerate(ApiBaseModel):
         """
         # Data Build
         request_data = self.model_dump(mode="json", exclude_none=True)
-        async with use_session(session) as sess:
+        async with use_session(session) as sess, get_metrics().observe(self.base_url) as observed:
             # Header
             if override_headers:
                 sess.headers.clear()
@@ -91,6 +92,7 @@ class VoiceGenerate(ApiBaseModel):
             # Request
             try:
                 response = await sess.post(url=self.base_url, json=request_data)
+                observed.report(response.status_code)
                 # opus=true answers WebM/Opus, maybe as 'audio/webm;codecs="opus"'
                 media_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                 if (

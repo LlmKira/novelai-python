@@ -15,6 +15,7 @@ from pydantic import BaseModel, PrivateAttr
 
 from .._exceptions import APIError, AuthError, ConcurrentGenerationError, SessionHttpError
 from ..credential import CredentialBase
+from ..metrics import get_metrics
 from ..utils import try_jsonfy
 
 logger = logging.getLogger(__name__)
@@ -122,7 +123,10 @@ class ApiBaseModel(BaseModel, ABC):
         :raises SessionHttpError: transport error (SSL, timeout...).
         """
         request_data = json_body or {}
-        async with use_session(session) as sess:
+        async with (
+            use_session(session) as sess,
+            get_metrics().observe(self.base_url, getattr(self, "model", None)) as observed,
+        ):
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
@@ -131,8 +135,10 @@ class ApiBaseModel(BaseModel, ABC):
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
-        if response.status_code >= 400:
-            self._raise_for_status(response.status_code, response.content, request_data, self._legacy_400_as_auth)
+            if response.status_code >= 400:
+                observed.report(response.status_code)
+                self._raise_for_status(response.status_code, response.content, request_data, self._legacy_400_as_auth)
+            observed.report(response.status_code)
         return response
 
     @staticmethod

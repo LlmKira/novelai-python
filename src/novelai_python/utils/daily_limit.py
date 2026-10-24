@@ -79,16 +79,24 @@ class DailyImageLimiter:
 
     # endregion
 
+    def _current(self, now: float) -> tuple[float | None, int]:
+        """(window start, images used) at ``now``, re-read from the state file; ``(None, 0)`` when no
+        window is running. Reading never starts a window, only a check or a generated image does,
+        so a monitor polling the budget cannot move it. Caller holds the lock.
+        """
+        self._load()
+        if self._window_start is None or now - self._window_start >= self.window_seconds:
+            return None, 0
+        return self._window_start, self._used
+
     def _roll_window(self, now: float) -> None:
         """Re-read the state file, then start a new window if there is none or the current one expired.
 
         Caller holds the lock. The file is the count: other limiters on it (in this process or
         another) may have consumed since, and a stale in-memory count would overwrite theirs.
         """
-        self._load()
-        if self._window_start is None or now - self._window_start >= self.window_seconds:
-            self._window_start = now
-            self._used = 0
+        start, used = self._current(now)
+        self._window_start, self._used = (start, used) if start is not None else (now, 0)
 
     @property
     def enabled(self) -> bool:
@@ -97,8 +105,7 @@ class DailyImageLimiter:
     @property
     def used(self) -> int:
         with self._lock:
-            self._roll_window(time.time())
-            return self._used
+            return self._current(time.time())[1]
 
     @property
     def remaining(self) -> int:
@@ -108,11 +115,10 @@ class DailyImageLimiter:
 
     @property
     def reset_at(self) -> float | None:
-        """Unix timestamp when the current window ends, None if no window has started."""
+        """Unix timestamp when the current window ends, None if no window is running."""
         with self._lock:
-            if self._window_start is None:
-                return None
-            return self._window_start + self.window_seconds
+            start = self._current(time.time())[0]
+            return None if start is None else start + self.window_seconds
 
     def check(self, n: int = 1) -> None:
         """

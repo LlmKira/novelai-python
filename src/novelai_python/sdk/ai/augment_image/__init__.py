@@ -24,6 +24,7 @@ from novelai_python.sdk.ai._enum import Model
 from ...._exceptions import APIError, AuthError, ConcurrentGenerationError, DataSerializationError, SessionHttpError
 from ...._response.ai.generate_image import ImageGenerateResp, RequestParams
 from ....credential import CredentialBase
+from ....metrics import get_metrics
 from ....utils import try_jsonfy
 from ...schema import ApiBaseModel, use_session
 from ..generate_image import ZIP_CONTENT_TYPES
@@ -154,7 +155,7 @@ class AugmentImageInfer(ApiBaseModel):
         """
         # Prepare request data
         request_data = self.model_dump(mode="json", exclude_none=True)
-        async with use_session(session) as sess:
+        async with use_session(session) as sess, get_metrics().observe(self.base_url) as observed:
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
@@ -173,12 +174,14 @@ class AugmentImageInfer(ApiBaseModel):
                 response = await sess.post(self.base_url, data=json.dumps(request_data).encode("utf-8"))
                 response_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                 if response_type not in ZIP_CONTENT_TYPES or response.status_code >= 400:
+                    observed.report(response.status_code)
                     self._raise_for_status(
                         response.status_code,
                         response.content,
                         request_data,
                         self._legacy_400_as_auth,
                     )
+                observed.report(response.status_code)
 
                 # Unpack the ZIP response
                 try:

@@ -2,10 +2,10 @@
 # It is not intended for manual editing.
 
 [metadata]
-groups = ["default", "dev", "server", "testing"]
+groups = ["default", "dev", "metrics", "server", "testing"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.1"
-content_hash = "sha256:68fc380b805d51724f1f1fa2251a29f8c6d8a1d1b3e6b6131caec49addf05fce"
+content_hash = "sha256:59bec87d44b7b0e0bb987e089889373dfd0f550d03cd67d31d8a3117a5ff1520"
 
 [[metadata.targets]]
 requires_python = ">=3.12"
@@ -743,6 +743,17 @@ dependencies = [
 files = [
     {file = "pre_commit-4.7.0-py2.py3-none-any.whl", hash = "sha256:2e229038ad3656081b70c27913157e4b636ef306f643f024a8a8e3f0f7b2f877"},
     {file = "pre_commit-4.7.0.tar.gz", hash = "sha256:1f3deee12b914c8fa184bd2b5953391c2e4f36763e403d4a23dc9983fa7c6e86"},
+]
+
+[[package]]
+name = "prometheus-client"
+version = "0.26.0"
+requires_python = ">=3.9"
+summary = "Python client for the Prometheus monitoring system."
+groups = ["metrics", "testing"]
+files = [
+    {file = "prometheus_client-0.26.0-py3-none-any.whl", hash = "sha256:fa93d06737aa02bacd05794768508bb97d2fbee28cb3bca04eaae92f0ca953d6"},
+    {file = "prometheus_client-0.26.0.tar.gz", hash = "sha256:04a91bcf94e2cf74a44a1a874d651a2e853ed354b6e822f3b7487751465d5c2b"},
 ]
 
 [[package]]
