@@ -103,3 +103,28 @@ async def test_unknown_error_subscription_request():
     assert e.type is APIError
     expected_message = "An unknown error occurred."
     assert expected_message == str(e.value)
+
+
+def test_old_names_warn_and_point_at_the_caller():
+    resp = SubscriptionResp.model_validate(
+        {
+            "tier": 3,
+            "active": True,
+            "expiresAt": 1708646400,
+            "perks": {
+                "maxPriorityActions": 1000,
+                "startPriority": 10,
+                "moduleTrainingSteps": 10000,
+                "unlimitedMaxPriority": False,
+                "contextTokens": 8192,
+            },
+            "trainingStepsLeft": {"fixedTrainingStepsLeft": 0, "purchasedTrainingSteps": 0},
+            "accountType": 0,
+        }
+    )
+    with pytest.warns(DeprecationWarning, match="use tier_name") as record:
+        assert resp.get_tier_name == "Opus"
+    assert record[0].filename == __file__
+    with pytest.warns(DeprecationWarning, match="use disabled_perks") as record:
+        assert resp.limit_perks == resp.disabled_perks == ["unlimitedMaxPriority"]
+    assert record[0].filename == __file__

@@ -2,6 +2,7 @@
 # @Author  : sudoskys
 # @File    : subscription.py
 
+import warnings
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -107,9 +108,13 @@ class SubscriptionResp(RespBase):
     @property
     def get_tier_name(self) -> str:
         """Deprecated name of ``tier_name``."""
+        warnings.warn("SubscriptionResp.get_tier_name is deprecated, use tier_name", DeprecationWarning, stacklevel=2)
         return self.tier_name
 
     @property
     def limit_perks(self) -> list[str]:
         """Deprecated name of ``disabled_perks``."""
+        warnings.warn(
+            "SubscriptionResp.limit_perks is deprecated, use disabled_perks", DeprecationWarning, stacklevel=2
+        )
         return self.disabled_perks
