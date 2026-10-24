@@ -33,7 +33,7 @@ async def test_request():
 
     # Assert
     session.post.assert_called_once_with(
-        url=voice_generate.base_url, json=voice_generate.model_dump(mode="json", exclude_none=True)
+        voice_generate.base_url, json=voice_generate.model_dump(mode="json", exclude_none=True)
     )
     assert isinstance(result, VoiceResponse)
     assert result.audio == b"audio_content"

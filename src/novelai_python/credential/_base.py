@@ -131,18 +131,8 @@ class CredentialBase(BaseModel):
     """Value of the ``account`` label on the Anlas / usage gauges (``novelai_python.metrics``).
     None = the first 8 hex digits of a SHA-256 of the username or token: stable, and not the email."""
 
-    def metrics_account(self) -> str:
-        """``metrics_label``, else a short hash of what identifies the account (``_metrics_seed``)."""
-        if self.metrics_label:
-            return self.metrics_label
-        seed = self._metrics_seed()
-        if not seed:
-            return "unknown"
-        from ..metrics import short_hash
-
-        return short_hash(seed)
-
-    def _metrics_seed(self) -> str | None:
+    def metrics_seed(self) -> str | None:
+        """What identifies the account for the metrics hash; ``None`` when the credential has no identity."""
         return None
 
     def session_kwargs(self, timeout: int, headers: dict) -> dict:
@@ -167,7 +157,7 @@ class BearerCredential(CredentialBase):
     def _token(self) -> str:
         raise NotImplementedError
 
-    def _metrics_seed(self) -> str | None:
+    def metrics_seed(self) -> str | None:
         return self._token()
 
     async def get_session(self, timeout: int = 180, update_headers: dict | None = None):

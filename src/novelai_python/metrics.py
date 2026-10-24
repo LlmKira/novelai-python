@@ -26,7 +26,7 @@ import os
 import threading
 import time
 from collections.abc import Callable, Iterator
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import urlsplit
 
 from curl_cffi.curl import CurlError
@@ -110,27 +110,31 @@ def endpoint_label(url: str) -> str:
     return path.rstrip("/") or "/"
 
 
-def model_label(model: Any) -> str:
+def model_label(model: object) -> str:
     """The wire name of a model enum or string; ``""`` for endpoints without a model."""
     if model is None:
         return ""
     return str(getattr(model, "value", model))
 
 
-def account_label(session: Any) -> str:
+def account_label(session: object) -> str:
     """A short, stable, non-identifying id of the account a session belongs to.
 
-    Credentials can set ``metrics_label``; otherwise the first 8 hex digits of a SHA-256 of the
-    username or token are used, so an email never becomes a label value. A bare ``AsyncSession``
+    Credentials can set ``metrics_label``; otherwise the first 8 hex digits of a SHA-256 of their
+    ``metrics_seed`` are used, so an email never becomes a label value. A bare ``AsyncSession``
     has no account to name and is ``"session"``.
     """
-    getter = getattr(session, "metrics_account", None)
-    if callable(getter):
-        try:
-            return str(getter())
-        except Exception:  # a credential is never required to support this
-            return "unknown"
-    return "session"
+    label = getattr(session, "metrics_label", None)
+    if label:
+        return str(label)
+    seed_getter = getattr(session, "metrics_seed", None)
+    if not callable(seed_getter):
+        return "session"
+    try:
+        seed = seed_getter()
+    except Exception:  # a credential is never required to support this
+        return "unknown"
+    return short_hash(str(seed)) if seed else "unknown"
 
 
 def short_hash(value: str) -> str:
@@ -174,26 +178,63 @@ def transport_label(exc: BaseException | None) -> str | None:
     return None
 
 
+class _HttpSession(Protocol):
+    async def get(self, url: str, **kwargs: Any) -> Any: ...
+
+    async def post(self, url: str, **kwargs: Any) -> Any: ...
+
+
+class _Remaining(Protocol):
+    @property
+    def remaining(self) -> int: ...
+
+
 class _Observation:
     """One timed request. Works with ``with`` and ``async with``; see :meth:`NovelAIMetrics.observe`.
 
-    Call :meth:`report` inside the block with the HTTP status (or :data:`STATUS_STREAM_ERROR`). An
-    exception that leaves the block before that is classified by :func:`transport_label`; one that is
-    not a transport failure means no request went out, and nothing is counted.
+    Call :meth:`report` inside the block with the HTTP status (or :data:`STATUS_STREAM_ERROR`), or
+    perform the call through :meth:`send`, which reports it. An exception that leaves the block
+    before that is classified by :func:`transport_label`; one that is not a transport failure means
+    no request went out, and nothing is counted.
     """
 
-    __slots__ = ("_endpoint", "_metrics", "_model", "_started", "status")
+    __slots__ = ("_endpoint", "_metrics", "_model", "_reported", "_started", "status")
 
     def __init__(self, metrics: NovelAIMetrics | None, endpoint: str, model: str) -> None:
         self._metrics = metrics  # None when metrics are disabled
         self._endpoint = endpoint
         self._model = model
         self._started = 0.0
+        self._reported = False
         self.status: str | int | None = None
 
     def report(self, status: int | str) -> None:
         """The outcome: the HTTP status, or :data:`STATUS_STREAM_ERROR`."""
         self.status = status
+        self._reported = True
+
+    async def send(self, session: _HttpSession, method: str, url: str, **kwargs: Any) -> Any:
+        """Perform the request through ``session`` and report its HTTP status."""
+        if method == "GET":
+            response = await session.get(url, **kwargs)
+        elif method == "POST":
+            response = await session.post(url, **kwargs)
+        else:
+            raise ValueError(f"unsupported method for a metrics observation: {method}")
+        self.report(response.status_code)
+        return response
+
+    def observe_images(self, count: int) -> None:
+        if self._metrics is not None:
+            self._metrics.observe_images(self._model, count)
+
+    def observe_stream_frame(self) -> None:
+        if self._metrics is not None:
+            self._metrics.observe_stream_frame(self._model)
+
+    def observe_limiter(self, limiter: _Remaining | None) -> None:
+        if self._metrics is not None:
+            self._metrics.observe_limiter(limiter)
 
     def __enter__(self) -> _Observation:
         if self._metrics is not None:
@@ -208,6 +249,8 @@ class _Observation:
         m.in_flight.labels(self._endpoint).dec()
         status = self.status if self.status is not None else transport_label(exc)
         if status is None:
+            if exc is None and not self._reported:
+                logger.warning(f"metrics: {self._endpoint} finished without a status; the request was not counted")
             return
         m.requests.labels(self._endpoint, self._model, str(status)).inc()
         m.request_duration.labels(self._endpoint, self._model).observe(time.perf_counter() - self._started)
@@ -286,8 +329,9 @@ class NovelAIMetrics:
         self._accounts: set[str] = set()
         self._accounts_lock = threading.Lock()
         self._accounts_warned = False
-        self._limiter: Any = None
+        self._limiter: _Remaining | None = None
         self._multiprocess = _multiprocess()
+        self._asgi_app: _AsgiApp | None = None
         self.registry: CollectorRegistry | None
         if not self.enabled:
             self.registry = None
@@ -467,18 +511,18 @@ class NovelAIMetrics:
 
     # region observing
 
-    def observe(self, url: str, model: Any = None) -> _Observation:
+    def observe(self, url: str, model: object | None = None) -> _Observation:
         """Time one request: ``with metrics.observe(url, model) as obs:`` or ``async with``.
-        Call ``obs.report(status)`` inside, right after the response arrives."""
+        Perform the call through ``obs.send(...)`` (or call ``obs.report(status)``) inside."""
         if not self.enabled:
             return _Observation(None, "", "")
         return _Observation(self, endpoint_label(url), model_label(model))
 
-    def observe_images(self, model: Any, count: int) -> None:
+    def observe_images(self, model: object, count: int) -> None:
         if self.enabled and count > 0:
             self.images.labels(model_label(model)).inc(count)
 
-    def observe_stream_frame(self, model: Any) -> None:
+    def observe_stream_frame(self, model: object) -> None:
         if self.enabled:
             self.stream_frames.labels(model_label(model)).inc()
 
@@ -491,7 +535,7 @@ class NovelAIMetrics:
         if self.enabled:
             self.pacing_wait.observe(max(0.0, wait_seconds))
 
-    def observe_limiter(self, limiter: Any) -> None:
+    def observe_limiter(self, limiter: _Remaining | None) -> None:
         """Remember the limiter a request used; the gauge reads it at scrape time."""
         if not self.enabled or limiter is None:
             return
@@ -567,7 +611,11 @@ class NovelAIMetrics:
         """An ASGI app serving the registry: ``app.add_route("/metrics", metrics.asgi_app())`` serves
         exactly ``/metrics``, ``app.mount("/metrics", ...)`` serves ``/metrics/``. It gzips for
         scrapers that accept it, answers OpenMetrics when asked and honours ``?name[]=`` filters."""
-        return _AsgiApp(prom.make_asgi_app(registry=self._require(), disable_compression=disable_compression))
+        if disable_compression:
+            return _AsgiApp(prom.make_asgi_app(registry=self._require(), disable_compression=True))
+        if self._asgi_app is None:
+            self._asgi_app = _AsgiApp(prom.make_asgi_app(registry=self._require()))
+        return self._asgi_app
 
     def wsgi_app(self, disable_compression: bool = False):
         return prom.make_wsgi_app(registry=self._require(), disable_compression=disable_compression)
@@ -666,6 +714,16 @@ def set_metrics(metrics: NovelAIMetrics | None) -> None:
         _default = metrics
 
 
+def observe_retry(args: tuple[Any, ...], wait_seconds: float) -> None:
+    """``RetryObserver`` for ``retry_on_server_error``: ``args[0]`` is the request model."""
+    try:
+        url = getattr(args[0], "base_url", None) if args else None
+        if url is not None:
+            get_metrics().observe_retry(str(url), wait_seconds)
+    except Exception as exc:  # metrics are optional and never break a retry
+        logger.debug(f"retry metric not recorded: {exc!r}")
+
+
 __all__ = [
     "DEFAULT_MAX_ACCOUNTS",
     "ENV_ENABLED",
@@ -687,6 +745,7 @@ __all__ = [
     "endpoint_label",
     "get_metrics",
     "model_label",
+    "observe_retry",
     "set_metrics",
     "short_hash",
     "transport_label",

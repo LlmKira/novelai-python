@@ -13,13 +13,13 @@ from curl_cffi.requests import AsyncSession
 from pydantic import ConfigDict, PrivateAttr, model_validator
 
 from novelai_python._retry import retry_on_server_error
+from novelai_python.metrics import observe_retry
 
 from ..._exceptions import DataSerializationError, SessionHttpError
 from ..._response.ai.upscale import UpscaleResp
 from ...credential import CredentialBase
-from ...metrics import get_metrics
 from ...utils import try_jsonfy
-from ..schema import ApiBaseModel, use_session
+from ..schema import ApiBaseModel, observed_session
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ class Upscale(ApiBaseModel):
     def base_url(self) -> str:
         return f"{self.endpoint.strip('/')}/ai/upscale"
 
-    @retry_on_server_error()
+    @retry_on_server_error(on_retry=observe_retry)
     async def request(
         self, session: Union[AsyncSession, "CredentialBase"], *, override_headers: dict | None = None
     ) -> UpscaleResp:
@@ -82,17 +82,18 @@ class Upscale(ApiBaseModel):
         body, content_type = build_multipart_request(
             json.dumps(request_data).encode("utf-8"), [("image", base64.b64decode(self.image))]
         )
-        async with use_session(session) as sess, get_metrics().observe(self.base_url, self.model) as observed:
+        async with observed_session(session, self.base_url, self.model) as (sess, observed):
             if override_headers:
                 sess.headers.clear()
                 sess.headers.update(override_headers)
             logger.debug(f"Request Data: {request_data}")
             try:
-                response = await sess.post(self.base_url, data=body, headers={"Content-Type": content_type})
+                response = await observed.send(
+                    sess, "POST", self.base_url, data=body, headers={"Content-Type": content_type}
+                )
             except curl_cffi.requests.errors.RequestsError as exc:
                 logger.exception(exc)
                 raise SessionHttpError("A RequestsError occurred (e.g., SSL error). Try again later.") from exc
-            observed.report(response.status_code)
         if response.status_code >= 400:
             self._raise_for_status(response.status_code, response.content, request_data)
         content = response.content

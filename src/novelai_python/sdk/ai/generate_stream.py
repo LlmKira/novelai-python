@@ -10,9 +10,8 @@ from ..._enum import TextLLMModelTypeAlias
 from ..._exceptions import APIError, SessionHttpError
 from ..._response.ai.generate_stream import LLMStreamResp
 from ...credential import CredentialBase
-from ...metrics import get_metrics
 from ...utils import try_jsonfy
-from ..schema import close_stream, use_session
+from ..schema import close_stream, observed_session
 from .generate import LLM, AdvanceLLMSetting, LLMGenerationParams, PenStyle, TextLLMModel
 
 logger = logging.getLogger(__name__)
@@ -82,7 +81,7 @@ class LLMStream(LLM):
             **self.model_dump(mode="json", include={"input", "model"}),
             "parameters": parameters,
         }
-        async with use_session(session) as sess, get_metrics().observe(self.base_url, self.model) as observed:
+        async with observed_session(session, self.base_url, self.model) as (sess, observed):
             # Header
             if override_headers:
                 sess.headers.clear()
@@ -91,12 +90,13 @@ class LLMStream(LLM):
             logger.debug(f"StreamLLM request data: {request_data}")
             # Request
             try:
-                response = await sess.post(
+                response = await observed.send(
+                    sess,
+                    "POST",
                     self.base_url,
                     json=request_data,
                     stream=True,  # 使用 stream=True 参数
                 )
-                observed.report(response.status_code)
                 try:
                     media_type = (response.headers.get("Content-Type") or "").split(";")[0].strip().lower()
                     is_event_stream = media_type == "text/event-stream"
