@@ -1,4 +1,4 @@
-"""CLIP BPE tokenizer (NovelAI Diffusion V1-V3 prompts) on top of HF ``tokenizers``.
+"""CLIP BPE tokenizer (NovelAI Diffusion V1-V3 prompts) on top of ``kitoken``.
 
 Gives the same token ids as OpenAI's ``SimpleTokenizer`` on ordinary prompts
 (random prompts with unicode, case and whitespace variations) without the
@@ -16,11 +16,13 @@ import html
 import re
 import unicodedata
 from functools import lru_cache
+from typing import Any
 
-from tokenizers import Regex, Tokenizer, normalizers, pre_tokenizers
-from tokenizers.models import BPE
+from kitoken import Kitoken
 
-__all__ = ["build_clip_tokenizer", "clean_text", "decode"]
+from ._definition import added_token, bpe_model
+
+__all__ = ["clean_text", "clip_definition", "decode"]
 
 _SPLIT = r"""<\|startoftext\|>|<\|endoftext\|>|'s|'t|'re|'ve|'m|'ll|'d|[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+"""
 _QUOTES = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"'})
@@ -49,8 +51,9 @@ def clean_text(text: str) -> str:
     return html.unescape(html.unescape(text))
 
 
-def build_clip_tokenizer(bpe_text: str) -> Tokenizer:
-    """Build the tokenizer from NovelAI's ``clip_tokenizer.def`` merges text."""
+def clip_definition(bpe_text: str) -> tuple[dict[str, Any], list[str]]:
+    """The ``tokenizers``-format definition kitoken loads, built from NovelAI's ``clip_tokenizer.def``
+    merges text, and the vocabulary in id order."""
     merges: list[tuple[str, str]] = []
     for line in bpe_text.split("\n")[1 : 49152 - 256 - 2 + 1]:
         left, right = line.split()
@@ -59,27 +62,30 @@ def build_clip_tokenizer(bpe_text: str) -> Tokenizer:
     vocab = vocab + [v + "</w>" for v in vocab]
     vocab += ["".join(m) for m in merges]
     vocab += ["<|startoftext|>", "<|endoftext|>"]
-    tok = Tokenizer(
-        BPE(
-            vocab={t: i for i, t in enumerate(vocab)},
-            merges=merges,
-            end_of_word_suffix="</w>",
-            unk_token="<|endoftext|>",
-        )
-    )
-    tok.normalizer = normalizers.Sequence(
-        [normalizers.NFC(), normalizers.Replace(Regex(r"\s+"), " "), normalizers.Strip(), normalizers.Lowercase()]
-    )
-    tok.pre_tokenizer = pre_tokenizers.Sequence(
-        [
-            pre_tokenizers.Split(Regex(_SPLIT), behavior="removed", invert=True),
-            pre_tokenizers.ByteLevel(add_prefix_space=False, use_regex=False),
-        ]
-    )
-    return tok
+    definition = {
+        # kitoken needs the unknown token among the added ones; normalized=True keeps it from being
+        # matched in the input text, as before.
+        "added_tokens": [added_token(vocab.index("<|endoftext|>"), "<|endoftext|>", normalized=True)],
+        "normalizer": {
+            "type": "Sequence",
+            "normalizers": [
+                {"type": "NFC"},
+                {"type": "Replace", "pattern": {"Regex": r"\s+"}, "content": " "},
+                {"type": "StripNormalizer", "strip_left": True, "strip_right": True},
+                {"type": "Lowercase"},
+            ],
+        },
+        "pre_tokenizer": {
+            "type": "Sequence",
+            "pretokenizers": [
+                {"type": "Split", "pattern": {"Regex": _SPLIT}, "behavior": "Removed", "invert": True},
+                {"type": "ByteLevel", "add_prefix_space": False, "trim_offsets": True, "use_regex": False},
+            ],
+        },
+        "model": bpe_model({t: i for i, t in enumerate(vocab)}, merges, unk="<|endoftext|>", suffix="</w>"),
+    }
+    return definition, vocab
 
 
-def decode(tokenizer: Tokenizer, ids: list[int]) -> str:
-    byte_decoder = {v: k for k, v in bytes_to_unicode().items()}
-    text = "".join(tokenizer.id_to_token(i) or "" for i in ids)
-    return bytes(byte_decoder[c] for c in text).decode("utf-8", errors="replace").replace("</w>", " ")
+def decode(tokenizer: Kitoken, ids: list[int]) -> str:
+    return tokenizer.decode(ids).decode("utf-8", errors="replace").replace("</w>", " ")
