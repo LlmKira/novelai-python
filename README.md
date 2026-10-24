@@ -22,7 +22,7 @@
 The goal of this repository is to use Pydantic to build legitimate requests to access
 the [NovelAI API service](https://image.novelai.net/docs).
 
-> Python >= 3.12 is required (tested on 3.12 – 3.14).
+> Python >= 3.12 is required (tested on 3.12 – 3.15).
 
 ### 📰 News
 
@@ -35,9 +35,10 @@ the [NovelAI API service](https://image.novelai.net/docs).
 - New: character reference (V4.5), `EncodeVibe`, transparent background (V5), `Upscale` on the image host,
   `UserData`, `TrialStatus`, `Priority`, `CreatePersistentToken`, the OpenAI-compatible text API (`/oa/v1`),
   and `GenerateImageInfer.from_metadata()` to rebuild a request from an image's metadata.
-- Fewer dependencies: pydantic, curl_cffi, msgpack, Pillow, numpy, pynacl and tokenizers. httpx, opencv,
-  argon2-cffi, ftfy/regex and `bchlib` are gone (`bchlib` has no Python 3.14 wheel; a NumPy BCH codec
-  replaces it).
+- Fewer dependencies: pydantic, curl_cffi, msgpack, Pillow, numpy, pynacl and kitoken. httpx, opencv,
+  argon2-cffi, ftfy/regex, `bchlib` and `tokenizers` are gone (`bchlib` has no Python 3.14 wheel; a NumPy BCH
+  codec replaces it. `tokenizers` came with 14 more packages, huggingface-hub, httpx2 and PyYAML among them,
+  and PyYAML has no Python 3.15 wheel).
 - Optional local image budget (`limiter=True`, see below).
 - Optional metrics (`pip install "novelai-python[metrics]"`): every request counted and timed, Anlas and the
   Opus usage bar as gauges, `GET /metrics` on the bundled server. `RequestPacer` keeps a random gap between
@@ -413,6 +414,11 @@ print(f"Tokenized text: {encode_tokens}")
 print(tokenizer_package.decode(tokenizer_package.encode(t_text)))
 
 ```
+
+`NaiTokenizer.tokenizer` is a `kitoken.Kitoken` (a `tokenizers.Tokenizer` up to 0.8.1). For the BPE text
+models the methods above follow the tokenizer in the novelai.net web client; genji still differs on some
+Japanese text (a token produced by more than one merge) and pile on one whitespace case. `decode()` leaves
+out control tokens such as `<|endoftext|>`.
 
 ### 🔨 Roadmap
 
