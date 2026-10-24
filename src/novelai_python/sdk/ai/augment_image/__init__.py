@@ -199,6 +199,7 @@ class AugmentImageInfer(ApiBaseModel):
                         for filename in file_list:
                             data = zip_file.read(filename)
                             unzip_content.append((filename, data))
+                    observed.observe_images(len(unzip_content))
                     return ImageGenerateResp(
                         meta=RequestParams(
                             endpoint=self.base_url,
