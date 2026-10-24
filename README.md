@@ -44,6 +44,22 @@ the [NovelAI API service](https://image.novelai.net/docs).
   Opus usage bar as gauges, `GET /metrics` on the bundled server. `RequestPacer` keeps a random gap between
   requests counted from the end of the previous one; retries after HTTP 500 back off with jitter.
 
+### ⬆️ Upgrading from 0.8
+
+- **`tokenizers` is replaced by `kitoken`.** `NaiTokenizer.tokenizer` is now a `kitoken.Kitoken`; `encode`,
+  `decode`, `tokenize_text` and `total_tokens` keep their signatures. CLIP and T5 keep their 0.8.1 ids; the
+  BPE tokenizers now follow novelai.net, so some ids change (see below).
+- **Erato uses `llama3nai_tokenizer.def`**, the file novelai.net loads for it (128257 tokens, NovelAI's own
+  special tokens). `TextTokenizerGroup.LLAMA3` points there; `NaiTokenizer("llama3_tokenizer")` still loads
+  the stock Llama 3 file if you need the old ids.
+- **The BPE tokenizers follow the site**: nerdstash keeps newlines, tabs and digits; special tokens match
+  longest-first. Known differences remain for some genji Japanese text and one pile whitespace case.
+- **Python 3.15 is supported** (`requires-python` is still `>=3.12`).
+- **New optional extras**: `pip install "novelai-python[metrics]"` for Prometheus / VictoriaMetrics metrics;
+  `RequestPacer` and the local image limiter stay opt-in.
+- **Deprecated**: `SubscriptionResp.get_tier_name` and `.limit_perks` now raise `DeprecationWarning`; use
+  `tier_name` and `disabled_perks`.
+
 ### ⬆️ Upgrading from 0.7
 
 Some changes do not raise an error, so check these when you upgrade:
