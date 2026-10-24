@@ -36,7 +36,8 @@ class TextTokenizerGroup:
     NAI_INLINE = "gpt2_tokenizer.def"
     NERDSTASH_V2 = "nerdstash_tokenizer_v2.def"
     NERDSTASH = "nerdstash_tokenizer.def"
-    LLAMA3 = "llama3_tokenizer.def"
+    # Erato: the site loads llama3nai (NovelAI's special tokens, 128257 tokens), not llama3 (128010)
+    LLAMA3 = "llama3nai_tokenizer.def"
     GPT2 = "gpt2_tokenizer.def"
     CLIP = "clip_tokenizer.def"
     T5 = "t5_tokenizer.def"

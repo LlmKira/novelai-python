@@ -297,8 +297,10 @@ print(tokenizer_package.decode(tokenizer_package.encode(t_text)))
 
 ```
 
-`NaiTokenizer.tokenizer` is a `kitoken.Kitoken` (a `tokenizers.Tokenizer` up to 0.8.1); the methods above
-give the same ids as before.
+`NaiTokenizer.tokenizer` is a `kitoken.Kitoken` (a `tokenizers.Tokenizer` up to 0.8.1). For the BPE text
+models the methods above follow the tokenizer in the novelai.net web client; genji still differs on some
+Japanese text (a token produced by more than one merge) and pile on one whitespace case. `decode()` leaves
+out control tokens such as `<|endoftext|>`.
 
 ### 🔨 Roadmap
 
