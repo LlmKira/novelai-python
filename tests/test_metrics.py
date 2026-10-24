@@ -462,7 +462,8 @@ def test_server_metrics_endpoint(metrics, monkeypatch):
 
     only_info = client.get("/metrics", params={"name[]": "novelai_sdk_info"}).text
     assert "novelai_sdk_info" in only_info
-    assert "novelai_requests_total" not in only_info
+    # client_python < 0.26 keeps the HELP/TYPE lines of filtered-out families; no series may remain
+    assert "novelai_requests_total{" not in only_info
 
     openmetrics = client.get("/metrics", headers={"Accept": "application/openmetrics-text; version=1.0.0"})
     assert openmetrics.headers["content-type"].startswith("application/openmetrics-text")
