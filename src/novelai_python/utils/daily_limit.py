@@ -98,14 +98,18 @@ class DailyImageLimiter:
         start, used = self._current(now)
         self._window_start, self._used = (start, used) if start is not None else (now, 0)
 
+    def _snapshot(self, now: float) -> tuple[float | None, int]:
+        """One consistent (window start, used) reading, under one lock."""
+        with self._lock:
+            return self._current(now)
+
     @property
     def enabled(self) -> bool:
         return self.limit > 0
 
     @property
     def used(self) -> int:
-        with self._lock:
-            return self._current(time.time())[1]
+        return self._snapshot(time.time())[1]
 
     @property
     def remaining(self) -> int:
@@ -116,9 +120,8 @@ class DailyImageLimiter:
     @property
     def reset_at(self) -> float | None:
         """Unix timestamp when the current window ends, None if no window is running."""
-        with self._lock:
-            start = self._current(time.time())[0]
-            return None if start is None else start + self.window_seconds
+        start, _used = self._snapshot(time.time())
+        return None if start is None else start + self.window_seconds
 
     def check(self, n: int = 1) -> None:
         """
@@ -156,12 +159,13 @@ class DailyImageLimiter:
             self._save()
 
     def status(self) -> dict:
+        start, used = self._snapshot(time.time())
         return {
             "enabled": self.enabled,
             "limit": self.limit,
-            "used": self.used,
-            "remaining": self.remaining,
-            "reset_at": self.reset_at,
+            "used": used,
+            "remaining": -1 if not self.enabled else max(self.limit - used, 0),
+            "reset_at": None if start is None else start + self.window_seconds,
             "window_seconds": self.window_seconds,
         }
 

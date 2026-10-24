@@ -18,6 +18,7 @@ import asyncio
 import logging
 import os
 import random
+import threading
 import time
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -111,6 +112,7 @@ class RequestPacer:
 
 
 _default: RequestPacer | None = None
+_default_lock = threading.Lock()
 
 
 def _gap_from_env() -> tuple[float, float]:
@@ -130,14 +132,16 @@ def _gap_from_env() -> tuple[float, float]:
 def get_default_pacer() -> RequestPacer:
     """The process-wide pacer (``NOVELAI_REQUEST_GAP``), created on first use."""
     global _default
-    if _default is None:
-        _default = RequestPacer(*_gap_from_env())
-    return _default
+    with _default_lock:
+        if _default is None:
+            _default = RequestPacer(*_gap_from_env())
+        return _default
 
 
 def set_default_pacer(pacer: RequestPacer | None) -> None:
     global _default
-    _default = pacer
+    with _default_lock:
+        _default = pacer
 
 
 def resolve_pacer(pacer: RequestPacer | bool | None) -> RequestPacer | None:

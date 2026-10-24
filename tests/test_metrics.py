@@ -181,6 +181,24 @@ def test_observe_failures(metrics):
     assert _value(metrics, "novelai_last_success_timestamp_seconds", endpoint="/user/subscription") is None
 
 
+@pytest.mark.asyncio
+async def test_observe_send_reports_the_response(metrics):
+    session = _mock_session(_response(200, b"{}"))
+    async with metrics.observe("https://api.novelai.net/user/subscription") as obs:
+        response = await obs.send(session, "GET", "https://api.novelai.net/user/subscription")
+    assert response.status_code == 200
+    assert _value(metrics, "novelai_requests_total", endpoint="/user/subscription", model="", status="200") == 1
+
+
+def test_a_normal_exit_without_a_status_warns(metrics, caplog):
+    with (
+        caplog.at_level(logging.WARNING, logger="novelai_python.metrics"),
+        metrics.observe("https://api.novelai.net/user/subscription"),
+    ):
+        pass
+    assert "finished without a status" in caplog.text
+
+
 def test_a_failure_before_the_request_is_not_counted(metrics):
     with pytest.raises(ValueError), metrics.observe("https://image.novelai.net/ai/generate-image", "m"):
         raise ValueError("bad parameters")

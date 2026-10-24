@@ -39,6 +39,7 @@ def _response(status=200, content=b"{}", content_type="application/json"):
 def _session(response):
     response.aclose = mock.AsyncMock()
     session = mock.MagicMock(spec=AsyncSession)
+    session.get = mock.AsyncMock(return_value=response)
     session.request = mock.AsyncMock(return_value=response)
     session.post = mock.AsyncMock(return_value=response)
     session.headers = {}
@@ -179,8 +180,7 @@ async def test_priority():
     session = _session(_response(content=b'{"maxPriorityActions":10,"nextRefillAt":1792200000,"taskPriority":2.5}'))
     resp = await Priority().request(session)
     assert resp.taskPriority == 2.5 and resp.maxPriorityActions == 10
-    method, url = session.request.await_args.args
-    assert (method, url) == ("GET", "https://image.novelai.net/user/priority")
+    assert session.get.await_args.args[0] == "https://image.novelai.net/user/priority"
 
 
 @pytest.mark.asyncio
@@ -188,7 +188,7 @@ async def test_create_persistent_token_and_conflict():
     session = _session(_response(status=201, content=b'{"token":"pst-abc"}'))
     resp = await CreatePersistentToken(overwrite=True).request(session)
     assert resp.token == "pst-abc"
-    assert session.request.await_args.kwargs["json"] == {"overwrite": True}
+    assert session.post.await_args.kwargs["json"] == {"overwrite": True}
 
     conflict = _session(_response(status=409, content=b'{"statusCode":409,"message":"Token already exists"}'))
     with pytest.raises(APIError) as err:
@@ -209,9 +209,8 @@ async def test_encode_vibe():
     resp = await EncodeVibe(image=_png(64, 64), information_extracted=0.7).request(session)
     assert resp.vibe == b"\x00vibe-binary"
     assert resp.vibe_b64 == base64.b64encode(b"\x00vibe-binary").decode()
-    method, url = session.request.await_args.args
-    assert (method, url) == ("POST", "https://image.novelai.net/ai/encode-vibe")
-    body = session.request.await_args.kwargs["json"]
+    assert session.post.await_args.args[0] == "https://image.novelai.net/ai/encode-vibe"
+    body = session.post.await_args.kwargs["json"]
     assert body["model"] == "nai-diffusion-4-5-full" and body["information_extracted"] == 0.7
     assert base64.b64decode(body["image"]).startswith(b"\x89PNG")
 
@@ -230,9 +229,8 @@ async def test_oa_chat_completion():
     session = _session(_response(content=json.dumps(answer).encode()))
     req = OAIChatCompletion(model="glm-4-6", messages=[OAIChatMessage(role="user", content="hello")], min_p=0.05)
     assert await req.request(session) == answer
-    method, url = session.request.await_args.args
-    assert (method, url) == ("POST", "https://text.novelai.net/oa/v1/chat/completions")
-    body = session.request.await_args.kwargs["json"]
+    assert session.post.await_args.args[0] == "https://text.novelai.net/oa/v1/chat/completions"
+    body = session.post.await_args.kwargs["json"]
     assert body == {
         "model": "glm-4-6",
         "messages": [{"role": "user", "content": "hello"}],
