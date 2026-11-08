@@ -4,7 +4,6 @@ Anlas cost of image requests, as the novelai.net web client computes it
 """
 
 import math
-import random
 
 from pydantic import BaseModel
 
@@ -59,10 +58,6 @@ class Args(BaseModel):
     extra: str = ""
     mask: bool = False
     inpaint_strength: float | None = None
-
-
-def generate_random_seed() -> int:
-    return random.randint(0, 2**32 - 1)
 
 
 def _resize_within(width: int, height: int, max_pixels: int) -> tuple[int, int]:
