@@ -87,11 +87,12 @@ class Params(BaseModel):
     inpaintImg2ImgStrength: float | None = Field(default=None, ge=0, le=1, multiple_of=0.01)
     """For SameFeel"""
     seed: int = Field(
-        default_factory=lambda: random.randint(0, 4294967295 - 7),
+        default_factory=lambda: random.randint(1, 4294967295 - 7),
         gt=0,
         le=4294967295 - 7,
     )
-    """Seed"""
+    """Seed. Image i of a batch is drawn with seed + i. The API reads it as uint64, so -1 is a 400;
+    0 is accepted but draws a random image and the metadata still says 0, so it is refused here."""
     characterPrompts: list[Character] = Field(default_factory=list)
     """Character Prompts"""
     straight_alpha: bool | None = None
