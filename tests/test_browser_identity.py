@@ -13,6 +13,8 @@ from novelai_python.credential._base import (
 @pytest.mark.parametrize(
     ("major", "captured"),
     [
+        # a real Chrome 157 on novelai.net (HAR, 2026-11-13)
+        (157, '"Not-A.Brand";v="99", "Google Chrome";v="157", "Chromium";v="157"'),
         # a real Chrome 155 on novelai.net (HAR)
         (155, '"Google Chrome";v="155", "Chromium";v="155", "Not(A:Brand";v="24"'),
         # what curl_cffi's chrome150 profile sends
@@ -24,12 +26,12 @@ def test_brand_list_matches_captured_chrome(major, captured):
 
 
 def test_headers_match_the_captured_web_client():
-    # request headers of /ai/generate-image from Chrome 155 on Windows (HAR), language aside
+    # request headers of /ai/generate-image from Chrome 157 on Windows (HAR, 2026-11-13), language aside
     captured = {
         "accept": "*/*",
         "origin": "https://novelai.net",
         "referer": "https://novelai.net/",
-        "sec-ch-ua": '"Google Chrome";v="155", "Chromium";v="155", "Not(A:Brand";v="24"',
+        "sec-ch-ua": '"Not-A.Brand";v="99", "Google Chrome";v="157", "Chromium";v="157"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"Windows"',
         "sec-fetch-dest": "empty",
@@ -37,18 +39,20 @@ def test_headers_match_the_captured_web_client():
         "sec-fetch-site": "same-site",
         "user-agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/155.0.0.0 Safari/537.36"
+            "Chrome/157.0.0.0 Safari/537.36"
         ),
     }
     headers = browser_headers()
     assert {k: headers[k] for k in captured} == captured
     assert headers["accept-language"] == "en-US,en;q=0.9"
-    assert CHROME_MAJOR_VERSION == "155"
+    assert CHROME_MAJOR_VERSION == "157"
 
 
 def test_accept_language_presets():
     assert resolve_accept_language(None) == "en-US,en;q=0.9"
     assert resolve_accept_language("en-SG") == ACCEPT_LANGUAGES["en-sg"] == "en-SG,en;q=0.9"
+    # Chrome with Traditional Chinese (Hong Kong) first, as captured on novelai.net
+    assert resolve_accept_language("zh-HK") == ACCEPT_LANGUAGES["zh-hk"] == "zh-HK,zh;q=0.9,en-US;q=0.8,en;q=0.7"
     assert resolve_accept_language("de-DE,de;q=0.9") == "de-DE,de;q=0.9"
 
 
