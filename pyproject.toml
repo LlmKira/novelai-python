@@ -1,6 +1,6 @@
 [project]
 name = "novelai-python"
-version = "0.9.1"
+version = "0.9.2"
 description = "NovelAI Python Binding With Pydantic"
 authors = [
     { name = "sudoskys", email = "coldlando@hotmail.com" },
@@ -8,7 +8,7 @@ authors = [
 dependencies = [
     # every dependency ships Python 3.12-3.15 wheels
     "pydantic>=2.14",
-    "curl-cffi>=0.16.3",  # HTTP + Chrome TLS/HTTP2 impersonation
+    "curl-cffi>=0.17.0",  # HTTP + Chrome TLS/HTTP2 impersonation (chrome152 profile = Chrome 157 ClientHello)
     "msgpack>=1.2",       # /ai/generate-image-stream frames
     "Pillow>=12.3",       # images, masks, LSB metadata
     "numpy>=2.5",         # BCH decoder of the metadata watermark
@@ -42,10 +42,14 @@ metrics = [
 ]
 testing = [
     "novelai-python[server,metrics]",
-    "httpx>=0.28",  # fastapi.testclient
+    "starlette>=1.2",  # first test client on httpx2; it warns on httpx
+    "httpx2>=2.16",
     "pytest>=9.1",
     "pytest-asyncio>=1.4",
 ]
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"

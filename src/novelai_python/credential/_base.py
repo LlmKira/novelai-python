@@ -16,6 +16,7 @@ ACCEPT_LANGUAGES = {
     "en-gb": "en-GB,en;q=0.9",
     "ja": "ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7",
     "zh": "zh-CN,zh;q=0.9,en;q=0.8",
+    "zh-hk": "zh-HK,zh;q=0.9,en-US;q=0.8,en;q=0.7",
     "ko": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
     "ru": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
 }
@@ -109,9 +110,11 @@ def chrome_brands(major: int) -> str:
 
 
 # The browser the headers describe: the Chrome on Windows that novelai.net users run now.
-# curl_cffi's newest TLS profile can lag a few versions behind; its ClientHello still matches
-# this Chrome except for extensions added since (Chrome's ClientHello does not depend on the OS).
-CHROME_MAJOR_VERSION = "155"
+# curl_cffi's newest TLS profile can lag a few versions behind; scripts/refresh_browser_identity.py
+# checks both. 2026-11-13: Google serves Chrome 157 to all stable users, and the chrome152 profile
+# of curl_cffi 0.17.0 sends the same ClientHello as Chrome 157 (0.16.3's chrome150 lacks extension
+# 0xCA34). Chrome's ClientHello does not depend on the OS.
+CHROME_MAJOR_VERSION = "157"
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
     f"Chrome/{CHROME_MAJOR_VERSION}.0.0.0 Safari/537.36"
