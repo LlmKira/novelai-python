@@ -249,8 +249,15 @@ PROMOTION = {
     "Stable Diffusion XL 37C2B166": Model.NAI_DIFFUSION_FURRY_3,
     "Stable Diffusion XL F306816B": Model.NAI_DIFFUSION_FURRY_3,
     "Stable Diffusion XL 9CC2F394": Model.NAI_DIFFUSION_FURRY_3,
+    # 4BDE2A90 / C02D4F98: generations with Precise Reference; the web client also reads them
+    # under the "DiffusionModelMetaName.NAIv4next" name
+    "NovelAI Diffusion V4.5 4BDE2A90": Model.NAI_DIFFUSION_4_5_FULL,
+    "DiffusionModelMetaName.NAIv4next 4BDE2A90": Model.NAI_DIFFUSION_4_5_FULL,
+    "NovelAI Diffusion V4.5 1229B44F": Model.NAI_DIFFUSION_4_5_FULL,
     "NovelAI Diffusion V4.5 B9F340FD": Model.NAI_DIFFUSION_4_5_FULL,
     "NovelAI Diffusion V4.5 F3D95188": Model.NAI_DIFFUSION_4_5_FULL,
+    "NovelAI Diffusion V4.5 C02D4F98": Model.NAI_DIFFUSION_4_5_CURATED,
+    "DiffusionModelMetaName.NAIv4next C02D4F98": Model.NAI_DIFFUSION_4_5_CURATED,
     "NovelAI Diffusion V4.5 5AB81C7C": Model.NAI_DIFFUSION_4_5_CURATED,
     "NovelAI Diffusion V4.5 B5A2A797": Model.NAI_DIFFUSION_4_5_CURATED,
     "NovelAI Diffusion V4 5AB81C7C": Model.NAI_DIFFUSION_4_5_CURATED,
@@ -264,10 +271,12 @@ PROMOTION = {
     "NovelAI Diffusion V4 C1CCBA86": Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
     "NovelAI Diffusion V4 770A9E12": Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
     # the web client's metadata import (rQ): the V5 Source names no variant, only the hash
+    "NovelAI Diffusion V5 81E2A1BD": Model.NAI_DIFFUSION_5_FULL,  # generations with Precise Reference
     "NovelAI Diffusion V5 657484A5": Model.NAI_DIFFUSION_5_FULL,
     "NovelAI Diffusion V5 0ADF9AB7": Model.NAI_DIFFUSION_5_FULL,
     "NovelAI Diffusion V5 93F4BD30": Model.NAI_DIFFUSION_5_FULL_MEDIUM,
     "NovelAI Diffusion V5 70AB5786": Model.NAI_DIFFUSION_5_FULL_MEDIUM,
+    "NovelAI Diffusion V5 AD5A716B": Model.NAI_DIFFUSION_5_CURATED,
     "NovelAI Diffusion V5 DB276663": Model.NAI_DIFFUSION_5_CURATED,
 }
 
