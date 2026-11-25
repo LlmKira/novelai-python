@@ -28,7 +28,8 @@ the [NovelAI API service](https://image.novelai.net/docs).
 
 - **Precise Reference on V5** Full and Curated: outfit references (`costume`), the "Prefer same outfit"
   variants, strength up to 5 (or past it), images cropped to the web client's one-megapixel buckets.
-  V5 Full Medium takes no references: the web client switches to High effort while one is set.
+  V5 Full Medium takes no references: the web client switches to High effort while one is set, the SDK raises
+  `ValueError` that says to use `nai-diffusion-5-full`.
 - **NovelAI Diffusion V5** family: `nai-diffusion-5-full`, `-full-medium` (fast, 14 steps), `-curated` and their
   `-inpainting` variants, with the web client's quality presets (`standard` / `light` / `none`) and negative
   presets. Every model uses `params_version` 4 (`ucPresetId` / `qualityPresetId`) and the
@@ -333,6 +334,12 @@ gen = GenerateImageInfer.build_generate(
 Each reference costs 5 Anlas for every image, the free Opus image included. V5 has no vibe transfer, takes no
 reference when inpainting (V5 Curated inpaints with V4.5 Curated, which does) and takes up to 32 characters
 (V4/V4.5: 6).
+
+Where the web client sends no reference, building the request raises `ValueError` with what to use instead:
+V5 Full Medium ("Precise Reference needs High effort": use `nai-diffusion-5-full`), V4 and older models,
+inpainting on V5 Full, more than 16 references. What the web client leaves out, the SDK leaves out too, with a
+`UserWarning` pointed at your line: outfit references on V4.5, vibes next to a reference.
+`python -W error::UserWarning` (or `warnings.simplefilter("error", UserWarning)`) turns those into errors.
 
 Environment:
 

@@ -229,6 +229,19 @@ class CharacterReference(BaseModel):
 
     ``strength`` and ``fidelity`` are not bounded: the web client's sliders end at 1 (strength 5 on V5),
     but a typed value may go past that or below zero.
+
+    Where the web client sends no reference at all, building the request raises ``ValueError`` that says what to
+    use instead:
+
+    - V5 Full Medium: Precise Reference needs High effort, use ``nai-diffusion-5-full`` (the web client switches
+      to it while a reference is set and disables Medium);
+    - V4 and older models;
+    - inpainting on V5 Full / V5 Full Medium (V4.5 and V5 Curated inpaint with references);
+    - more than 16 references.
+
+    What the web client leaves out of the request, the library leaves out too, with a ``UserWarning`` pointed at
+    the caller's line: outfit references on V4.5, vibes next to a reference. ``python -W error::UserWarning`` or
+    ``warnings.simplefilter("error", UserWarning)`` turns those into errors.
     """
 
     image: str | bytes = Field(..., description="Reference image, raw bytes or base64")

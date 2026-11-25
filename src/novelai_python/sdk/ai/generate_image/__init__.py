@@ -913,7 +913,11 @@ class GenerateImageInfer(ApiBaseModel):
         :param furry_mode: Whether to use furry mode.
         :param transparent_background: V5 only: transparent background, as the web client's "Transparent BG".
         :param character_references: Precise Reference images (character / style / outfit...), V4.5 and
-            V5 Full / Curated. V5 Full Medium takes none: the web client switches to High effort for them.
+            V5 Full / Curated, at most 16. V5 Full Medium takes none: Precise Reference needs High effort, so the
+            web client sends ``nai-diffusion-5-full`` while a reference is set; here it is a ``ValueError`` that
+            says so, not a silent switch to the dearer model. What the web client leaves out is left out with a
+            ``UserWarning`` (outfit references on V4.5, vibes next to a reference); see ``CharacterReference``.
+        :raises ValueError: the model takes no Precise Reference (V5 Full Medium, V4 and older), or more than 16.
         :return:
         """
         params = get_default_params(model)
@@ -993,7 +997,9 @@ class GenerateImageInfer(ApiBaseModel):
 
         If you need to define more parameters, you should initialize the Param class yourself.
 
-        :param character_references: Precise Reference images, as in ``build_generate``.
+        :param character_references: Precise Reference images, as in ``build_generate``: V4.5 and
+            V5 Full / Curated, not V5 Full Medium.
+        :raises ValueError: the model takes no Precise Reference (V5 Full Medium, V4 and older), or more than 16.
         :param strength:
         :param image:
         :param noise: For image to image
@@ -1081,7 +1087,9 @@ class GenerateImageInfer(ApiBaseModel):
         If you need to define more parameters, you should initialize the Param class yourself.
 
         :param character_references: Precise Reference images. V4.5 inpainting takes them, and so does V5 Curated,
-            which inpaints with V4.5 Curated; V5 Full does not take them when inpainting.
+            which inpaints with V4.5 Curated. V5 Full and V5 Full Medium do not take them when inpainting (the web
+            client leaves them out with a mask).
+        :raises ValueError: the model takes no Precise Reference when inpainting, or more than 16.
         :param strength: The strength
         :param mask: Given mask
         :param image: Given image
