@@ -1,16 +1,29 @@
 import base64
-import logging
 import math
+import warnings
 from enum import Enum
 from io import BytesIO
+from pathlib import Path
 
 import numpy as np
+import pydantic
 from PIL import Image
 from pydantic import BaseModel, Field, field_validator
 
 from novelai_python.sdk.ai._enum import Model, ModelTypeAlias, as_model, get_character_reference_support
 
-logger = logging.getLogger(__name__)
+# frames skipped when a warning picks the line to point at: this library, and pydantic, which runs its validators
+_SKIPPED_IN_WARNINGS = (str(Path(__file__).parents[3]), str(Path(pydantic.__file__).parent))
+
+
+def warn_left_out(message: str) -> None:
+    """A UserWarning about something the library left out of a request, pointed at the caller's line
+    outside the library, as PyTorch and huggingface_hub warn. ``-W error::UserWarning`` makes it an error."""
+    warnings.warn(message, UserWarning, skip_file_prefixes=_SKIPPED_IN_WARNINGS)
+
+
+def model_name(model: ModelTypeAlias) -> str:
+    return str(getattr(model, "value", model))
 
 
 class CharacterPosition(BaseModel):
@@ -296,7 +309,11 @@ class CharacterReference(BaseModel):
         if not support.references:
             raise ValueError(character_reference_error(model))
         if not support.outfits and any(r.description == "costume" for r in references):
-            logger.warning(f"{model} has no outfit references, they are left out as the web client does")
+            dropped = sum(r.description == "costume" for r in references)
+            warn_left_out(
+                f"{model_name(model)} takes no outfit reference: {dropped} left out of the request, as the web client "
+                "does. Outfit references need NovelAI Diffusion V5 Full or Curated."
+            )
             references = [r for r in references if r.description != "costume"]
         if len(references) > MAX_CHARACTER_REFERENCES:
             raise ValueError(f"At most {MAX_CHARACTER_REFERENCES} Precise Reference images, got {len(references)}")
@@ -320,16 +337,19 @@ class CharacterReference(BaseModel):
 
 
 def character_reference_error(model: ModelTypeAlias, *, inpainting: bool = False) -> str:
-    """Why ``model`` takes no Precise Reference (``inpainting``: in an infill request)."""
+    """Why ``model`` takes no Precise Reference (``inpainting``: in an infill request), and what to use instead."""
     model = as_model(model)
     if inpainting or model == Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING:
         return (
-            f"{model} takes no Precise Reference when inpainting (the web client leaves the references out); "
-            "V4.5 inpainting takes them, and V5 Curated inpaints with V4.5 Curated"
+            f"{model_name(model)} takes no Precise Reference when inpainting (the web client leaves the references "
+            "out). Inpaint with NovelAI Diffusion V4.5, or V5 Curated, which inpaints with V4.5 Curated."
         )
     if model == Model.NAI_DIFFUSION_5_FULL_MEDIUM:
         return (
-            "Precise Reference needs High effort: use nai-diffusion-5-full "
-            "(the web client switches to it while a reference is set)"
+            "Precise Reference needs High effort: use nai-diffusion-5-full instead of nai-diffusion-5-full-medium "
+            "(the web client switches to it while a reference is set)."
         )
-    return f"Precise Reference needs NovelAI Diffusion V4.5 or V5 Full / Curated, {model} does not take it"
+    return (
+        f"{model_name(model)} takes no Precise Reference. "
+        "Use NovelAI Diffusion V4.5 Full / Curated or V5 Full / Curated."
+    )

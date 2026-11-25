@@ -78,6 +78,7 @@ from .schema import (
     V4NegativePrompt,
     V4Prompt,
     character_reference_error,
+    warn_left_out,
 )
 from .suggest_tags import SuggestTags as SuggestTags  # re-export
 
@@ -465,7 +466,10 @@ class GenerateImageInfer(ApiBaseModel):
                 raise ValueError(character_reference_error(self.model, inpainting=True))
             if self.parameters.reference_image_multiple:
                 # the web client sends no vibes while a Precise Reference is set
-                logger.warning("Vibe Transfer does not work together with Precise Reference, the vibes are left out")
+                warn_left_out(
+                    "Vibe Transfer does not work together with Precise Reference: the vibes are left out of the "
+                    "request, as the web client does."
+                )
                 self.parameters.reference_image_multiple = None
                 self.parameters.reference_information_extracted_multiple = None
                 self.parameters.reference_strength_multiple = None
@@ -944,11 +948,18 @@ class GenerateImageInfer(ApiBaseModel):
 
     @staticmethod
     def _apply_character_references(
-        params: Params, model: Model | str, character_references: list[CharacterReference] | None
+        params: Params,
+        model: Model | str,
+        character_references: list[CharacterReference] | None,
+        *,
+        inpainting: bool = False,
     ) -> None:
-        if character_references:
-            for key, value in CharacterReference.to_params(character_references, model=model).items():
-                setattr(params, key, value)
+        if not character_references:
+            return
+        if inpainting and not get_character_reference_support(model).inpainting:
+            raise ValueError(character_reference_error(model, inpainting=True))
+        for key, value in CharacterReference.to_params(character_references, model=model).items():
+            setattr(params, key, value)
 
     @staticmethod
     def build_img2img(
@@ -1120,7 +1131,7 @@ class GenerateImageInfer(ApiBaseModel):
             decrisp_mode=decrisp_mode,
             variety_boost=variety_boost,
         )
-        GenerateImageInfer._apply_character_references(params, model, character_references)
+        GenerateImageInfer._apply_character_references(params, model, character_references, inpainting=True)
         return GenerateImageInfer(input=prompt, model=model, action=Action.INFILL, parameters=params)
 
     def _resolve_limiter(self, limiter: DailyImageLimiter | bool | None) -> DailyImageLimiter | None:

@@ -101,9 +101,11 @@ def test_descriptions_and_fidelity_follow_the_model():
     assert _captions(v5) == ["character_mainoutfit", "character&style_anyoutfit", "costume", "style"]
     assert v5["director_reference_secondary_strength_values"] == [0, 0, 0, 0]  # no Fidelity on V5
 
-    v45 = _params(
-        GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_4_5_FULL, character_references=refs)
-    )
+    with pytest.warns(UserWarning, match="nai-diffusion-4-5-full takes no outfit reference: 1 left out") as caught:
+        v45 = _params(
+            GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_4_5_FULL, character_references=refs)
+        )
+    assert caught[0].filename == __file__  # points at the caller, not into the library
     # no outfits on V4.5: the outfit reference is left out, the outfit variants fold back
     assert _captions(v45) == ["character", "character&style", "style"]
     assert v45["director_reference_secondary_strength_values"] == [0.25, 0.25, 0.25]
@@ -122,7 +124,9 @@ def test_strength_goes_past_the_slider():
 
 
 def test_medium_needs_high_effort():
-    with pytest.raises(ValueError, match="High effort"):
+    with pytest.raises(
+        ValueError, match="High effort: use nai-diffusion-5-full instead of nai-diffusion-5-full-medium"
+    ):
         GenerateImageInfer.build_generate(
             "1girl",
             model=Model.NAI_DIFFUSION_5_FULL_MEDIUM,
@@ -132,14 +136,16 @@ def test_medium_needs_high_effort():
 
 @pytest.mark.parametrize("model", [Model.NAI_DIFFUSION_3, Model.NAI_DIFFUSION_4_FULL])
 def test_older_models_take_no_reference(model):
-    with pytest.raises(ValueError, match=r"V4\.5 or V5"):
+    with pytest.raises(ValueError, match=f"^{model.value} takes no Precise Reference"):
         GenerateImageInfer.build_generate(
             "1girl", model=model, character_references=[CharacterReference(image=_png(8, 8))]
         )
 
 
 def test_v5_full_takes_no_reference_when_inpainting():
-    with pytest.raises(ValueError, match="inpainting"):
+    with pytest.raises(
+        ValueError, match=r"^nai-diffusion-5-full-inpainting takes no Precise Reference when inpainting"
+    ):
         GenerateImageInfer.build_infill(
             "1girl",
             model=Model.NAI_DIFFUSION_5_FULL,
@@ -150,16 +156,17 @@ def test_v5_full_takes_no_reference_when_inpainting():
 
 
 def test_v5_curated_inpaints_with_v45_references():
-    gen = GenerateImageInfer.build_infill(
-        "1girl",
-        model=Model.NAI_DIFFUSION_5_CURATED,
-        image=_png(832, 1216),
-        mask=_png(832, 1216, (255, 255, 255)),
-        character_references=[
-            CharacterReference(image=_png(64, 64), description="costume"),
-            CharacterReference(image=_png(800, 400), description="character_mainoutfit", fidelity=0.75),
-        ],
-    )
+    with pytest.warns(UserWarning, match="nai-diffusion-4-5-curated-inpainting takes no outfit reference"):
+        gen = GenerateImageInfer.build_infill(
+            "1girl",
+            model=Model.NAI_DIFFUSION_5_CURATED,
+            image=_png(832, 1216),
+            mask=_png(832, 1216, (255, 255, 255)),
+            character_references=[
+                CharacterReference(image=_png(64, 64), description="costume"),
+                CharacterReference(image=_png(800, 400), description="character_mainoutfit", fidelity=0.75),
+            ],
+        )
     assert gen.model == Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING
     p = _params(gen)
     assert _captions(p) == ["character"]
@@ -181,25 +188,28 @@ def test_sixteen_references_at_most_after_filtering():
     ref = CharacterReference(image=_png(8, 8))
     outfit = CharacterReference(image=_png(8, 8), description="costume")
     # the outfit reference is left out on V4.5 first, sixteen stay
-    p = _params(
-        GenerateImageInfer.build_generate(
-            "1girl", model=Model.NAI_DIFFUSION_4_5_FULL, character_references=[ref] * 16 + [outfit]
+    with pytest.warns(UserWarning, match="outfit"):
+        p = _params(
+            GenerateImageInfer.build_generate(
+                "1girl", model=Model.NAI_DIFFUSION_4_5_FULL, character_references=[ref] * 16 + [outfit]
+            )
         )
-    )
     assert len(p["director_reference_images"]) == 16
     with pytest.raises(ValueError, match="16"):
         GenerateImageInfer.build_generate("1girl", model=Model.NAI_DIFFUSION_5_FULL, character_references=[ref] * 17)
 
 
 def test_vibes_are_left_out_with_a_reference():
-    gen = GenerateImageInfer.build_generate(
-        "1girl",
-        model=Model.NAI_DIFFUSION_4_5_FULL,
-        reference_image_multiple=["dmliZQ=="],
-        reference_strength_multiple=[0.6],
-        reference_information_extracted_multiple=[1.0],
-        character_references=[CharacterReference(image=_png(8, 8))],
-    )
+    with pytest.warns(UserWarning, match="Vibe Transfer does not work together with Precise Reference") as caught:
+        gen = GenerateImageInfer.build_generate(
+            "1girl",
+            model=Model.NAI_DIFFUSION_4_5_FULL,
+            reference_image_multiple=["dmliZQ=="],
+            reference_strength_multiple=[0.6],
+            reference_information_extracted_multiple=[1.0],
+            character_references=[CharacterReference(image=_png(8, 8))],
+        )
+    assert caught[0].filename == __file__  # past pydantic's validator frames too
     assert gen.parameters.reference_image_multiple is None
     assert gen.parameters.director_reference_images
 
