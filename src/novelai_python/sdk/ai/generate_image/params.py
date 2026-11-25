@@ -139,15 +139,15 @@ class Params(BaseModel):
     )
     """Reference Strength For Vibe Mode"""
     director_reference_images: list[str] | None = None
-    """Character reference (Precise Reference) images, base64, padded to a valid director size"""
+    """Precise Reference images, base64: fitted onto a director size on V4.5, cropped to a bucket on V5"""
     director_reference_descriptions: list[dict] | None = None
-    """Character reference: ``{"caption": {"base_caption": "character&style", "char_captions": []}, "legacy_uc": False}``"""
+    """Precise Reference: ``{"caption": {"base_caption": "character&style", "char_captions": []}, "legacy_uc": False}``"""
     director_reference_information_extracted: list[float] | None = None
-    """Character reference: 0-1"""
+    """Precise Reference: 0-1"""
     director_reference_strength_values: list[float] | None = None
-    """Character reference strength: 0-1"""
+    """Precise Reference strength: the slider ends at 1 (V5: 5), typed values may go past it or below 0"""
     director_reference_secondary_strength_values: list[float] | None = None
-    """Character reference: 1 - fidelity"""
+    """Precise Reference: 1 - fidelity; V5 has no fidelity and sends 0"""
     extra_noise_seed: int | None = Field(default=None, gt=0, le=4294967295 - 7)
     """Extra Noise Seed"""
     color_correct: bool | None = None

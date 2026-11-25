@@ -9,12 +9,15 @@ from pydantic import BaseModel
 
 from novelai_python.sdk.ai._const import initial_n, initialN, map, newN, step
 from novelai_python.sdk.ai._enum import (
+    V5_MEDIUM_MODEL_LIST,
     Model,
     ModelGroups,
     ModelTypeAlias,
     Sampler,
     as_model,
+    get_character_reference_support,
     get_model_group,
+    get_supported_params,
 )
 
 ANLAS_MAX = 140
@@ -37,10 +40,9 @@ _OPUS_USAGE_LIMIT_MODELS = {
     Model.NAI_DIFFUSION_5_CURATED,
     Model.NAI_DIFFUSION_5_CURATED_INPAINTING,
 }
-_MEDIUM_STEP_FACTOR = {
-    Model.NAI_DIFFUSION_5_FULL_MEDIUM: 1 / 1.06521739,
-    Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING: 1 / 1.06521739,
-}
+MEDIUM_PRICE_STEPS = 23
+MEDIUM_PRICE_DIVISOR = 1.75
+"""V5 Full Medium is priced as High effort at 23 steps divided by 1.75, whatever the steps."""
 
 
 class Args(BaseModel):
@@ -101,8 +103,10 @@ class CostCalculator:
         """
         Anlas for one generate-image request.
 
-        :param character_references: number of character reference images (+5 each per image).
-        :param vibe_references: number of enabled vibe references; more than four cost 2 each.
+        :param character_references: number of Precise Reference images: 5 each for every image, the free
+            Opus image included. Counted only where the model takes them (with a mask: V4.5 only).
+        :param vibe_references: number of enabled vibe references; on V4 / V4.5 every one past the fourth
+            costs 2 for every image. No vibes are sent with a mask or with Precise Reference.
             Encoding a new vibe is billed by EncodeVibe, not here.
         :param usage_negative: the Opus usage bar is below zero (``SubscriptionUsage.isNegative``);
             V5 Full / Curated are not free then.
@@ -132,7 +136,13 @@ class CostCalculator:
         )
         if price < 0:
             return price
-        return price + CHARACTER_REFERENCE_PRICE * character_references * n_samples + 2 * max(0, vibe_references - 4)
+        support = get_character_reference_support(model)
+        if not support.references or (mask and not support.inpainting):
+            character_references = 0
+        if mask or character_references or not get_supported_params(model).encodedVibes:
+            vibe_references = 0
+        extra = CHARACTER_REFERENCE_PRICE * character_references + 2 * max(0, vibe_references - 4)
+        return price + extra * n_samples
 
     @staticmethod
     def calculate_cost(
@@ -172,9 +182,14 @@ class CostCalculator:
             ModelGroups.V4,
             ModelGroups.V5,
         ):
-            step_factor = _MEDIUM_STEP_FACTOR.get(model, 1) if isinstance(model, Model) else 1
             smea = 1.4 if params.sm and params.sm_dyn else 1.2 if params.sm else 1
-            cost = math.ceil(2951823174884865e-21 * pixels + 5753298233447344e-22 * pixels * steps * step_factor) * smea
+            if model in V5_MEDIUM_MODEL_LIST:
+                base = (
+                    2951823174884865e-21 * pixels + 5753298233447344e-22 * pixels * MEDIUM_PRICE_STEPS
+                ) / MEDIUM_PRICE_DIVISOR
+            else:
+                base = math.ceil(2951823174884865e-21 * pixels + 5753298233447344e-22 * pixels * steps)
+            cost = base * smea
         elif max(pixels, 65536) <= OPUS_FREE_PIXELS and params.sampler in (
             Sampler.PLMS,
             Sampler.DDIM,

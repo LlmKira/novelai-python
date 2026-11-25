@@ -305,14 +305,58 @@ class SupportCondition:
     img2imgInpainting: bool
 
 
-def supports_character_reference(model: ModelTypeAlias) -> bool:
-    """Precise Reference (director_reference_*): V4.5 only in the web client (characterReferences flag)."""
-    return as_model(model) in (
+@dataclass(frozen=True)
+class CharacterReferenceSupport:
+    """Precise Reference flags of the web client (characterReferences, charRefInpainting and the rest)."""
+
+    references: bool = False
+    """The model takes director_reference_* at all."""
+    inpainting: bool = False
+    """charRefInpainting: the references are sent with a mask too."""
+    resize: bool = False
+    """resizeCharacterReferences: the image is fitted onto 1024x1536, 1536x1024 or 1472x1472 with black bars."""
+    bucket: bool = False
+    """bucketCharacterReferences: the image is cropped to the closest of 97 buckets of about one megapixel."""
+    fidelity: bool = False
+    """characterReferenceFidelity: the Fidelity slider exists; without it fidelity is 1."""
+    outfits: bool = False
+    """outfitReferences: "costume" and the "Prefer same outfit" descriptions."""
+    strength_max: float = 1
+    """characterReferenceStrengthMax: where the slider ends. Typed values may go past it, or below 0."""
+
+
+_V45_REFERENCES = CharacterReferenceSupport(references=True, inpainting=True, resize=True, fidelity=True)
+_V5_REFERENCES = CharacterReferenceSupport(references=True, bucket=True, outfits=True, strength_max=5)
+
+
+def get_character_reference_support(model: ModelTypeAlias) -> CharacterReferenceSupport:
+    """
+    Precise Reference support of a model, as the web client has it.
+
+    V5 Full Medium takes no references: the web client switches the generation to V5 Full (High effort)
+    while a reference is set ("Precise Reference needs High effort").
+    """
+    model = as_model(model)
+    if model in (
         Model.NAI_DIFFUSION_4_5_FULL,
         Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
         Model.NAI_DIFFUSION_4_5_CURATED,
         Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
-    )
+    ):
+        return _V45_REFERENCES
+    if model in (
+        Model.NAI_DIFFUSION_5_FULL,
+        Model.NAI_DIFFUSION_5_FULL_INPAINTING,
+        Model.NAI_DIFFUSION_5_CURATED,
+        Model.NAI_DIFFUSION_5_CURATED_INPAINTING,
+    ):
+        return _V5_REFERENCES
+    return CharacterReferenceSupport()
+
+
+def supports_character_reference(model: ModelTypeAlias) -> bool:
+    """Precise Reference (director_reference_*): V4.5 and V5 Full / Curated, not V5 Full Medium."""
+    return get_character_reference_support(model).references
 
 
 def get_max_characters(model: ModelTypeAlias) -> int:

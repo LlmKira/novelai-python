@@ -38,6 +38,7 @@ from novelai_python.sdk.ai._enum import (
     Sampler,
     UCPresetTypeAlias,
     as_model,
+    get_character_reference_support,
     get_default_noise_schedule,
     get_default_uc_preset,
     get_inpainting_model,
@@ -49,7 +50,6 @@ from novelai_python.sdk.ai._enum import (
     get_uc_preset_id,
     get_uc_preset_index,
     is_v5_model,
-    supports_character_reference,
 )
 from novelai_python.sdk.ai._enum import (
     UCPreset as UCPreset,  # re-export
@@ -69,7 +69,16 @@ from ...schema import ApiBaseModel, close_stream, observed_session
 from .auto_text import apply_auto_text
 from .auto_text import strip_auto_text as strip_auto_text  # re-export
 from .params import Params, get_default_params
-from .schema import Character, CharacterPosition, CharacterReference, PositionMap, V4NegativePrompt, V4Prompt
+from .schema import (
+    MAX_CHARACTER_REFERENCES,
+    Character,
+    CharacterPosition,
+    CharacterReference,
+    PositionMap,
+    V4NegativePrompt,
+    V4Prompt,
+    character_reference_error,
+)
 from .suggest_tags import SuggestTags as SuggestTags  # re-export
 
 if TYPE_CHECKING:
@@ -443,8 +452,23 @@ class GenerateImageInfer(ApiBaseModel):
                 f"{self.model} takes encoded vibes: pass EncodeVibe(...).request(...).vibe_b64, not a PNG image."
             )
 
-        if self.parameters.director_reference_images and not supports_character_reference(self.model):
-            raise ValueError(f"Character reference needs a V4.5 model, {self.model} does not take it")
+        if self.parameters.director_reference_images:
+            support = get_character_reference_support(self.model)
+            if not support.references:
+                raise ValueError(character_reference_error(self.model))
+            if len(self.parameters.director_reference_images) > MAX_CHARACTER_REFERENCES:
+                raise ValueError(
+                    f"At most {MAX_CHARACTER_REFERENCES} Precise Reference images, "
+                    f"got {len(self.parameters.director_reference_images)}"
+                )
+            if self.action == Action.INFILL and not support.inpainting:
+                raise ValueError(character_reference_error(self.model, inpainting=True))
+            if self.parameters.reference_image_multiple:
+                # the web client sends no vibes while a Precise Reference is set
+                logger.warning("Vibe Transfer does not work together with Precise Reference, the vibes are left out")
+                self.parameters.reference_image_multiple = None
+                self.parameters.reference_information_extracted_multiple = None
+                self.parameters.reference_strength_multiple = None
 
         if not get_supported_params(self.model).controlnet:
             if self.parameters.controlnet_condition is not None:
@@ -884,7 +908,8 @@ class GenerateImageInfer(ApiBaseModel):
         :param variety_boost: A new feature to improve the diversity of samples.
         :param furry_mode: Whether to use furry mode.
         :param transparent_background: V5 only: transparent background, as the web client's "Transparent BG".
-        :param character_references: V4.5 only: Precise Reference images (character / style / costume...).
+        :param character_references: Precise Reference images (character / style / outfit...), V4.5 and
+            V5 Full / Curated. V5 Full Medium takes none: the web client switches to High effort for them.
         :return:
         """
         params = get_default_params(model)
@@ -912,12 +937,18 @@ class GenerateImageInfer(ApiBaseModel):
             prompt = f"fur dataset, {prompt}"
         if transparent_background is not None:
             params.tag_hint_transparent_background = transparent_background
-        if character_references:
-            for key, value in CharacterReference.to_params(character_references).items():
-                setattr(params, key, value)
+        GenerateImageInfer._apply_character_references(params, model, character_references)
         return GenerateImageInfer(
             input=prompt, model=model, action=Action.GENERATE, parameters=params, use_new_shared_trial=use_trial
         )
+
+    @staticmethod
+    def _apply_character_references(
+        params: Params, model: Model | str, character_references: list[CharacterReference] | None
+    ) -> None:
+        if character_references:
+            for key, value in CharacterReference.to_params(character_references, model=model).items():
+                setattr(params, key, value)
 
     @staticmethod
     def build_img2img(
@@ -944,12 +975,14 @@ class GenerateImageInfer(ApiBaseModel):
         decrisp_mode: bool | None = None,
         variety_boost: bool | None = None,
         use_trial: bool = True,
+        character_references: list[CharacterReference] | None = None,
     ):
         """
         Quickly construct a parameter class that meets the requirements.
 
         If you need to define more parameters, you should initialize the Param class yourself.
 
+        :param character_references: Precise Reference images, as in ``build_generate``.
         :param strength:
         :param image:
         :param noise: For image to image
@@ -1001,6 +1034,7 @@ class GenerateImageInfer(ApiBaseModel):
             decrisp_mode=decrisp_mode,
             variety_boost=variety_boost,
         )
+        GenerateImageInfer._apply_character_references(params, model, character_references)
         return GenerateImageInfer(
             input=prompt, model=model, action=Action.IMG2IMG, parameters=params, use_new_shared_trial=use_trial
         )
@@ -1028,12 +1062,15 @@ class GenerateImageInfer(ApiBaseModel):
         qualityToggle: bool | None = None,
         decrisp_mode: bool | None = None,
         variety_boost: bool | None = None,
+        character_references: list[CharacterReference] | None = None,
     ):
         """
         Quickly construct a parameter class that meets the requirements.
 
         If you need to define more parameters, you should initialize the Param class yourself.
 
+        :param character_references: Precise Reference images. V4.5 inpainting takes them, and so does V5 Curated,
+            which inpaints with V4.5 Curated; V5 Full does not take them when inpainting.
         :param strength: The strength
         :param mask: Given mask
         :param image: Given image
@@ -1083,6 +1120,7 @@ class GenerateImageInfer(ApiBaseModel):
             decrisp_mode=decrisp_mode,
             variety_boost=variety_boost,
         )
+        GenerateImageInfer._apply_character_references(params, model, character_references)
         return GenerateImageInfer(input=prompt, model=model, action=Action.INFILL, parameters=params)
 
     def _resolve_limiter(self, limiter: DailyImageLimiter | bool | None) -> DailyImageLimiter | None:

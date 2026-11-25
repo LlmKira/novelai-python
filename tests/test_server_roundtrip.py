@@ -44,16 +44,17 @@ def test_prompt_and_negative_are_not_enhanced_twice(forwarded, model):
     assert server_side.parameters.negative_prompt == client_side.parameters.negative_prompt
 
 
-def test_character_reference_survives_the_server(forwarded):
+@pytest.mark.parametrize("model", [Model.NAI_DIFFUSION_4_5_FULL, Model.NAI_DIFFUSION_5_FULL])
+def test_character_reference_survives_the_server(forwarded, model):
     client_side = GenerateImageInfer.build_generate(
         "1girl",
-        model=Model.NAI_DIFFUSION_4_5_FULL,
-        character_references=[CharacterReference(image=PNG_1X1)],
+        model=model,
+        character_references=[CharacterReference(image=PNG_1X1, description="character")],
     )
     response = _post(client_side.model_dump_json())
     assert response.status_code != 422, response.text
-    assert forwarded[0].model == Model.NAI_DIFFUSION_4_5_FULL
-    assert forwarded[0].parameters.director_reference_images
+    assert forwarded[0].model == model
+    assert forwarded[0].parameters.director_reference_images == client_side.parameters.director_reference_images
 
 
 def _png_b64(size=(832, 1216), color="black") -> str:

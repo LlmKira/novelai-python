@@ -154,13 +154,6 @@ def test_character_reference_fields_match_web_client():
     assert portrait.getpixel((512, 768)) == (255, 0, 0)
 
 
-def test_character_reference_rejected_on_v5():
-    with pytest.raises(ValueError, match=r"V4.5"):
-        GenerateImageInfer.build_generate(
-            "1girl", model=Model.NAI_DIFFUSION_5_FULL, character_references=[CharacterReference(image=_png(64, 64))]
-        )
-
-
 # --- usage limit ---
 
 
