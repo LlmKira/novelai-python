@@ -270,3 +270,16 @@ def test_fields_built_for_v5_are_refused_on_v45():
     )
     with pytest.raises(ValueError, match="nai-diffusion-4-5-full takes no outfit reference"):
         GenerateImageInfer(input="1girl", model=Model.NAI_DIFFUSION_4_5_FULL, parameters=v5.parameters)
+
+
+def test_reference_count_is_checked_before_any_image_is_decoded():
+    not_an_image = CharacterReference(image=b"not an image")
+    with pytest.raises(ValueError, match="At most 16 Precise Reference images, got 17"):
+        GenerateImageInfer.model_validate(
+            {
+                "input": "1girl",
+                "model": "nai-diffusion-5-full",
+                "parameters": GenerateImageInfer.build_generate("1girl").parameters.model_dump(),
+                "character_references": [not_an_image.model_dump()] * 17,
+            }
+        )
