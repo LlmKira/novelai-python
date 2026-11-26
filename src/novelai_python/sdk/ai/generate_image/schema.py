@@ -322,7 +322,7 @@ class CharacterReference(BaseModel):
         and the outfit variants folded where the model has no outfits, fidelity 1 where it has no Fidelity,
         each image prepared for the model.
 
-        :raises ValueError: the model takes no references.
+        :raises ValueError: the model takes no references, or more than MAX_CHARACTER_REFERENCES are left.
         """
         model = as_model(model)
         support = get_character_reference_support(model)
@@ -339,6 +339,9 @@ class CharacterReference(BaseModel):
             references = [
                 r.model_copy(update={"description": _FOLD_OUTFIT.get(r.description, r.description)}) for r in kept
             ]
+        # before any image is decoded: the server builds these from request bodies
+        if len(references) > MAX_CHARACTER_REFERENCES:
+            raise ValueError(f"At most {MAX_CHARACTER_REFERENCES} Precise Reference images, got {len(references)}")
         return {
             "director_reference_images": [r.image_b64_for(model) for r in references],
             "director_reference_descriptions": [
