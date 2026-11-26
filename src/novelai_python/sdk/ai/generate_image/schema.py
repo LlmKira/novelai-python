@@ -1,9 +1,32 @@
 import base64
+import math
+import warnings
 from enum import Enum
 from io import BytesIO
+from pathlib import Path
 
+import numpy as np
+import pydantic
 from PIL import Image
 from pydantic import BaseModel, Field, field_validator
+
+from novelai_python.sdk.ai._enum import (
+    Model,
+    ModelTypeAlias,
+    as_model,
+    character_reference_error,
+    get_character_reference_support,
+    model_name,
+)
+
+# frames skipped when a warning picks the line to point at: this library, and pydantic, which runs its validators
+_SKIPPED_IN_WARNINGS = (str(Path(__file__).parents[3]), str(Path(pydantic.__file__).parent))
+
+
+def warn_left_out(message: str) -> None:
+    """A UserWarning about something the library left out of a request, pointed at the caller's line
+    outside the library, as PyTorch and huggingface_hub warn. ``-W error::UserWarning`` makes it an error."""
+    warnings.warn(message, UserWarning, skip_file_prefixes=_SKIPPED_IN_WARNINGS)
 
 
 class CharacterPosition(BaseModel):
@@ -137,51 +160,197 @@ class V4NegativePrompt(BaseModel):
         return cls(caption=caption, legacy_uc=legacy_uc)
 
 
-# Sizes the API accepts for character reference images (validDirectorSizes in the web client)
+# V4.5 fits a reference onto one of these canvases (validDirectorSizes in the web client)
 DIRECTOR_SIZES: tuple[tuple[int, int], ...] = ((1024, 1536), (1536, 1024), (1472, 1472))
 
 
-class CharacterReference(BaseModel):
-    """One Precise Reference (character reference) entry, V4.5 only.
+def _director_buckets() -> tuple[tuple[int, int], ...]:
+    # For every height from 4096 down to 1024 in steps of 64, the widest multiple of 64 within one
+    # megapixel, then the same buckets turned on their side: the 97 buckets of the web client.
+    portrait = [(1048576 // (height * 64) * 64, height) for height in range(4096, 1023, -64)]
+    return (*portrait, *((h, w) for w, h in reversed(portrait[:-1])))
 
-    Defaults are the web client's for a newly added image.
+
+DIRECTOR_BUCKETS: tuple[tuple[int, int], ...] = _director_buckets()
+"""V5 crops a reference to the bucket closest to its aspect ratio."""
+
+MAX_CHARACTER_REFERENCES = 16
+"""The web client refuses to generate with more references than this (after filtering)."""
+
+_STEALTH_MAGIC = b"stealth_pngcomp"
+
+# Without outfits (V4.5) the web client folds the "Prefer same outfit" variants back
+_FOLD_OUTFIT = {"character_mainoutfit": "character", "character&style_anyoutfit": "character&style"}
+OUTFIT_DESCRIPTIONS = frozenset({"costume", *_FOLD_OUTFIT})
+
+
+def _js_round(value: float) -> int:
+    return math.floor(value + 0.5)
+
+
+def _png_b64(image: Image.Image) -> str:
+    buf = BytesIO()
+    image.save(buf, format="PNG")
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
+
+
+def _strip_stealth_metadata(raw: bytes) -> bytes:
+    """
+    The image as the web client uploads it: a picture that carries NovelAI's metadata in the low bit of
+    its alpha channel (``stealth_pngcomp``, read column by column) gets that bit cleared (alpha 254 -> 255,
+    1 -> 0) and is re-encoded as PNG. JPEG, pictures above 16 megapixels and everything else stay as they are.
+    """
+    if raw[:3] == b"\xff\xd8\xff":
+        return raw
+    with Image.open(BytesIO(raw)) as src:
+        if src.width * src.height > 0x1000000:
+            return raw
+        image = src.convert("RGBA")
+    pixels = np.array(image)
+    alpha = pixels[..., 3]
+    bits = alpha.T.reshape(-1)[: len(_STEALTH_MAGIC) * 8] & 1
+    if np.packbits(bits).tobytes() != _STEALTH_MAGIC:
+        return raw
+    alpha[alpha == 254] = 255
+    alpha[alpha == 1] = 0
+    buf = BytesIO()
+    Image.fromarray(pixels, "RGBA").save(buf, format="PNG")
+    return buf.getvalue()
+
+
+class CharacterReference(BaseModel):
+    """
+    One Precise Reference entry (V4.5, and V5 Full / Curated).
+
+    ``description`` is what the model takes from the image:
+
+    - ``"character&style"``: the character and the art style (default of the web client);
+    - ``"character"``: the character;
+    - ``"style"``: the art style;
+    - ``"costume"``: the outfit, V5 only ("Outfit" in the web client);
+    - ``"character_mainoutfit"``: Character with "Prefer same outfit" on, V5 only;
+    - ``"character&style_anyoutfit"``: Character & Style with "Prefer same outfit" off, V5 only.
+
+    On V4.5 an outfit reference is dropped and the two outfit variants become ``"character"`` and
+    ``"character&style"``, as the web client does. V5 has no Fidelity: it is sent as 1.
+
+    ``strength`` and ``fidelity`` are not bounded: the web client's sliders end at 1 (strength 5 on V5),
+    but a typed value may go past that or below zero.
+
+    Where the web client sends no reference at all, building the request raises ``ValueError`` that says what to
+    use instead:
+
+    - V5 Full Medium: Precise Reference needs High effort, use ``nai-diffusion-5-full`` (the web client switches
+      to it while a reference is set and disables Medium);
+    - V4 and older models;
+    - inpainting on V5 Full / V5 Full Medium (V4.5 and V5 Curated inpaint with references);
+    - more than 16 references.
+    - ``director_reference_*`` fields with outfit descriptions on a model without outfits (build them for the
+      model with ``to_params(..., model=...)``, or pass ``character_references``).
+
+    What the web client leaves out of the request, the library leaves out too, with a ``UserWarning`` pointed at
+    the caller's line: outfit references on V4.5, vibes next to a reference. ``python -W error::UserWarning`` or
+    ``warnings.simplefilter("error", UserWarning)`` turns those into errors.
     """
 
     image: str | bytes = Field(..., description="Reference image, raw bytes or base64")
     description: str = Field(
-        default="character&style", description='"character", "style", "costume", "character&style" or "delta"'
+        default="character&style",
+        description='"character&style", "character", "style", "costume", "character_mainoutfit", '
+        '"character&style_anyoutfit" or "delta"',
     )
-    strength: float = Field(default=1.0, ge=0, le=1)
-    fidelity: float = Field(default=1.0, ge=0, le=1)
+    strength: float = Field(default=1.0, allow_inf_nan=False)
+    fidelity: float = Field(default=1.0, allow_inf_nan=False)
     information_extracted: float = Field(default=1.0, ge=0, le=1)
 
+    def _raw(self) -> bytes:
+        return base64.b64decode(self.image) if isinstance(self.image, str) else self.image
+
     def padded_image_b64(self) -> str:
-        """The image fitted onto opaque black at the director size closest to its aspect ratio, PNG base64."""
-        raw = base64.b64decode(self.image) if isinstance(self.image, str) else self.image
-        with Image.open(BytesIO(raw)) as src:
-            img = src.convert("RGB")
-        aspect = img.width / img.height
+        """
+        V4.5: the image fitted onto the canvas closest to its aspect ratio (DIRECTOR_SIZES), Lanczos,
+        centred over opaque black, PNG base64.
+        """
+        with Image.open(BytesIO(_strip_stealth_metadata(self._raw()))) as src:
+            image = src.convert("RGBA")
+        aspect = image.width / image.height
         width, height = min(DIRECTOR_SIZES, key=lambda s: abs(s[0] / s[1] - aspect))
-        ratio = min(width / img.width, height / img.height)
-        img = img.resize(
-            (max(1, round(img.width * ratio)), max(1, round(img.height * ratio))), Image.Resampling.BICUBIC
+        if aspect > width / height:
+            size = (width, max(1, _js_round(width / aspect)))
+        else:
+            size = (max(1, _js_round(height * aspect)), height)
+        if size != image.size:
+            image = image.resize(size, Image.Resampling.LANCZOS)
+        canvas = Image.new("RGBA", (width, height), (0, 0, 0, 255))
+        canvas.alpha_composite(image, (_js_round((width - size[0]) / 2), _js_round((height - size[1]) / 2)))
+        return _png_b64(canvas.convert("RGB"))
+
+    def bucketed_image_b64(self) -> str:
+        """
+        V5: the image scaled to cover the closest bucket (DIRECTOR_BUCKETS, by log aspect ratio), Lanczos,
+        and cropped to it around the centre, PNG base64. An image already of a bucket's size is sent as it is.
+        """
+        raw = _strip_stealth_metadata(self._raw())
+        with Image.open(BytesIO(raw)) as src:
+            image = src.convert("RGBA")
+        log_aspect = math.log(max(image.width, 1) / max(image.height, 1))
+        width, height = min(DIRECTOR_BUCKETS, key=lambda b: abs(log_aspect - math.log(b[0] / b[1])))
+        if image.size == (width, height):
+            return base64.b64encode(raw).decode("utf-8")
+        scale = max(width / image.width, height / image.height)
+        resized = (
+            max(_js_round(image.width * scale), width),
+            max(_js_round(image.height * scale), height),
         )
-        canvas = Image.new("RGB", (width, height), (0, 0, 0))
-        canvas.paste(img, ((width - img.width) // 2, (height - img.height) // 2))
-        buf = BytesIO()
-        canvas.save(buf, format="PNG")
-        return base64.b64encode(buf.getvalue()).decode("utf-8")
+        left, top = (resized[0] - width) // 2, (resized[1] - height) // 2
+        image = image.resize(resized, Image.Resampling.LANCZOS).crop((left, top, left + width, top + height))
+        return _png_b64(image)
+
+    def image_b64_for(self, model: ModelTypeAlias) -> str:
+        """The image prepared the way the web client prepares it for ``model``."""
+        support = get_character_reference_support(model)
+        if support is None:
+            raise ValueError(character_reference_error(model))
+        return self.bucketed_image_b64() if support.bucket else self.padded_image_b64()
 
     @staticmethod
-    def to_params(references: "list[CharacterReference]") -> dict:
-        """Request fields the web client builds from the references (applyCharacterReferenceFields)."""
+    def to_params(
+        references: "list[CharacterReference]", *, model: ModelTypeAlias = Model.NAI_DIFFUSION_4_5_FULL
+    ) -> dict:
+        """
+        Request fields the web client builds from the references for ``model``: outfit references dropped
+        and the outfit variants folded where the model has no outfits, fidelity 1 where it has no Fidelity,
+        each image prepared for the model.
+
+        :raises ValueError: the model takes no references, or more than MAX_CHARACTER_REFERENCES are left.
+        """
+        model = as_model(model)
+        support = get_character_reference_support(model)
+        if support is None:
+            raise ValueError(character_reference_error(model))
+        if not support.outfits:
+            kept = [r for r in references if r.description != "costume"]
+            if len(kept) < len(references):
+                warn_left_out(
+                    f"{model_name(model)} takes no outfit reference: "
+                    f"{len(references) - len(kept)} left out of the request, as the web client does. "
+                    "Outfit references need NovelAI Diffusion V5 Full or Curated."
+                )
+            references = [
+                r.model_copy(update={"description": _FOLD_OUTFIT.get(r.description, r.description)}) for r in kept
+            ]
+        # before any image is decoded: the server builds these from request bodies
+        if len(references) > MAX_CHARACTER_REFERENCES:
+            raise ValueError(f"At most {MAX_CHARACTER_REFERENCES} Precise Reference images, got {len(references)}")
         return {
-            "director_reference_images": [r.padded_image_b64() for r in references],
+            "director_reference_images": [r.image_b64_for(model) for r in references],
             "director_reference_descriptions": [
                 {"caption": {"base_caption": r.description, "char_captions": []}, "legacy_uc": False}
                 for r in references
             ],
             "director_reference_information_extracted": [r.information_extracted for r in references],
             "director_reference_strength_values": [r.strength for r in references],
-            "director_reference_secondary_strength_values": [round(1 - r.fidelity, 4) for r in references],
+            "director_reference_secondary_strength_values": [
+                round(1 - r.fidelity, 4) if support.fidelity else 0 for r in references
+            ],
         }

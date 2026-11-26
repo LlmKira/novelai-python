@@ -249,8 +249,15 @@ PROMOTION = {
     "Stable Diffusion XL 37C2B166": Model.NAI_DIFFUSION_FURRY_3,
     "Stable Diffusion XL F306816B": Model.NAI_DIFFUSION_FURRY_3,
     "Stable Diffusion XL 9CC2F394": Model.NAI_DIFFUSION_FURRY_3,
+    # 4BDE2A90 / C02D4F98: generations with Precise Reference; the web client also reads them
+    # under the "DiffusionModelMetaName.NAIv4next" name
+    "NovelAI Diffusion V4.5 4BDE2A90": Model.NAI_DIFFUSION_4_5_FULL,
+    "DiffusionModelMetaName.NAIv4next 4BDE2A90": Model.NAI_DIFFUSION_4_5_FULL,
+    "NovelAI Diffusion V4.5 1229B44F": Model.NAI_DIFFUSION_4_5_FULL,
     "NovelAI Diffusion V4.5 B9F340FD": Model.NAI_DIFFUSION_4_5_FULL,
     "NovelAI Diffusion V4.5 F3D95188": Model.NAI_DIFFUSION_4_5_FULL,
+    "NovelAI Diffusion V4.5 C02D4F98": Model.NAI_DIFFUSION_4_5_CURATED,
+    "DiffusionModelMetaName.NAIv4next C02D4F98": Model.NAI_DIFFUSION_4_5_CURATED,
     "NovelAI Diffusion V4.5 5AB81C7C": Model.NAI_DIFFUSION_4_5_CURATED,
     "NovelAI Diffusion V4.5 B5A2A797": Model.NAI_DIFFUSION_4_5_CURATED,
     "NovelAI Diffusion V4 5AB81C7C": Model.NAI_DIFFUSION_4_5_CURATED,
@@ -264,10 +271,12 @@ PROMOTION = {
     "NovelAI Diffusion V4 C1CCBA86": Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
     "NovelAI Diffusion V4 770A9E12": Model.NAI_DIFFUSION_4_CURATED_PREVIEW,
     # the web client's metadata import (rQ): the V5 Source names no variant, only the hash
+    "NovelAI Diffusion V5 81E2A1BD": Model.NAI_DIFFUSION_5_FULL,  # generations with Precise Reference
     "NovelAI Diffusion V5 657484A5": Model.NAI_DIFFUSION_5_FULL,
     "NovelAI Diffusion V5 0ADF9AB7": Model.NAI_DIFFUSION_5_FULL,
     "NovelAI Diffusion V5 93F4BD30": Model.NAI_DIFFUSION_5_FULL_MEDIUM,
     "NovelAI Diffusion V5 70AB5786": Model.NAI_DIFFUSION_5_FULL_MEDIUM,
+    "NovelAI Diffusion V5 AD5A716B": Model.NAI_DIFFUSION_5_CURATED,
     "NovelAI Diffusion V5 DB276663": Model.NAI_DIFFUSION_5_CURATED,
 }
 
@@ -305,14 +314,63 @@ class SupportCondition:
     img2imgInpainting: bool
 
 
-def supports_character_reference(model: ModelTypeAlias) -> bool:
-    """Precise Reference (director_reference_*): V4.5 only in the web client (characterReferences flag)."""
-    return as_model(model) in (
-        Model.NAI_DIFFUSION_4_5_FULL,
-        Model.NAI_DIFFUSION_4_5_FULL_INPAINTING,
-        Model.NAI_DIFFUSION_4_5_CURATED,
-        Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING,
-    )
+@dataclass(frozen=True)
+class CharacterReferenceSupport:
+    """Precise Reference flags of the web client (characterReferences and the rest)."""
+
+    bucket: bool
+    """bucketCharacterReferences: crop to the closest of 97 one-megapixel buckets. Off (V4.5,
+    resizeCharacterReferences): fit onto 1024x1536, 1536x1024 or 1472x1472 with black bars."""
+    fidelity: bool
+    """characterReferenceFidelity: the Fidelity slider exists; without it fidelity is 1."""
+    outfits: bool
+    """outfitReferences: "costume" and the "Prefer same outfit" descriptions."""
+
+
+_V45_REFERENCES = CharacterReferenceSupport(bucket=False, fidelity=True, outfits=False)
+_V5_REFERENCES = CharacterReferenceSupport(bucket=True, fidelity=False, outfits=True)
+# Keyed by the model the request goes to. Absent: V5 Full Medium (the web client switches to V5 Full while a
+# reference is set) and V5 Full inpainting (charRefInpainting off). V5 Curated inpaints with V4.5 Curated.
+_CHARACTER_REFERENCE_SUPPORT = {
+    Model.NAI_DIFFUSION_4_5_FULL: _V45_REFERENCES,
+    Model.NAI_DIFFUSION_4_5_FULL_INPAINTING: _V45_REFERENCES,
+    Model.NAI_DIFFUSION_4_5_CURATED: _V45_REFERENCES,
+    Model.NAI_DIFFUSION_4_5_CURATED_INPAINTING: _V45_REFERENCES,
+    Model.NAI_DIFFUSION_5_FULL: _V5_REFERENCES,
+    Model.NAI_DIFFUSION_5_CURATED: _V5_REFERENCES,
+    # does not exist: GenerateImageInfer sends it to V4.5 Curated inpainting
+    Model.NAI_DIFFUSION_5_CURATED_INPAINTING: _V45_REFERENCES,
+}
+
+
+def get_character_reference_support(
+    model: ModelTypeAlias, *, inpainting: bool = False
+) -> CharacterReferenceSupport | None:
+    """Precise Reference support of the model a request goes to (``inpainting``: with a mask), or None."""
+    model = as_model(model)
+    model = get_inpainting_model(model) if inpainting else model
+    return _CHARACTER_REFERENCE_SUPPORT.get(model) if isinstance(model, Model) else None
+
+
+def model_name(model: ModelTypeAlias) -> str:
+    return str(getattr(model, "value", model))
+
+
+def character_reference_error(model: ModelTypeAlias, *, inpainting: bool = False) -> str:
+    """Why ``model`` takes no Precise Reference, and what to use instead."""
+    model = as_model(model)
+    name = model_name(model)
+    if inpainting or model == Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING:
+        return (
+            f"{name} takes no Precise Reference when inpainting (the web client leaves the references "
+            "out). Inpaint with NovelAI Diffusion V4.5, or V5 Curated, which inpaints with V4.5 Curated."
+        )
+    if model == Model.NAI_DIFFUSION_5_FULL_MEDIUM:
+        return (
+            "Precise Reference needs High effort: use nai-diffusion-5-full instead of nai-diffusion-5-full-medium "
+            "(the web client switches to it while a reference is set)."
+        )
+    return f"{name} takes no Precise Reference. Use NovelAI Diffusion V4.5 Full / Curated or V5 Full / Curated."
 
 
 def get_max_characters(model: ModelTypeAlias) -> int:

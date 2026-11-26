@@ -98,8 +98,10 @@ def test_img2img_needs_the_source_image():
     ("source", "model"),
     [
         ("NovelAI Diffusion V5 0ADF9AB7", Model.NAI_DIFFUSION_5_FULL),
+        ("NovelAI Diffusion V5 81E2A1BD", Model.NAI_DIFFUSION_5_FULL),  # generated with Precise Reference
         ("NovelAI Diffusion V5 93F4BD30", Model.NAI_DIFFUSION_5_FULL_MEDIUM),
         ("NovelAI Diffusion V5 DB276663", Model.NAI_DIFFUSION_5_CURATED),
+        ("NovelAI Diffusion V5 AD5A716B", Model.NAI_DIFFUSION_5_CURATED),
         ("NovelAI Diffusion V5 00000000", Model.NAI_DIFFUSION_5_CURATED),  # the web client's default
     ],
 )
@@ -107,6 +109,25 @@ def test_v5_model_from_source_hash(source, model):
     from novelai_python.sdk.ai._enum import find_model_by_hashcode
 
     assert find_model_by_hashcode(source) == model
+    assert ImageMetadata(Source=source).used_model == model
+
+
+@pytest.mark.parametrize(
+    ("source", "model"),
+    [
+        ("NovelAI Diffusion V4.5 4BDE2A90", Model.NAI_DIFFUSION_4_5_FULL),  # generated with Precise Reference
+        ("DiffusionModelMetaName.NAIv4next 4BDE2A90", Model.NAI_DIFFUSION_4_5_FULL),
+        ("NovelAI Diffusion V4.5 1229B44F", Model.NAI_DIFFUSION_4_5_FULL),
+        ("NovelAI Diffusion V4.5 C02D4F98", Model.NAI_DIFFUSION_4_5_CURATED),
+        ("DiffusionModelMetaName.NAIv4next C02D4F98", Model.NAI_DIFFUSION_4_5_CURATED),
+        ("NovelAI Diffusion V4.5 B5A2A797", Model.NAI_DIFFUSION_4_5_CURATED),
+    ],
+)
+def test_v45_model_from_source_hash(source, model):
+    from novelai_python.sdk.ai._enum import find_model_by_hashcode
+
+    assert find_model_by_hashcode(source) == model
+    assert ImageMetadata(Source=source).used_model == model
 
 
 def test_unknown_model_and_missing_comment():
