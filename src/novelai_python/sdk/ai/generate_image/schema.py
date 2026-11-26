@@ -10,7 +10,14 @@ import pydantic
 from PIL import Image
 from pydantic import BaseModel, Field, field_validator
 
-from novelai_python.sdk.ai._enum import Model, ModelTypeAlias, as_model, get_character_reference_support
+from novelai_python.sdk.ai._enum import (
+    Model,
+    ModelTypeAlias,
+    as_model,
+    character_reference_error,
+    get_character_reference_support,
+    model_name,
+)
 
 # frames skipped when a warning picks the line to point at: this library, and pydantic, which runs its validators
 _SKIPPED_IN_WARNINGS = (str(Path(__file__).parents[3]), str(Path(pydantic.__file__).parent))
@@ -20,10 +27,6 @@ def warn_left_out(message: str) -> None:
     """A UserWarning about something the library left out of a request, pointed at the caller's line
     outside the library, as PyTorch and huggingface_hub warn. ``-W error::UserWarning`` makes it an error."""
     warnings.warn(message, UserWarning, skip_file_prefixes=_SKIPPED_IN_WARNINGS)
-
-
-def model_name(model: ModelTypeAlias) -> str:
-    return str(getattr(model, "value", model))
 
 
 class CharacterPosition(BaseModel):
@@ -176,6 +179,10 @@ MAX_CHARACTER_REFERENCES = 16
 
 _STEALTH_MAGIC = b"stealth_pngcomp"
 
+# Without outfits (V4.5) the web client folds the "Prefer same outfit" variants back
+_FOLD_OUTFIT = {"character_mainoutfit": "character", "character&style_anyoutfit": "character&style"}
+OUTFIT_DESCRIPTIONS = frozenset({"costume", *_FOLD_OUTFIT})
+
 
 def _js_round(value: float) -> int:
     return math.floor(value + 0.5)
@@ -238,6 +245,8 @@ class CharacterReference(BaseModel):
     - V4 and older models;
     - inpainting on V5 Full / V5 Full Medium (V4.5 and V5 Curated inpaint with references);
     - more than 16 references.
+    - ``director_reference_*`` fields with outfit descriptions on a model without outfits (build them for the
+      model with ``to_params(..., model=...)``, or pass ``character_references``).
 
     What the web client leaves out of the request, the library leaves out too, with a ``UserWarning`` pointed at
     the caller's line: outfit references on V4.5, vibes next to a reference. ``python -W error::UserWarning`` or
@@ -290,8 +299,8 @@ class CharacterReference(BaseModel):
             return base64.b64encode(raw).decode("utf-8")
         scale = max(width / image.width, height / image.height)
         resized = (
-            max(math.floor(image.width * scale + 0.5), width),
-            max(math.floor(image.height * scale + 0.5), height),
+            max(_js_round(image.width * scale), width),
+            max(_js_round(image.height * scale), height),
         )
         left, top = (resized[0] - width) // 2, (resized[1] - height) // 2
         image = image.resize(resized, Image.Resampling.LANCZOS).crop((left, top, left + width, top + height))
@@ -300,11 +309,9 @@ class CharacterReference(BaseModel):
     def image_b64_for(self, model: ModelTypeAlias) -> str:
         """The image prepared the way the web client prepares it for ``model``."""
         support = get_character_reference_support(model)
-        if support.bucket:
-            return self.bucketed_image_b64()
-        if support.resize:
-            return self.padded_image_b64()
-        return base64.b64encode(_strip_stealth_metadata(self._raw())).decode("utf-8")
+        if support is None:
+            raise ValueError(character_reference_error(model))
+        return self.bucketed_image_b64() if support.bucket else self.padded_image_b64()
 
     @staticmethod
     def to_params(
@@ -315,30 +322,27 @@ class CharacterReference(BaseModel):
         and the outfit variants folded where the model has no outfits, fidelity 1 where it has no Fidelity,
         each image prepared for the model.
 
-        :raises ValueError: the model takes no references, or more than MAX_CHARACTER_REFERENCES are left.
+        :raises ValueError: the model takes no references.
         """
         model = as_model(model)
         support = get_character_reference_support(model)
-        if not support.references:
+        if support is None:
             raise ValueError(character_reference_error(model))
-        if not support.outfits and any(r.description == "costume" for r in references):
-            dropped = sum(r.description == "costume" for r in references)
-            warn_left_out(
-                f"{model_name(model)} takes no outfit reference: {dropped} left out of the request, as the web client "
-                "does. Outfit references need NovelAI Diffusion V5 Full or Curated."
-            )
-            references = [r for r in references if r.description != "costume"]
-        if len(references) > MAX_CHARACTER_REFERENCES:
-            raise ValueError(f"At most {MAX_CHARACTER_REFERENCES} Precise Reference images, got {len(references)}")
-        folded = {"character_mainoutfit": "character", "character&style_anyoutfit": "character&style"}
-
-        def description(r: CharacterReference) -> str:
-            return r.description if support.outfits else folded.get(r.description, r.description)
-
+        if not support.outfits:
+            kept = [r for r in references if r.description != "costume"]
+            if len(kept) < len(references):
+                warn_left_out(
+                    f"{model_name(model)} takes no outfit reference: "
+                    f"{len(references) - len(kept)} left out of the request, as the web client does. "
+                    "Outfit references need NovelAI Diffusion V5 Full or Curated."
+                )
+            references = [
+                r.model_copy(update={"description": _FOLD_OUTFIT.get(r.description, r.description)}) for r in kept
+            ]
         return {
             "director_reference_images": [r.image_b64_for(model) for r in references],
             "director_reference_descriptions": [
-                {"caption": {"base_caption": description(r), "char_captions": []}, "legacy_uc": False}
+                {"caption": {"base_caption": r.description, "char_captions": []}, "legacy_uc": False}
                 for r in references
             ],
             "director_reference_information_extracted": [r.information_extracted for r in references],
@@ -347,22 +351,3 @@ class CharacterReference(BaseModel):
                 round(1 - r.fidelity, 4) if support.fidelity else 0 for r in references
             ],
         }
-
-
-def character_reference_error(model: ModelTypeAlias, *, inpainting: bool = False) -> str:
-    """Why ``model`` takes no Precise Reference (``inpainting``: in an infill request), and what to use instead."""
-    model = as_model(model)
-    if inpainting or model == Model.NAI_DIFFUSION_5_FULL_MEDIUM_INPAINTING:
-        return (
-            f"{model_name(model)} takes no Precise Reference when inpainting (the web client leaves the references "
-            "out). Inpaint with NovelAI Diffusion V4.5, or V5 Curated, which inpaints with V4.5 Curated."
-        )
-    if model == Model.NAI_DIFFUSION_5_FULL_MEDIUM:
-        return (
-            "Precise Reference needs High effort: use nai-diffusion-5-full instead of nai-diffusion-5-full-medium "
-            "(the web client switches to it while a reference is set)."
-        )
-    return (
-        f"{model_name(model)} takes no Precise Reference. "
-        "Use NovelAI Diffusion V4.5 Full / Curated or V5 Full / Curated."
-    )

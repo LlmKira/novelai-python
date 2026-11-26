@@ -140,7 +140,7 @@ class Params(BaseModel):
     """Reference Strength For Vibe Mode"""
     director_reference_images: list[str] | None = None
     """Precise Reference images, base64: fitted onto a director size on V4.5, cropped to a bucket on V5.
-    V5 Full Medium takes none (ValueError: Precise Reference needs High effort, use nai-diffusion-5-full)"""
+    ``GenerateImageInfer(character_references=...)`` builds them for the model the request goes to."""
     director_reference_descriptions: list[dict] | None = None
     """Precise Reference: ``{"caption": {"base_caption": "character&style", "char_captions": []}, "legacy_uc": False}``"""
     director_reference_information_extracted: list[float] | None = None

@@ -136,8 +136,7 @@ class CostCalculator:
         )
         if price < 0:
             return price
-        support = get_character_reference_support(model)
-        if not support.references or (mask and not support.inpainting):
+        if get_character_reference_support(model, inpainting=mask) is None:
             character_references = 0
         if mask or character_references or not get_supported_params(model).encodedVibes:
             vibe_references = 0
