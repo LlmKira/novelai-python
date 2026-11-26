@@ -26,13 +26,17 @@ the [NovelAI API service](https://image.novelai.net/docs).
 
 ### 📰 News
 
+- **Precise Reference on V5** Full and Curated: outfit references (`costume`), the "Prefer same outfit"
+  variants, strength up to 5 (or past it), images cropped to the web client's one-megapixel buckets.
+  V5 Full Medium takes no references: the web client switches to High effort while one is set, the SDK raises
+  `ValueError` that says to use `nai-diffusion-5-full`.
 - **NovelAI Diffusion V5** family: `nai-diffusion-5-full`, `-full-medium` (fast, 14 steps), `-curated` and their
   `-inpainting` variants, with the web client's quality presets (`standard` / `light` / `none`) and negative
   presets. Every model uses `params_version` 4 (`ucPresetId` / `qualityPresetId`) and the
   `multipart/form-data` body the web client sends.
 - **Streaming**: `async for event in gen.request_stream(session)` on `/ai/generate-image-stream` yields
   intermediate previews and the final image per sample.
-- New: character reference (V4.5), `EncodeVibe`, transparent background (V5), `Upscale` on the image host,
+- New: character reference (V4.5, V5), `EncodeVibe`, transparent background (V5), `Upscale` on the image host,
   `UserData`, `TrialStatus`, `Priority`, `CreatePersistentToken`, the OpenAI-compatible text API (`/oa/v1`),
   and `GenerateImageInfer.from_metadata()` to rebuild a request from an image's metadata.
 - Fewer dependencies: pydantic, curl_cffi, msgpack, Pillow, numpy, pynacl and kitoken. httpx, opencv,
@@ -303,7 +307,16 @@ from novelai_python.sdk.ai._enum import Model
 # V5: "Transparent BG" of the web client (tag before the quality suffix + straight alpha)
 gen = GenerateImageInfer.build_generate("1girl, standing", transparent_background=True)
 
-# V4.5: Precise Reference (character / style / costume / character&style / delta)
+# Precise Reference, V4.5 and V5 Full / Curated. V5 adds the outfit ("costume") and "Prefer same outfit":
+# character_mainoutfit (Character, on) and character&style_anyoutfit (Character & Style, off).
+gen = GenerateImageInfer.build_generate(
+    "1girl", model=Model.NAI_DIFFUSION_5_FULL,
+    character_references=[
+        CharacterReference(image=open("girl.png", "rb").read(), description="character", strength=0.9),
+        CharacterReference(image=open("dress.png", "rb").read(), description="costume"),
+    ],
+)
+# V4.5 has Fidelity instead (and no outfits)
 gen = GenerateImageInfer.build_generate(
     "1girl", model=Model.NAI_DIFFUSION_4_5_FULL,
     character_references=[CharacterReference(image=open("ref.png", "rb").read(), fidelity=0.8)],
@@ -318,7 +331,15 @@ gen = GenerateImageInfer.build_generate(
 )
 ```
 
-V5 has no vibe transfer and no character reference; it takes up to 32 characters (V4/V4.5: 6).
+Each reference costs 5 Anlas for every image, the free Opus image included. V5 has no vibe transfer, takes no
+reference when inpainting (V5 Curated inpaints with V4.5 Curated, which does) and takes up to 32 characters
+(V4/V4.5: 6).
+
+Where the web client sends no reference, building the request raises `ValueError` with what to use instead:
+V5 Full Medium ("Precise Reference needs High effort": use `nai-diffusion-5-full`), V4 and older models,
+inpainting on V5 Full, more than 16 references. What the web client leaves out, the SDK leaves out too, with a
+`UserWarning` pointed at your line: outfit references on V4.5, vibes next to a reference.
+`python -W error::UserWarning` (or `warnings.simplefilter("error", UserWarning)`) turns those into errors.
 
 Environment:
 
